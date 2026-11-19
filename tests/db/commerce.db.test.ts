@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { DB_URL, addMember, asUser, closeDb, createOrg, createProduct, createUser, key, level, one, type TestUser } from './helpers'
+import { DB_URL, db, addMember, asUser, closeDb, createOrg, createProduct, createUser, key, level, one, type TestUser } from './helpers'
 import { computeOrderTotals } from '../../src/domain/orders'
 import { PERMISSION_MATRIX, ROLES } from '../../src/domain/permissions'
 
@@ -328,4 +328,38 @@ run('payments, refunds and reversals', () => {
 
 afterAll(async () => {
   await closeDb()
+})
+
+run('provider-verified payments (service role)', () => {
+  it('rejects payments for organisations without a verified connection, and over-balance amounts', async () => {
+    const owner = await createUser('svc')
+    const org = await createOrg(owner, 'USD')
+    const { variantId } = await createProduct(owner, org, 1000, { track: false })
+    const order = await createOrder(owner, org, [{ variant_id: variantId, quantity: 1 }])
+    const svc = async (sql: string, params: unknown[]) => {
+      const c = await db().connect()
+      try {
+        await c.query('begin')
+        await c.query('set local role service_role')
+        const r = await c.query(sql, params)
+        await c.query('commit')
+        return r.rows
+      } catch (e) {
+        await c.query('rollback')
+        throw e
+      } finally {
+        c.release()
+      }
+    }
+    const call = (amount: number, ref: string) =>
+      svc(`select public.record_verified_payment($1, 'stripe', 'card', $2, 'USD', $3, now()) as id`, [order, amount, ref])
+    await expect(call(1000, 'pi_a')).rejects.toThrow(/not connected/)
+    await db().query(`insert into public.integration_connections (org_id, provider, kind, state) values ($1, 'stripe', 'payment', 'connected_verified')`, [org])
+    await expect(call(1001, 'pi_b')).rejects.toThrow(/outstanding balance/)
+    const a = await call(600, 'pi_c')
+    const b = await call(600, 'pi_c')
+    expect(a[0].id).toBe(b[0].id)
+    const p = await one<{ verification: string }>(owner, `select verification from public.payments where id = $1`, [a[0].id])
+    expect(p.verification).toBe('provider_verified')
+  })
 })
