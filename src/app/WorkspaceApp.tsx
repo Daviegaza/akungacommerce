@@ -18,6 +18,7 @@ const PaymentsPage = lazy(() => import('./pages/PaymentsPage'))
 const FulfilmentPage = lazy(() => import('./pages/FulfilmentPage'))
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
+const ShopSettingsPage = lazy(() => import('./pages/ShopSettingsPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 function FullPageLoader() {
@@ -63,6 +64,7 @@ function Gate() {
                   <Route path="payments" element={<PaymentsPage />} />
                   <Route path="fulfilment" element={<FulfilmentPage />} />
                   <Route path="analytics" element={<AnalyticsPage />} />
+                  <Route path="shop" element={<ShopSettingsPage />} />
                   <Route path="settings" element={<SettingsPage />} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>

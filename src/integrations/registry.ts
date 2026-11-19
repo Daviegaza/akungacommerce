@@ -58,11 +58,12 @@ const STATUSES: readonly IntegrationStatus[] = [
     lastTestedAt: null,
   },
   {
-    provider: 'mpesa_daraja',
+    provider: 'mpesa',
     kind: 'payment',
-    name: 'M-Pesa Daraja',
-    label: 'not_implemented',
-    detail: 'Not built. M-Pesa payments can be recorded manually and are marked unverified.',
+    name: 'M-Pesa Daraja (STK push)',
+    label: 'adapter_only',
+    detail:
+      'STK push and callback adapters exist (mpesa-stk, mpesa-callback). Needs Daraja consumer key and secret, shortcode, passkey, a callback URL with its shared secret, then an end-to-end test. Until then M-Pesa payments are recorded manually and marked unverified.',
     lastTestedAt: null,
   },
   {

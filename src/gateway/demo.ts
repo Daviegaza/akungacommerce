@@ -60,11 +60,12 @@ import {
   type StockAdjustmentInput,
   type StockMovement,
 } from './types'
+import type { DeliveryBand, PaymentChoice, ProductMerchandising, ShopSettings, VariantMerchandising } from './storefront'
 
 export const DEMO_NOTICE = 'Demo workspace · fictional data · stored only in this browser'
 
-const STORAGE_KEY = 'akunga.demo.v1'
-const STATE_VERSION = 1
+const STORAGE_KEY = 'akunga.demo.v2'
+const STATE_VERSION = 2
 
 export const DEMO_USER: SessionUser = { id: 'demo-user', email: 'owner@demo.akunga.test' }
 
@@ -80,6 +81,24 @@ const PAYMENT_METHODS: readonly PaymentMethod[] = ['cash', 'bank_transfer', 'mob
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const E164_RE = /^\+[1-9][0-9]{6,14}$/
 const LOCALE_RE = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/
+/** Same as the shop_settings.slug check constraint. */
+export const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/
+
+/** Mirrors save_shop_settings: increasing distances up to 500 km, non-negative whole fees. */
+function validateBands(bands: DeliveryBand[] | null | undefined): DeliveryBand[] {
+  let prev = 0
+  const out: DeliveryBand[] = []
+  for (const b of bands ?? []) {
+    const km = b?.maxKm
+    const fee = b?.feeMinor
+    if (typeof km !== 'number' || !Number.isFinite(km) || km <= prev || km > 500 || !Number.isSafeInteger(fee) || fee < 0) {
+      throw new GatewayError('Delivery bands must have increasing distances (up to 500 km) and non-negative fees', 'invalid')
+    }
+    prev = km
+    out.push({ maxKm: km, feeMinor: fee })
+  }
+  return out
+}
 
 // ───────────────────────── Stored shapes ─────────────────────────
 
@@ -105,6 +124,8 @@ interface StoredVariant {
   position: number
   createdAt: string
   updatedAt: string
+  compareAtMinor: number | null
+  swatch: string | null
 }
 interface StoredMovement extends Omit<StockMovement, 'productName' | 'variantName'> {
   orgId: string
@@ -116,6 +137,9 @@ interface StoredCustomer extends Customer {
 interface StoredOrder extends Omit<OrderSummary, 'netPaidMinor' | 'fulfilmentMethod'> {
   orgId: string
   idempotencyKey: string
+  /** Guest tracking link token (storefront orders only). */
+  trackingToken: string | null
+  paymentPreference: PaymentChoice | null
 }
 interface StoredLine extends OrderLine {
   orgId: string
@@ -143,6 +167,21 @@ interface StoredRefund extends Omit<Refund, 'orderNumber'> {
 interface StoredAudit extends AuditEntry {
   orgId: string
 }
+interface StoredShopSettings extends ShopSettings {
+  orgId: string
+  updatedAt: string
+}
+interface StoredReview {
+  id: string
+  orgId: string
+  productId: string
+  orderId: string
+  rating: number
+  body: string | null
+  authorDisplay: string
+  hidden: boolean
+  createdAt: string
+}
 
 interface DemoState {
   version: number
@@ -164,6 +203,10 @@ interface DemoState {
   audit: StoredAudit[]
   /** `${orgId}:${key}` for applied return requests. */
   returnKeys: string[]
+  shopSettings: StoredShopSettings[]
+  reviews: StoredReview[]
+  /** Mirrors public.rate_limits (fixed window per key). */
+  rateLimits: Record<string, { windowStart: string; hits: number }>
 }
 
 function emptyState(): DemoState {
@@ -186,6 +229,9 @@ function emptyState(): DemoState {
     refunds: [],
     audit: [],
     returnKeys: [],
+    shopSettings: [],
+    reviews: [],
+    rateLimits: {},
   }
 }
 
@@ -215,7 +261,16 @@ function writeRaw(raw: string): void {
 function isState(v: unknown): v is DemoState {
   if (!v || typeof v !== 'object') return false
   const s = v as Partial<DemoState>
-  return s.version === STATE_VERSION && Array.isArray(s.orgs) && Array.isArray(s.orders) && Array.isArray(s.returnKeys)
+  return (
+    s.version === STATE_VERSION &&
+    Array.isArray(s.orgs) &&
+    Array.isArray(s.orders) &&
+    Array.isArray(s.returnKeys) &&
+    Array.isArray(s.shopSettings) &&
+    Array.isArray(s.reviews) &&
+    !!s.rateLimits &&
+    typeof s.rateLimits === 'object'
+  )
 }
 
 /** Each call returns a fresh copy, so a failed operation never leaks partial writes. */
@@ -449,13 +504,136 @@ function toSummary(s: DemoState, o: StoredOrder): OrderSummary {
   const refunds = s.refunds.filter((r) => r.orderId === o.id)
   const summary = summarisePayments({ totalMinor: o.totalMinor, currency: o.currency }, payments, refunds)
   const fulfilment = s.fulfilments.find((f) => f.orderId === o.id)
-  const { orgId: _o, idempotencyKey: _k, ...rest } = o
+  const { orgId: _o, idempotencyKey: _k, trackingToken: _t, paymentPreference: _p, ...rest } = o
   void _o
   void _k
+  void _t
+  void _p
   return { ...rest, netPaidMinor: summary.netPaidMinor, fulfilmentMethod: fulfilment?.method ?? 'pickup' }
 }
 
 // ───────────────────────── Operations (shared by gateway + seed) ─────────────────────────
+
+/** Mirrors `_create_order_core`: no permission check (callers enforce it). */
+function createOrderCore(s: DemoState, orgId: string, input: NewOrderInput, key: string): string {
+  requireKey(key)
+  const existing = s.orders.find((o) => o.orgId === orgId && o.idempotencyKey === key)
+  if (existing) return existing.id
+
+  const status = input.status ?? 'confirmed'
+  if (!['draft', 'pending_confirmation', 'confirmed'].includes(status)) {
+    fail('New orders start as draft, awaiting confirmation or confirmed', 'invalid')
+  }
+  const channel = input.channel ?? 'direct'
+  if (!(ORDER_CHANNELS as readonly string[]).includes(channel)) fail('Choose a sales channel', 'invalid')
+  const fee = input.deliveryFeeMinor ?? 0
+  if (!Number.isSafeInteger(fee)) fail('Delivery fee must be a whole number of minor units', 'invalid')
+  if (fee < 0) fail('Delivery fee cannot be negative', 'invalid')
+  if (!Array.isArray(input.lines) || input.lines.length === 0) fail('An order needs at least one line', 'invalid')
+  const note = maxLen(trimOrNull(input.note), 2000, 'Note')
+  const method: FulfilmentMethod = input.fulfilment?.method ?? 'pickup'
+  if (method !== 'pickup' && method !== 'delivery') fail('Choose pickup or delivery', 'invalid')
+
+  const org = getOrg(s, orgId)
+  let customer: StoredCustomer | null = null
+  if (input.customerId) {
+    customer = s.customers.find((c) => c.id === input.customerId && c.orgId === orgId) ?? fail('Customer not found', 'not_found')
+  }
+
+  // Prices, tax and totals come from the catalogue, never from the client.
+  const resolved = input.lines.map((l) => {
+    const qty = l.quantity
+    const discount = l.discountMinor ?? 0
+    if (!Number.isSafeInteger(qty) || qty <= 0) fail('Quantity must be at least 1', 'invalid')
+    if (!Number.isSafeInteger(discount) || discount < 0) fail('Discount cannot be negative', 'invalid')
+    const variant = s.variants.find((v) => v.id === l.variantId && v.orgId === orgId && v.isActive)
+    const product = variant && s.products.find((p) => p.id === variant.productId && p.status === 'active')
+    if (!variant || !product) fail('A product in this order is unavailable', 'not_found')
+    if (variant.currency !== org.baseCurrency) fail(`Cannot mix ${variant.currency} and ${org.baseCurrency} in one order`, 'invalid')
+    return { variant, product, qty, discount }
+  })
+  const totals = computeOrderTotals({
+    currency: org.baseCurrency,
+    taxMode: org.taxMode,
+    deliveryFeeMinor: fee,
+    lines: resolved.map((r) => ({
+      unitPriceMinor: r.variant.priceMinor,
+      quantity: r.qty,
+      taxRateBps: r.product.taxRateBps,
+      discountMinor: r.discount,
+      currency: r.variant.currency,
+    })),
+  })
+
+  const number = org.nextOrderNumber
+  org.nextOrderNumber += 1
+  const ts = nowIso()
+  const order: StoredOrder = {
+    id: uuid(),
+    orgId,
+    idempotencyKey: key,
+    number,
+    status,
+    channel,
+    currency: org.baseCurrency,
+    customerId: customer?.id ?? null,
+    customerName: customer?.name ?? null,
+    customerPhone: customer?.phoneE164 ?? null,
+    subtotalMinor: totals.subtotalMinor,
+    discountMinor: totals.discountMinor,
+    taxMinor: totals.taxMinor,
+    deliveryFeeMinor: totals.deliveryFeeMinor,
+    totalMinor: totals.totalMinor,
+    taxMode: org.taxMode,
+    note,
+    createdAt: ts,
+    updatedAt: ts,
+    trackingToken: null,
+    paymentPreference: null,
+  }
+  s.orders.push(order)
+  resolved.forEach((r, position) => {
+    const t = totals.lines[position]
+    s.lines.push({
+      id: uuid(),
+      orgId,
+      orderId: order.id,
+      variantId: r.variant.id,
+      productName: r.product.name,
+      variantName: r.variant.name,
+      sku: r.variant.sku,
+      quantity: r.qty,
+      returnedQuantity: 0,
+      unitPriceMinor: r.variant.priceMinor,
+      currency: r.variant.currency,
+      taxRateBps: r.product.taxRateBps,
+      discountMinor: r.discount,
+      subtotalMinor: t.subtotalMinor,
+      taxMinor: t.taxMinor,
+      totalMinor: t.totalMinor,
+      trackStock: r.product.trackStock,
+      position,
+    })
+  })
+  s.fulfilments.push({
+    orgId,
+    orderId: order.id,
+    method,
+    recipientName: trimOrNull(input.fulfilment?.recipientName),
+    recipientPhone: trimOrNull(input.fulfilment?.recipientPhone),
+    address: cleanAddress(input.fulfilment?.address),
+    assignee: null,
+    provider: 'manual',
+    trackingRef: null,
+    proofOfDelivery: null,
+    deliveredAt: null,
+  })
+  s.history.push({ id: uuid(), orgId, orderId: order.id, fromStatus: null, toStatus: status, note: 'Order created', createdAt: ts })
+  if (holdsReservation(status)) orderStock(s, order, 'reserve')
+  writeAudit(s, orgId, 'orders', order.id, 'insert', null, { number, status, totalMinor: order.totalMinor, currency: order.currency })
+  return order.id
+}
+
 
 const ops = {
   createOrganisation(s: DemoState, input: NewOrganisationInput): string {
@@ -607,6 +785,9 @@ const ops = {
         taxCode,
         createdAt: ts,
         updatedAt: ts,
+        images: [],
+        featured: false,
+        availableFrom: null,
       }
       s.products.push(product)
       writeAudit(s, orgId, 'products', product.id, 'insert', null, { name, status: input.status })
@@ -660,6 +841,8 @@ const ops = {
           position,
           createdAt: ts,
           updatedAt: ts,
+          compareAtMinor: null,
+          swatch: null,
         }
         s.variants.push(variant)
         s.levels[variant.id] = { onHand: 0, reserved: 0 }
@@ -668,6 +851,10 @@ const ops = {
         variant =
           s.variants.find((x) => x.id === v.id && x.productId === product.id && x.orgId === orgId) ??
           fail('Variant not found on this product', 'not_found')
+        // Mirrors the compare_at_minor > price_minor check constraint.
+        if (variant.compareAtMinor !== null && v.priceMinor >= variant.compareAtMinor) {
+          fail(`"${vName}" has a compare-at price; the price must stay below it`, 'invalid')
+        }
         if (variant.priceMinor !== v.priceMinor) {
           writeAudit(
             s,
@@ -747,120 +934,109 @@ const ops = {
 
   createOrder(s: DemoState, orgId: string, input: NewOrderInput, key: string): string {
     requirePermission(s, orgId, 'orders.create')
-    requireKey(key)
-    const existing = s.orders.find((o) => o.orgId === orgId && o.idempotencyKey === key)
-    if (existing) return existing.id
+    return createOrderCore(s, orgId, input, key)
+  },
 
-    const status = input.status ?? 'confirmed'
-    if (!['draft', 'pending_confirmation', 'confirmed'].includes(status)) {
-      fail('New orders start as draft, awaiting confirmation or confirmed', 'invalid')
+  /** Mirrors save_shop_settings + the shop_settings check constraints. */
+  saveShopSettings(s: DemoState, orgId: string, input: ShopSettings): void {
+    requirePermission(s, orgId, 'org.manage')
+    getOrg(s, orgId)
+    const bands = validateBands(input.deliveryBands)
+    const slug = (input.slug ?? '').trim().toLowerCase()
+    if (!SLUG_RE.test(slug)) {
+      fail('Shop link must be 3–40 lowercase letters, numbers or dashes, starting and ending with a letter or number', 'invalid')
     }
-    const channel = input.channel ?? 'direct'
-    if (!(ORDER_CHANNELS as readonly string[]).includes(channel)) fail('Choose a sales channel', 'invalid')
-    const fee = input.deliveryFeeMinor ?? 0
-    if (!Number.isSafeInteger(fee)) fail('Delivery fee must be a whole number of minor units', 'invalid')
-    if (fee < 0) fail('Delivery fee cannot be negative', 'invalid')
-    if (!Array.isArray(input.lines) || input.lines.length === 0) fail('An order needs at least one line', 'invalid')
-    const note = maxLen(trimOrNull(input.note), 2000, 'Note')
-    const method: FulfilmentMethod = input.fulfilment?.method ?? 'pickup'
-    if (method !== 'pickup' && method !== 'delivery') fail('Choose pickup or delivery', 'invalid')
-
-    const org = getOrg(s, orgId)
-    let customer: StoredCustomer | null = null
-    if (input.customerId) {
-      customer = s.customers.find((c) => c.id === input.customerId && c.orgId === orgId) ?? fail('Customer not found', 'not_found')
+    const https = (v: string | null | undefined, label: string) => {
+      const t = trimOrNull(v)
+      if (t !== null && !/^https:\/\//.test(t)) fail(`${label} must be an https:// link`, 'invalid')
+      return t
     }
-
-    // Prices, tax and totals come from the catalogue, never from the client.
-    const resolved = input.lines.map((l) => {
-      const qty = l.quantity
-      const discount = l.discountMinor ?? 0
-      if (!Number.isSafeInteger(qty) || qty <= 0) fail('Quantity must be at least 1', 'invalid')
-      if (!Number.isSafeInteger(discount) || discount < 0) fail('Discount cannot be negative', 'invalid')
-      const variant = s.variants.find((v) => v.id === l.variantId && v.orgId === orgId && v.isActive)
-      const product = variant && s.products.find((p) => p.id === variant.productId && p.status === 'active')
-      if (!variant || !product) fail('A product in this order is unavailable', 'not_found')
-      if (variant.currency !== org.baseCurrency) fail(`Cannot mix ${variant.currency} and ${org.baseCurrency} in one order`, 'invalid')
-      return { variant, product, qty, discount }
-    })
-    const totals = computeOrderTotals({
-      currency: org.baseCurrency,
-      taxMode: org.taxMode,
-      deliveryFeeMinor: fee,
-      lines: resolved.map((r) => ({
-        unitPriceMinor: r.variant.priceMinor,
-        quantity: r.qty,
-        taxRateBps: r.product.taxRateBps,
-        discountMinor: r.discount,
-        currency: r.variant.currency,
-      })),
-    })
-
-    const number = org.nextOrderNumber
-    org.nextOrderNumber += 1
-    const ts = nowIso()
-    const order: StoredOrder = {
-      id: uuid(),
+    const digits = (v: string | null | undefined, label: string) => {
+      const t = trimOrNull(v)
+      if (t !== null && !/^[0-9]{5,8}$/.test(t)) fail(`${label} must be 5–8 digits`, 'invalid')
+      return t
+    }
+    const coord = (v: number | null | undefined, max: number, label: string) => {
+      if (v === null || v === undefined) return null
+      if (typeof v !== 'number' || !Number.isFinite(v) || v < -max || v > max) fail(`${label} is out of range`, 'invalid')
+      return v
+    }
+    const whatsapp = trimOrNull(input.whatsappE164)
+    if (whatsapp !== null && !E164_RE.test(whatsapp)) fail('WhatsApp number must be in international format, e.g. +254712345678', 'invalid')
+    const next: StoredShopSettings = {
       orgId,
-      idempotencyKey: key,
-      number,
-      status,
-      channel,
-      currency: org.baseCurrency,
-      customerId: customer?.id ?? null,
-      customerName: customer?.name ?? null,
-      customerPhone: customer?.phoneE164 ?? null,
-      subtotalMinor: totals.subtotalMinor,
-      discountMinor: totals.discountMinor,
-      taxMinor: totals.taxMinor,
-      deliveryFeeMinor: totals.deliveryFeeMinor,
-      totalMinor: totals.totalMinor,
-      taxMode: org.taxMode,
-      note,
-      createdAt: ts,
-      updatedAt: ts,
+      slug,
+      published: !!input.published,
+      tagline: maxLen(trimOrNull(input.tagline), 140, 'Tagline'),
+      about: maxLen(trimOrNull(input.about), 2000, 'About'),
+      coverUrl: https(input.coverUrl, 'Cover image'),
+      logoUrl: https(input.logoUrl, 'Logo'),
+      whatsappE164: whatsapp,
+      registeredName: maxLen(trimOrNull(input.registeredName), 120, 'Registered name'),
+      locationLat: coord(input.locationLat, 90, 'Latitude'),
+      locationLng: coord(input.locationLng, 180, 'Longitude'),
+      locationLabel: maxLen(trimOrNull(input.locationLabel), 160, 'Location label'),
+      pickupEnabled: input.pickupEnabled ?? true,
+      deliveryEnabled: input.deliveryEnabled ?? true,
+      deliveryBands: bands,
+      deliveryPromise: maxLen(trimOrNull(input.deliveryPromise), 80, 'Delivery promise'),
+      codEnabled: !!input.codEnabled,
+      mpesaTill: digits(input.mpesaTill, 'M-Pesa Till'),
+      mpesaPaybill: digits(input.mpesaPaybill, 'M-Pesa Paybill'),
+      returnPolicy: maxLen(trimOrNull(input.returnPolicy), 2000, 'Return policy'),
+      updatedAt: nowIso(),
     }
-    s.orders.push(order)
-    resolved.forEach((r, position) => {
-      const t = totals.lines[position]
-      s.lines.push({
-        id: uuid(),
-        orgId,
-        orderId: order.id,
-        variantId: r.variant.id,
-        productName: r.product.name,
-        variantName: r.variant.name,
-        sku: r.variant.sku,
-        quantity: r.qty,
-        returnedQuantity: 0,
-        unitPriceMinor: r.variant.priceMinor,
-        currency: r.variant.currency,
-        taxRateBps: r.product.taxRateBps,
-        discountMinor: r.discount,
-        subtotalMinor: t.subtotalMinor,
-        taxMinor: t.taxMinor,
-        totalMinor: t.totalMinor,
-        trackStock: r.product.trackStock,
-        position,
-      })
-    })
-    s.fulfilments.push({
+    if (next.published && next.deliveryEnabled && (next.locationLat === null || next.locationLng === null)) {
+      fail('Set your shop location before publishing with delivery', 'invalid')
+    }
+    if (s.shopSettings.some((x) => x.slug === slug && x.orgId !== orgId)) fail('That shop link is already taken', 'conflict')
+    const i = s.shopSettings.findIndex((x) => x.orgId === orgId)
+    const before = i >= 0 ? s.shopSettings[i] : null
+    if (i >= 0) s.shopSettings[i] = next
+    else s.shopSettings.push(next)
+    writeAudit(
+      s,
       orgId,
-      orderId: order.id,
-      method,
-      recipientName: trimOrNull(input.fulfilment?.recipientName),
-      recipientPhone: trimOrNull(input.fulfilment?.recipientPhone),
-      address: cleanAddress(input.fulfilment?.address),
-      assignee: null,
-      provider: 'manual',
-      trackingRef: null,
-      proofOfDelivery: null,
-      deliveredAt: null,
-    })
-    s.history.push({ id: uuid(), orgId, orderId: order.id, fromStatus: null, toStatus: status, note: 'Order created', createdAt: ts })
-    if (holdsReservation(status)) orderStock(s, order, 'reserve')
-    writeAudit(s, orgId, 'orders', order.id, 'insert', null, { number, status, totalMinor: order.totalMinor, currency: order.currency })
-    return order.id
+      'shop_settings',
+      orgId,
+      before ? 'update' : 'insert',
+      before ? { slug: before.slug, published: before.published } : null,
+      { slug: next.slug, published: next.published },
+    )
+  },
+
+  setProductMerchandising(s: DemoState, orgId: string, productId: string, m: ProductMerchandising): void {
+    requirePermission(s, orgId, 'catalogue.write')
+    const images = Array.isArray(m.images) ? m.images : []
+    for (const img of images) {
+      if (typeof img?.url !== 'string' || !/^https:\/\//.test(img.url)) fail('Images must be https URLs', 'invalid')
+    }
+    if (images.length > 12) fail('A product can have at most 12 images', 'invalid')
+    let availableFrom: string | null = null
+    if (m.availableFrom) {
+      const d = new Date(m.availableFrom)
+      if (Number.isNaN(d.getTime())) fail('Enter a valid drop date', 'invalid')
+      availableFrom = d.toISOString()
+    }
+    const product = s.products.find((p) => p.id === productId && p.orgId === orgId) ?? fail('Product not found', 'not_found')
+    product.images = images.map((img) => (img.alt ? { url: img.url, alt: img.alt } : { url: img.url }))
+    product.featured = !!m.featured
+    product.availableFrom = availableFrom
+    product.updatedAt = nowIso()
+  },
+
+  setVariantMerchandising(s: DemoState, orgId: string, variantId: string, m: VariantMerchandising): void {
+    requirePermission(s, orgId, 'catalogue.write')
+    const variant = s.variants.find((v) => v.id === variantId && v.orgId === orgId) ?? fail('Variant not found', 'not_found')
+    const compareAt = m.compareAtMinor ?? null
+    if (compareAt !== null && (!Number.isSafeInteger(compareAt) || compareAt <= variant.priceMinor)) {
+      fail('Compare-at price must be higher than the current price', 'invalid')
+    }
+    const swatch = trimOrNull(m.swatch)
+    if (swatch !== null && !/^#[0-9a-fA-F]{6}$/.test(swatch)) fail('Swatch must be a hex colour like #1f2937', 'invalid')
+    variant.compareAtMinor = compareAt
+    variant.swatch = swatch
+    variant.updatedAt = nowIso()
   },
 
   transitionOrder(s: DemoState, orgId: string, orderId: string, to: OrderStatus, note: string | null): void {
@@ -1083,6 +1259,8 @@ function listProductsIn(s: DemoState, orgId: string): Product[] {
               onHand: lv.onHand,
               reserved: lv.reserved,
               costMinor: showCost ? (s.costs[v.id] ?? null) : null,
+              compareAtMinor: v.compareAtMinor,
+              swatch: v.swatch,
             }
           }),
       }
@@ -1314,7 +1492,58 @@ export function createDemoGateway(): CommerceGateway {
         requireMember(s, orgId)
         return integrationStatuses()
       }),
+
+    getShopSettings: (orgId) =>
+      read((s) => {
+        requireMember(s, orgId)
+        const row = s.shopSettings.find((x) => x.orgId === orgId)
+        if (!row) return null
+        const { orgId: _o, updatedAt: _u, ...settings } = row
+        void _o
+        void _u
+        return { ...settings, deliveryBands: settings.deliveryBands.map((b) => ({ ...b })) }
+      }),
+    saveShopSettings: (orgId, settings) => tx((s) => ops.saveShopSettings(s, orgId, settings)),
+    setProductMerchandising: (orgId, productId, m) => tx((s) => ops.setProductMerchandising(s, orgId, productId, m)),
+    setVariantMerchandising: (orgId, variantId, m) => tx((s) => ops.setVariantMerchandising(s, orgId, variantId, m)),
   }
+}
+
+/**
+ * Internals shared with the demo storefront (storefront-demo.ts) so both read
+ * and write the same browser-local state under the same rules. Not for UI use.
+ */
+export const demoInternals = {
+  tx,
+  read,
+  fail,
+  uuid,
+  now,
+  nowIso,
+  level,
+  getOrg,
+  orderStock,
+  createOrderCore,
+  toSummary,
+}
+export type {
+  DemoState,
+  StoredOrder,
+  StoredProduct,
+  StoredVariant,
+  StoredShopSettings,
+  StoredReview,
+  StoredCustomer,
+  StoredFulfilment,
+}
+
+/** URL-safe random token (crypto), same alphabet as the SQL tracking token. */
+export function randomToken(bytes = 18): string {
+  const buf = new Uint8Array(bytes)
+  crypto.getRandomValues(buf)
+  let bin = ''
+  for (const b of buf) bin += String.fromCharCode(b)
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
 /**
@@ -1338,6 +1567,9 @@ interface SeedVariant {
   cost?: number
   stock: number
   low?: number
+  /** Genuinely higher "was" price, major units. */
+  compareAt?: number
+  swatch?: string
 }
 interface SeedProduct {
   name: string
@@ -1347,7 +1579,25 @@ interface SeedProduct {
   trackStock?: boolean
   status?: 'active' | 'archived'
   variants: SeedVariant[]
+  /** Unsplash photo ids (see unsplash()) with alt text. */
+  images?: [photoId: string, alt: string][]
+  featured?: boolean
+  /** Scheduled drop: becomes purchasable this many days after seeding. */
+  dropInDays?: number
 }
+/** A verified review left on a delivered seed order (index into the org's order list). */
+interface SeedReview {
+  order: number
+  product: string
+  rating: number
+  body: string | null
+}
+interface SeedExtras {
+  shop: ShopSettings
+  reviews: SeedReview[]
+}
+
+const unsplash = (id: string) => `https://images.unsplash.com/photo-${id}?w=900&q=80&auto=format&fit=crop`
 
 interface SeedOrder {
   daysAgo: number
@@ -1405,6 +1655,7 @@ function buildSeed(): DemoState {
       MTO_CUSTOMERS,
       MTO_ORDERS,
       100,
+      { shop: MTO_SHOP, reviews: MTO_REVIEWS },
     )
     seedOrg(
       s,
@@ -1425,6 +1676,7 @@ function buildSeed(): DemoState {
       LUMEN_CUSTOMERS,
       LUMEN_ORDERS,
       100,
+      { shop: LUMEN_SHOP, reviews: LUMEN_REVIEWS },
     )
   } finally {
     clockOverride = null
@@ -1443,6 +1695,7 @@ function seedOrg(
   customers: CustomerInput[],
   orders: SeedOrder[],
   minorPerMajor: number,
+  extras: SeedExtras,
 ): void {
   setClock(at(60, 7))
   const orgId = ops.createOrganisation(s, orgInput)
@@ -1451,9 +1704,11 @@ function seedOrg(
     const acct = DEMO_ACCOUNTS.find((a) => a.id === t.userId)
     if (acct) ops.addMember(s, orgId, acct.email, t.role)
   }
+  ops.saveShopSettings(s, orgId, extras.shop)
 
   setClock(at(45, 8))
   const variantIds = new Map<string, string>()
+  const productIds = new Map<string, string>()
   for (const p of products) {
     const productId = ops.saveProduct(s, orgId, {
       name: p.name,
@@ -1474,6 +1729,29 @@ function seedOrg(
     })
     const stored = s.variants.filter((v) => v.productId === productId)
     for (const v of stored) variantIds.set(`${p.name}|${v.name}`, v.id)
+    productIds.set(p.name, productId)
+
+    // Storefront merchandising goes through the same validated operations as the UI.
+    let availableFrom: string | null = null
+    if (p.dropInDays) {
+      const d = new Date(Date.now() + p.dropInDays * 86_400_000)
+      d.setUTCHours(6, 0, 0, 0)
+      availableFrom = d.toISOString()
+    }
+    if (p.images?.length || p.featured || availableFrom) {
+      ops.setProductMerchandising(s, orgId, productId, {
+        images: (p.images ?? []).map(([id, alt]) => ({ url: unsplash(id), alt })),
+        featured: !!p.featured,
+        availableFrom,
+      })
+    }
+    for (const v of p.variants) {
+      if (v.compareAt === undefined && v.swatch === undefined) continue
+      ops.setVariantMerchandising(s, orgId, variantIds.get(`${p.name}|${v.name}`) as string, {
+        compareAtMinor: v.compareAt === undefined ? null : Math.round(v.compareAt * minorPerMajor),
+        swatch: v.swatch ?? null,
+      })
+    }
   }
 
   // Opening stock arrives from suppliers.
@@ -1496,6 +1774,7 @@ function seedOrg(
   const customerIds = new Map<string, string>()
   for (const c of customers) customerIds.set(c.name, ops.saveCustomer(s, orgId, c))
 
+  const orderIds: string[] = []
   for (const o of orders) {
     let t = at(o.daysAgo, o.hour)
     const tick = (minutes: number) => {
@@ -1529,6 +1808,12 @@ function seedOrg(
       uuid(),
     )
     const order = s.orders.find((x) => x.id === orderId) as StoredOrder
+    orderIds.push(orderId)
+    if (o.channel === 'storefront') {
+      // Storefront orders carry a guest tracking link, like storefront_place_order.
+      order.trackingToken = randomToken()
+      order.paymentPreference = o.payments?.[0]?.method === 'mobile_money' ? 'mpesa' : o.payments?.[0]?.method === 'card' ? 'card' : 'bank_transfer'
+    }
 
     const payments = o.payments ?? []
     const pay = () => {
@@ -1593,6 +1878,32 @@ function seedOrg(
       }
     }
   }
+
+  // Verified reviews: only on delivered orders, once per product, author = first name.
+  for (const r of extras.reviews) {
+    const order = s.orders.find((x) => x.id === orderIds[r.order])
+    const productId = productIds.get(r.product)
+    if (!order || order.status !== 'delivered' || !productId) throw new Error(`Seed review needs a delivered order: ${r.product}`)
+    const inOrder = s.lines.some(
+      (l) => l.orderId === order.id && s.variants.some((v) => v.id === l.variantId && v.productId === productId),
+    )
+    if (!inOrder || s.reviews.some((x) => x.orderId === order.id && x.productId === productId)) {
+      throw new Error(`Seed review product not in order or duplicated: ${r.product}`)
+    }
+    const deliveredAt = s.fulfilments.find((f) => f.orderId === order.id)?.deliveredAt ?? order.updatedAt
+    const createdAt = new Date(Math.min(new Date(deliveredAt).getTime() + 26 * 3_600_000, Date.now() - 60_000)).toISOString()
+    s.reviews.push({
+      id: uuid(),
+      orgId,
+      productId,
+      orderId: order.id,
+      rating: r.rating,
+      body: r.body,
+      authorDisplay: (order.customerName ?? '').split(' ')[0] || 'Customer',
+      hidden: false,
+      createdAt,
+    })
+  }
 }
 
 // Fictional catalogue, customers and orders. No real brands, people or businesses.
@@ -1604,9 +1915,14 @@ const MTO_PRODUCTS: SeedProduct[] = [
     description: 'Hand-thrown stoneware mug, 350 ml, food-safe glaze.',
     taxRateBps: 1600,
     variants: [
-      { name: 'Sand', sku: 'MTO-MUG-SND', price: 1200, cost: 450, stock: 24, low: 5 },
-      { name: 'Charcoal', sku: 'MTO-MUG-CHR', price: 1200, cost: 450, stock: 12, low: 5 },
-      { name: 'Sage', sku: 'MTO-MUG-SGE', price: 1200, cost: 450, stock: 3, low: 5 },
+      { name: 'Sand', sku: 'MTO-MUG-SND', price: 1200, cost: 450, stock: 24, low: 5, swatch: '#D8C3A5' },
+      { name: 'Charcoal', sku: 'MTO-MUG-CHR', price: 1200, cost: 450, stock: 12, low: 5, swatch: '#36454F' },
+      { name: 'Sage', sku: 'MTO-MUG-SGE', price: 1200, cost: 450, stock: 3, low: 5, swatch: '#9CAF88' },
+    ],
+    images: [
+      ['1514228742587-6b1558fcca3d', 'Stoneware mug on a light table'],
+      ['1495474472287-4d71bcdd2085', 'Mug of coffee in morning light'],
+      ['1509042239860-f550ce710b93', 'Coffee served in a ceramic cup'],
     ],
   },
   {
@@ -1619,6 +1935,10 @@ const MTO_PRODUCTS: SeedProduct[] = [
       { name: 'Medium', sku: 'MTO-BSK-M', price: 2600, cost: 1300, stock: 8, low: 3 },
       { name: 'Large', sku: 'MTO-BSK-L', price: 3400, cost: 1700, stock: 0, low: 2 },
     ],
+    images: [
+      ['1524758631624-e2822e304c36', 'Bright room with plants and woven storage'],
+      ['1586023492125-27b2c045efd7', 'Living room styled with natural textures'],
+    ],
   },
   {
     name: 'Linen Throw',
@@ -1626,9 +1946,15 @@ const MTO_PRODUCTS: SeedProduct[] = [
     description: 'Stonewashed linen throw, 130 × 170 cm.',
     taxRateBps: 1600,
     variants: [
-      { name: 'Oat', sku: 'MTO-THR-OAT', price: 6500, cost: 3200, stock: 7, low: 2 },
-      { name: 'Rust', sku: 'MTO-THR-RST', price: 6500, cost: 3200, stock: 4, low: 2 },
+      { name: 'Oat', sku: 'MTO-THR-OAT', price: 6500, cost: 3200, stock: 7, low: 2, compareAt: 7800, swatch: '#DCD0B9' },
+      { name: 'Rust', sku: 'MTO-THR-RST', price: 6500, cost: 3200, stock: 4, low: 2, compareAt: 7800, swatch: '#B7410E' },
     ],
+    images: [
+      ['1522771739844-6a9f6d5f14af', 'Linen bedding in soft daylight'],
+      ['1505693416388-ac5ce068fe85', 'Bedroom styled with a linen throw'],
+      ['1493663284031-b7e3aefcae8e', 'Sofa corner with layered textiles'],
+    ],
+    featured: true,
   },
   {
     name: 'Soy Candle 200 g',
@@ -1639,6 +1965,11 @@ const MTO_PRODUCTS: SeedProduct[] = [
       { name: 'Cedar & Lemongrass', sku: 'MTO-CND-CED', price: 1500, cost: 550, stock: 30, low: 6 },
       { name: 'Vanilla & Fig', sku: 'MTO-CND-VAN', price: 1500, cost: 550, stock: 18, low: 6 },
     ],
+    images: [
+      ['1603006905003-be475563bc59', 'Lit soy candle in a glass jar'],
+      ['1572726729207-a78d6feb18d7', 'Candles glowing on a shelf'],
+    ],
+    featured: true,
   },
   {
     name: 'Olive Wood Serving Board',
@@ -1646,6 +1977,10 @@ const MTO_PRODUCTS: SeedProduct[] = [
     description: 'Hand-carved serving board, each grain pattern unique.',
     taxRateBps: 1600,
     variants: [{ name: 'Default', sku: 'MTO-BRD-OLV', price: 4200, cost: 2100, stock: 5, low: 2 }],
+    images: [
+      ['1556909114-f6e7ad7d3136', 'Kitchen counter with wooden boards'],
+      ['1484101403633-562f891dc89a', 'Table set for a shared meal'],
+    ],
   },
   {
     name: 'Glazed Ceramic Vase',
@@ -1653,16 +1988,26 @@ const MTO_PRODUCTS: SeedProduct[] = [
     description: 'Reactive-glaze vase, watertight.',
     taxRateBps: 1600,
     variants: [
-      { name: 'Tall', sku: 'MTO-VAS-T', price: 3800, cost: 1600, stock: 5, low: 2 },
+      { name: 'Tall', sku: 'MTO-VAS-T', price: 3800, cost: 1600, stock: 5, low: 2, compareAt: 4500 },
       { name: 'Short', sku: 'MTO-VAS-S', price: 2900, cost: 1200, stock: 9, low: 2 },
     ],
+    images: [
+      ['1578500494198-246f612d3b3d', 'Glazed ceramic vase'],
+      ['1485955900006-10f4d324d411', 'Potted plant beside ceramics'],
+      ['1565193566173-7a0ee3dbe261', 'Handmade ceramic pieces'],
+    ],
+    featured: true,
   },
   {
     name: 'Cotton Cushion Cover',
     category: 'Textiles',
     description: 'Striped handloom cotton cover, 45 × 45 cm, insert not included.',
     taxRateBps: 1600,
-    variants: [{ name: 'Default', sku: 'MTO-CSH-STR', price: 2200, cost: 900, stock: 15, low: 4 }],
+    variants: [{ name: 'Default', sku: 'MTO-CSH-STR', price: 2200, cost: 900, stock: 15, low: 4, compareAt: 2600 }],
+    images: [
+      ['1584100936595-c0654b55a2e2', 'Striped cotton cushions on a sofa'],
+      ['1555041469-a586c61ea9bc', 'Sofa with cushions'],
+    ],
   },
   {
     name: 'Brass Tea Light Holders (set of 3)',
@@ -1670,6 +2015,7 @@ const MTO_PRODUCTS: SeedProduct[] = [
     description: 'Hammered brass holders in three heights.',
     taxRateBps: 1600,
     variants: [{ name: 'Default', sku: 'MTO-TLH-3', price: 2400, stock: 12, low: 3 }],
+    images: [['1602874801007-bd458bb1b8b6', 'Tea lights glowing in metal holders']],
   },
   {
     name: 'Gift Wrapping',
@@ -1678,6 +2024,16 @@ const MTO_PRODUCTS: SeedProduct[] = [
     taxRateBps: 0,
     trackStock: false,
     variants: [{ name: 'Standard', sku: 'MTO-GIFT', price: 300, stock: 0, low: 0 }],
+    images: [['1513885535751-8b9238bd345a', 'Gift wrapped in kraft paper and twine']],
+  },
+  {
+    name: 'Banana-Fibre Pendant Shade',
+    category: 'Lighting',
+    description: 'Hand-woven banana-fibre lampshade, 40 cm across, fits a standard E27 pendant. Small first batch.',
+    taxRateBps: 1600,
+    variants: [{ name: 'Natural', sku: 'MTO-PND-BAN', price: 5400, cost: 2300, stock: 12, low: 3, swatch: '#C8A97E' }],
+    images: [['1507473885765-e6ed057f782c', 'Woven pendant lamp shade']],
+    dropInDays: 3,
   },
   {
     name: 'Recycled Glass Tumblers (set of 4)',
@@ -1732,6 +2088,11 @@ const LUMEN_PRODUCTS: SeedProduct[] = [
       { name: 'Klein', sku: 'ALU-KRZ-K', price: 34, cost: 14, stock: 14, low: 3 },
       { name: 'Groß', sku: 'ALU-KRZ-G', price: 48, cost: 19, stock: 6, low: 3 },
     ],
+    images: [
+      ['1572726729207-a78d6feb18d7', 'Kerzen im Abendlicht'],
+      ['1603006905003-be475563bc59', 'Brennende Kerze'],
+    ],
+    featured: true,
   },
   {
     name: 'Keramikschale Ascheglasur',
@@ -1739,6 +2100,10 @@ const LUMEN_PRODUCTS: SeedProduct[] = [
     description: 'Handgedrehte Schale, Ø 18 cm.',
     taxRateBps: 1900,
     variants: [{ name: 'Default', sku: 'ALU-SCH-18', price: 39, cost: 15, stock: 9, low: 2 }],
+    images: [
+      ['1610701596007-11502861dcfa', 'Handgedrehte Keramik'],
+      ['1565193566173-7a0ee3dbe261', 'Keramikschalen auf einem Regal'],
+    ],
   },
   {
     name: 'Leinen-Tischläufer',
@@ -1746,9 +2111,10 @@ const LUMEN_PRODUCTS: SeedProduct[] = [
     description: 'Gewaschenes Leinen, 40 × 150 cm.',
     taxRateBps: 1900,
     variants: [
-      { name: 'Natur', sku: 'ALU-TL-NAT', price: 29.9, cost: 11, stock: 11, low: 3 },
-      { name: 'Salbei', sku: 'ALU-TL-SAL', price: 29.9, cost: 11, stock: 2, low: 3 },
+      { name: 'Natur', sku: 'ALU-TL-NAT', price: 29.9, cost: 11, stock: 11, low: 3, compareAt: 34.9, swatch: '#E8E0D0' },
+      { name: 'Salbei', sku: 'ALU-TL-SAL', price: 29.9, cost: 11, stock: 2, low: 3, compareAt: 34.9, swatch: '#A3B18A' },
     ],
+    images: [['1484101403633-562f891dc89a', 'Gedeckter Tisch mit Leinen']],
   },
   {
     name: 'Duftkerze Feige',
@@ -1756,6 +2122,7 @@ const LUMEN_PRODUCTS: SeedProduct[] = [
     description: 'Rapswachs-Kerze im Keramikbecher.',
     taxRateBps: 1900,
     variants: [{ name: 'Default', sku: 'ALU-DK-FG', price: 24.5, cost: 8, stock: 20, low: 5 }],
+    images: [['1602874801007-bd458bb1b8b6', 'Duftkerze im Keramikbecher']],
   },
 ]
 
@@ -1770,4 +2137,74 @@ const LUMEN_ORDERS: SeedOrder[] = [
   { daysAgo: 11, hour: 13, channel: 'instagram', customer: 'Camille Laurent', status: 'confirmed', lines: [['Keramikschale Ascheglasur', 'Default', 1]], deliveryFee: 9.9, delivery: { line1: '8 rue des Tanneurs', postalCode: '69001', city: 'Lyon', countryCode: 'FR' }, path: ['ready', 'dispatched'], payments: [{ method: 'card', amount: 'full', ref: 'POS-88213' }] },
   { daysAgo: 5, hour: 10, channel: 'walk_in', customer: 'Paul Schreiber', status: 'confirmed', lines: [['Leinen-Tischläufer', 'Natur', 1]] },
   { daysAgo: 1, hour: 15, channel: 'phone', customer: 'Lena Hoffmann', status: 'pending_confirmation', lines: [['Leinen-Tischläufer', 'Salbei', 1], ['Duftkerze Feige', 'Default', 2]] },
+]
+
+// Storefront settings (fictional business, numbers and coordinates).
+const MTO_SHOP: ShopSettings = {
+  slug: 'mto-home',
+  published: true,
+  tagline: 'Handmade homeware from Kenyan makers',
+  about:
+    'Mto Home & Living is a small Westlands studio selling stoneware, sisal and linen made by workshops around Nairobi. Every piece is checked by hand before it leaves the shop.',
+  coverUrl: unsplash('1586023492125-27b2c045efd7'),
+  logoUrl: null,
+  whatsappE164: '+254711000202',
+  registeredName: 'MTO HOME AND LIVING',
+  locationLat: -1.2676,
+  locationLng: 36.8108,
+  locationLabel: 'Westlands, Nairobi',
+  pickupEnabled: true,
+  deliveryEnabled: true,
+  deliveryBands: [
+    { maxKm: 3, feeMinor: 15000 },
+    { maxKm: 8, feeMinor: 30000 },
+    { maxKm: 15, feeMinor: 50000 },
+  ],
+  deliveryPromise: 'Same-day in Nairobi before 2pm',
+  codEnabled: true,
+  mpesaTill: '5123456',
+  mpesaPaybill: null,
+  returnPolicy:
+    'Changed your mind? Return unused items within 7 days of delivery for a refund or exchange. Breakages in transit are replaced free: send us a photo on WhatsApp within 24 hours.',
+}
+
+const LUMEN_SHOP: ShopSettings = {
+  slug: 'atelier-lumen',
+  published: true,
+  tagline: 'Licht, Keramik und Leinen aus Kreuzberg',
+  about: 'Atelier Lumen ist eine kleine Werkstatt in Berlin-Kreuzberg für Messingleuchter, handgedrehte Keramik und gewaschenes Leinen.',
+  coverUrl: unsplash('1507473885765-e6ed057f782c'),
+  logoUrl: null,
+  whatsappE164: null,
+  registeredName: 'Atelier Lumen GmbH',
+  locationLat: 52.4986,
+  locationLng: 13.403,
+  locationLabel: 'Kreuzberg, Berlin',
+  pickupEnabled: true,
+  deliveryEnabled: true,
+  deliveryBands: [
+    { maxKm: 5, feeMinor: 490 },
+    { maxKm: 12, feeMinor: 790 },
+    { maxKm: 25, feeMinor: 1290 },
+  ],
+  deliveryPromise: 'Kurierlieferung in Berlin am nächsten Werktag',
+  codEnabled: false,
+  mpesaTill: null,
+  mpesaPaybill: null,
+  returnPolicy: '14 Tage Rückgaberecht für unbenutzte Artikel. Bruchschäden beim Versand ersetzen wir kostenlos.',
+}
+
+// Indices refer to MTO_ORDERS / LUMEN_ORDERS; every one is a delivered order.
+const MTO_REVIEWS: SeedReview[] = [
+  { order: 0, product: 'Stoneware Mug', rating: 5, body: 'Lovely weight in the hand, and the Sand glaze is even nicer in person.' },
+  { order: 0, product: 'Soy Candle 200 g', rating: 4, body: 'Burns evenly. I wish the cedar scent were a little stronger.' },
+  { order: 1, product: 'Woven Sisal Basket', rating: 5, body: 'Sturdy and beautifully finished. The rider called ahead.' },
+  { order: 2, product: 'Linen Throw', rating: 4, body: 'Soft after the first wash. There was a small mark on the hem, and the shop sorted it out quickly.' },
+  { order: 3, product: 'Soy Candle 200 g', rating: 5, body: 'Vanilla & Fig smells amazing, and the gift wrap was beautiful.' },
+  { order: 6, product: 'Stoneware Mug', rating: 5, body: null },
+]
+
+const LUMEN_REVIEWS: SeedReview[] = [
+  { order: 0, product: 'Messing-Kerzenständer', rating: 5, body: 'Wunderschön verarbeitet, schwerer als gedacht.' },
+  { order: 0, product: 'Duftkerze Feige', rating: 4, body: 'Toller Duft, brennt sauber ab.' },
 ]

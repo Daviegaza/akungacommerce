@@ -132,13 +132,15 @@
   background: rgba(15, 23, 42, 0.85);
 }
 
-/* ───────────────────────── Akunga merchant workspace tokens ─────────────────────────
-   Calm, ink-on-paper system: one neutral ramp, one accent, muted status hues.
-   Components use these semantic names only (bg-canvas, text-ink-2, border-line...). */
+/* ───────────────────────── Rafu design tokens ─────────────────────────
+   Lively, warm, image-first. One owned brand colour (hibiscus pink), one deal
+   colour (mango), calm ink neutrals. Components use semantic names only.
+   Spec: docs/DESIGN.md */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
-  --font-display: 'Geist', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --color-canvas: var(--ak-canvas);
   --color-panel: var(--ak-panel);
@@ -150,6 +152,13 @@
   --color-line-strong: var(--ak-line-strong);
   --color-primary: var(--ak-primary);
   --color-on-primary: var(--ak-on-primary);
+  --color-brand: var(--ak-brand);
+  --color-brand-strong: var(--ak-brand-strong);
+  --color-brand-soft: var(--ak-brand-soft);
+  --color-on-brand: #ffffff;
+  --color-mango: var(--ak-mango);
+  --color-mango-soft: var(--ak-mango-soft);
+  --color-on-mango: #1d1300;
   --color-accent: var(--ak-accent);
   --color-accent-soft: var(--ak-accent-soft);
   --color-pos: var(--ak-pos);
@@ -160,69 +169,95 @@
   --color-neg-soft: var(--ak-neg-soft);
   --color-info: var(--ak-info);
   --color-info-soft: var(--ak-info-soft);
+  --shadow-card: 0 1px 2px rgb(22 15 30 / 0.06), 0 4px 16px rgb(22 15 30 / 0.06);
+  --shadow-lift: 0 2px 4px rgb(22 15 30 / 0.08), 0 12px 32px rgb(22 15 30 / 0.12);
+  --radius-card: 1.125rem;
 }
 
 :root {
-  --ak-canvas: #f6f5f1;
+  --ak-canvas: #fbf7f4;
   --ak-panel: #ffffff;
-  --ak-sunken: #efeee9;
-  --ak-ink: #16150f;
-  --ak-ink-2: #4a4840;
-  --ak-ink-3: #7a776d;
-  --ak-line: #e4e2da;
-  --ak-line-strong: #cfccc1;
-  --ak-primary: #16150f;
+  --ak-sunken: #f3ede8;
+  --ak-ink: #160f1e;
+  --ak-ink-2: #4b4453;
+  --ak-ink-3: #7d7584;
+  --ak-line: #ebe4de;
+  --ak-line-strong: #d9d0c8;
+  --ak-primary: #160f1e;
   --ak-on-primary: #ffffff;
-  --ak-accent: #0e7c5a;
-  --ak-accent-soft: #e2f1ea;
-  --ak-pos: #1d7a4e;
-  --ak-pos-soft: #e5f3eb;
-  --ak-warn: #9a5b00;
-  --ak-warn-soft: #fbf0dc;
-  --ak-neg: #b42318;
-  --ak-neg-soft: #fbe9e7;
-  --ak-info: #2f5aa8;
-  --ak-info-soft: #e8eef9;
+  --ak-brand: #ff3d6e;
+  --ak-brand-strong: #e01f52;
+  --ak-brand-soft: #ffe4eb;
+  --ak-mango: #ffb020;
+  --ak-mango-soft: #fff1d6;
+  --ak-accent: #ff3d6e;
+  --ak-accent-soft: #ffe4eb;
+  --ak-pos: #0f9d6e;
+  --ak-pos-soft: #dcf5ea;
+  --ak-warn: #a35f00;
+  --ak-warn-soft: #fff1d6;
+  --ak-neg: #d92d20;
+  --ak-neg-soft: #fde8e6;
+  --ak-info: #2563eb;
+  --ak-info-soft: #e5edff;
 }
 
 .dark {
-  --ak-canvas: #11110e;
-  --ak-panel: #191915;
-  --ak-sunken: #0c0c0a;
-  --ak-ink: #f2f0e8;
-  --ak-ink-2: #c3c0b5;
-  --ak-ink-3: #8d8a80;
-  --ak-line: #2a2a24;
-  --ak-line-strong: #3a3a33;
-  --ak-primary: #f2f0e8;
-  --ak-on-primary: #16150f;
-  --ak-accent: #46c296;
-  --ak-accent-soft: #15302a;
-  --ak-pos: #5ccf91;
-  --ak-pos-soft: #16291f;
-  --ak-warn: #e8b04f;
-  --ak-warn-soft: #2e2412;
-  --ak-neg: #f0857a;
-  --ak-neg-soft: #33191a;
-  --ak-info: #8fb0f0;
-  --ak-info-soft: #18213a;
+  --ak-canvas: #120d17;
+  --ak-panel: #1c1622;
+  --ak-sunken: #0d0911;
+  --ak-ink: #f6f1f8;
+  --ak-ink-2: #c9c0cf;
+  --ak-ink-3: #948a9b;
+  --ak-line: #2c2433;
+  --ak-line-strong: #3d3346;
+  --ak-primary: #f6f1f8;
+  --ak-on-primary: #160f1e;
+  --ak-brand: #ff5c86;
+  --ak-brand-strong: #ff3d6e;
+  --ak-brand-soft: #3a1524;
+  --ak-mango: #ffc04d;
+  --ak-mango-soft: #33260c;
+  --ak-accent: #ff5c86;
+  --ak-accent-soft: #3a1524;
+  --ak-pos: #3ddc97;
+  --ak-pos-soft: #0f2a1f;
+  --ak-warn: #ffc04d;
+  --ak-warn-soft: #33260c;
+  --ak-neg: #ff7a6e;
+  --ak-neg-soft: #3a1714;
+  --ak-info: #7aa2ff;
+  --ak-info-soft: #16203d;
 }
 
 .ak-root {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   background: var(--ak-canvas);
   color: var(--ak-ink);
-  font-feature-settings: 'ss01', 'cv11';
+}
+.ak-root h1, .ak-root h2, .ak-root h3, .ak-root .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
 }
 .ak-root :focus-visible {
-  outline: 2px solid var(--ak-accent);
+  outline: 2px solid var(--ak-brand);
   outline-offset: 2px;
 }
 .tnum { font-variant-numeric: tabular-nums; }
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+@keyframes ak-pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+@keyframes ak-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes ak-pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.ak-pop { animation: ak-pop 360ms cubic-bezier(.2,.8,.2,1); }
+.ak-rise { animation: ak-rise 320ms cubic-bezier(.2,.8,.2,1) both; }
+.ak-live-dot { animation: ak-pulse-dot 1.6s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   .ak-root *, .ak-root *::before, .ak-root *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }

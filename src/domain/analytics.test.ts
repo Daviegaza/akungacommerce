@@ -97,7 +97,12 @@ function product(p: { trackStock?: boolean; status?: Product['status']; variants
       onHand: v.onHand,
       reserved: v.reserved ?? 0,
       costMinor: null,
+      compareAtMinor: null,
+      swatch: null,
     })),
+    images: [],
+    featured: false,
+    availableFrom: null,
   }
 }
 

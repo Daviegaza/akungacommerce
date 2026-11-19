@@ -1,9 +1,21 @@
 import { useId, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import type { Product, ProductInput, ProductStatus, VariantInput } from '@/gateway/types'
+import type { ProductMerchandising as ProductMerch, VariantMerchandising } from '@/gateway/storefront'
 import { currencyExponent, money, parseMajor, toMajorString } from '@/domain/money'
 import { useAction, useOrg } from '../context'
+import { useNow } from '../live/clock'
+import {
+  ProductMerchandising,
+  SWATCH_RE,
+  SwatchPicker,
+  imageUrlError,
+  isoToLocalInput,
+  localInputToIso,
+  type ImageDraft,
+} from './ProductMerchandising'
 import { ErrorNotice, Notice, Sheet } from '../ui/layout'
 import { Button, Field, Input, Select, Switch, Textarea } from '../ui/primitives'
 import { cn } from '@/lib/utils'
@@ -27,6 +39,11 @@ interface VariantDraft {
   costTouched: boolean
   onHand: number
   reserved: number
+  /** Strike-through "was" price (major units string); '' = none. Saved variants only. */
+  compareAt: string
+  swatch: string
+  origCompareAtMinor: number | null
+  origSwatch: string | null
 }
 
 interface RowErrors {
@@ -35,6 +52,15 @@ interface RowErrors {
   price?: string
   threshold?: string
   cost?: string
+  compareAt?: string
+  swatch?: string
+}
+
+interface SavePayload {
+  input: ProductInput
+  /** null = storefront details unchanged, skip the call. */
+  merch: ProductMerch | null
+  variantMerch: { variantId: string; m: VariantMerchandising }[]
 }
 
 function bpsToPercent(bps: number): string {
@@ -66,6 +92,10 @@ function draftFromVariant(v: Product['variants'][number]): VariantDraft {
     costTouched: false,
     onHand: v.onHand,
     reserved: v.reserved,
+    compareAt: v.compareAtMinor != null ? toMajorString(money(v.compareAtMinor, v.currency)) : '',
+    swatch: v.swatch ?? '',
+    origCompareAtMinor: v.compareAtMinor ?? null,
+    origSwatch: v.swatch ?? null,
   }
 }
 
@@ -82,6 +112,10 @@ function newDraft(currency: string, name = ''): VariantDraft {
     costTouched: false,
     onHand: 0,
     reserved: 0,
+    compareAt: '',
+    swatch: '',
+    origCompareAtMinor: null,
+    origSwatch: null,
   }
 }
 
@@ -153,7 +187,23 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
   const { org, can } = useOrg()
   const formId = useId()
   const showCost = can('cost.read')
-  const save = useAction((g, o, input: ProductInput) => g.saveProduct(o, input))
+  const qc = useQueryClient()
+  const nowMs = useNow()
+  // Id of a product created in this sheet, so a retry after a storefront error never creates a duplicate.
+  const [createdId, setCreatedId] = useState<string | null>(null)
+  const save = useAction(async (g, o, { input, merch, variantMerch }: SavePayload) => {
+    const id = await g.saveProduct(o, input)
+    if (!input.id) setCreatedId(id)
+    try {
+      if (merch) await g.setProductMerchandising(o, id, merch)
+      for (const vm of variantMerch) await g.setVariantMerchandising(o, vm.variantId, vm.m)
+    } catch (err) {
+      void qc.invalidateQueries({ queryKey: [o] })
+      const reason = err instanceof Error ? err.message : 'unknown error'
+      throw new Error(`Product details were saved, but the storefront details were not: ${reason}`, { cause: err })
+    }
+    return id
+  })
 
   const [name, setName] = useState(product?.name ?? '')
   const [description, setDescription] = useState(product?.description ?? '')
@@ -165,6 +215,11 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
   const [variants, setVariants] = useState<VariantDraft[]>(() =>
     product && product.variants.length ? product.variants.map(draftFromVariant) : [newDraft(org.baseCurrency, 'Default')],
   )
+  const [images, setImages] = useState<ImageDraft[]>(() =>
+    (product?.images ?? []).map((i) => ({ key: crypto.randomUUID(), url: i.url, alt: i.alt ?? '' })),
+  )
+  const [featured, setFeatured] = useState(product?.featured ?? false)
+  const [dropAt, setDropAt] = useState(() => isoToLocalInput(product?.availableFrom ?? null))
   const [attempted, setAttempted] = useState(false)
   const [confirmArchive, setConfirmArchive] = useState(false)
 
@@ -184,7 +239,7 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
     if (k) skuCounts.set(k, (skuCounts.get(k) ?? 0) + 1)
   }
   const rowErrors = new Map<string, RowErrors>()
-  const parsed = new Map<string, { priceMinor: number; costMinor: number | null | undefined }>()
+  const parsed = new Map<string, { priceMinor: number; costMinor: number | null | undefined; compareAtMinor: number | null }>()
   for (const v of variants) {
     const e: RowErrors = {}
     if (!v.name.trim()) e.name = 'Name this variant, e.g. Default or Large'
@@ -202,16 +257,27 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
         else costMinor = c.minor
       }
     }
+    let compareAtMinor: number | null = null
+    if (v.id && v.compareAt.trim()) {
+      const c = tryParse(v.compareAt, v.currency)
+      if ('error' in c) e.compareAt = c.error
+      else if ('minor' in price && c.minor <= price.minor) e.compareAt = 'Must be higher than the price, or leave empty'
+      else compareAtMinor = c.minor
+    }
+    if (v.swatch && !SWATCH_RE.test(v.swatch)) e.swatch = 'Pick a colour'
     rowErrors.set(v.key, e)
-    if ('minor' in price) parsed.set(v.key, { priceMinor: price.minor, costMinor })
+    if ('minor' in price) parsed.set(v.key, { priceMinor: price.minor, costMinor, compareAtMinor })
   }
   const formErrors = {
     name: !name.trim() ? 'Enter a product name' : undefined,
     taxRate: taxBps == null ? 'Enter a percentage between 0 and 100, up to two decimals' : undefined,
     variants: variants.length === 0 ? 'Add at least one variant' : undefined,
+    images: images.some((i) => imageUrlError(i.url)) ? 'Fix or remove the highlighted photo links' : undefined,
+    dropAt: dropAt.trim() && localInputToIso(dropAt) == null ? 'Pick a valid drop time' : undefined,
   }
   const hasErrors =
-    Boolean(formErrors.name || formErrors.taxRate || formErrors.variants) || [...rowErrors.values()].some((e) => Object.keys(e).length > 0)
+    Boolean(formErrors.name || formErrors.taxRate || formErrors.variants || formErrors.images || formErrors.dropAt) ||
+    [...rowErrors.values()].some((e) => Object.keys(e).length > 0)
   const shown = (msg: string | undefined) => (attempted ? msg : undefined)
 
   function submit(e: FormEvent) {
@@ -220,7 +286,7 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
     setAttempted(true)
     if (hasErrors || taxBps == null) return
     const input: ProductInput = {
-      id: product?.id,
+      id: product?.id ?? createdId ?? undefined,
       name: name.trim(),
       description: description.trim() || null,
       category: category.trim() || null,
@@ -241,12 +307,37 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
         }
       }),
     }
-    save.mutate(input, { onSuccess: onClose })
+    const merchNext: ProductMerch = {
+      images: images.map((i) => ({ url: i.url.trim(), ...(i.alt.trim() ? { alt: i.alt.trim() } : {}) })),
+      featured,
+      availableFrom: localInputToIso(dropAt),
+    }
+    const merchBefore: ProductMerch = {
+      images: (product?.images ?? []).map((i) => ({ url: i.url, ...(i.alt ? { alt: i.alt } : {}) })),
+      featured: product?.featured ?? false,
+      availableFrom: product?.availableFrom ?? null,
+    }
+    // datetime-local has minute precision; treat sub-minute differences as unchanged.
+    const sameDrop =
+      merchNext.availableFrom === merchBefore.availableFrom ||
+      (merchNext.availableFrom != null &&
+        merchBefore.availableFrom != null &&
+        Math.abs(Date.parse(merchNext.availableFrom) - Date.parse(merchBefore.availableFrom)) < 60_000)
+    const merchChanged =
+      JSON.stringify(merchNext.images) !== JSON.stringify(merchBefore.images) || merchNext.featured !== merchBefore.featured || !sameDrop
+    const variantMerch = variants.flatMap((v) => {
+      if (!v.id) return []
+      const cmp = parsed.get(v.key)?.compareAtMinor ?? null
+      const sw = v.swatch ? v.swatch.toLowerCase() : null
+      if (cmp === v.origCompareAtMinor && sw === (v.origSwatch?.toLowerCase() ?? null)) return []
+      return [{ variantId: v.id, m: { compareAtMinor: cmp, swatch: sw } }]
+    })
+    save.mutate({ input, merch: merchChanged ? merchNext : null, variantMerch }, { onSuccess: onClose })
   }
 
   function archive() {
     if (!product) return
-    save.mutate(storedInput(product, 'archived'), { onSuccess: onClose })
+    save.mutate({ input: storedInput(product, 'archived'), merch: null, variantMerch: [] }, { onSuccess: onClose })
   }
 
   const hasUnsaved = variants.some((v) => !v.id)
@@ -322,6 +413,19 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
               )}
             </Field>
           </div>
+
+          <ProductMerchandising
+            productName={name.trim()}
+            images={images}
+            onImagesChange={setImages}
+            featured={featured}
+            onFeaturedChange={setFeatured}
+            dropAt={dropAt}
+            onDropAtChange={setDropAt}
+            readOnly={readOnly}
+            attempted={attempted}
+            nowMs={nowMs}
+          />
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Tax rate (metadata)" error={shown(formErrors.taxRate)} hint="Applied to new orders using your business's tax setting. Treat it as configuration, not tax advice; confirm rates with an adviser.">
@@ -428,6 +532,36 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
                           )}
                         </Field>
                       )}
+                      <Field
+                        label="Compare-at price (“was”)"
+                        optional
+                        error={e.compareAt}
+                        hint={
+                          saved
+                            ? 'Shown struck through next to the price. Only use a price you really charged; in the EU it must be your lowest price in the last 30 days.'
+                            : 'Save the product first, then add a compare-at price.'
+                        }
+                      >
+                        {(p) => (
+                          <fieldset disabled={!saved} className="min-w-0">
+                            <MoneyInput fieldProps={p} currency={v.currency} value={v.compareAt} onChange={(val) => update(v.key, { compareAt: val })} />
+                          </fieldset>
+                        )}
+                      </Field>
+                      <div className="flex flex-col gap-1.5 sm:col-span-2">
+                        <p id={`${v.key}-swatch`} className="text-[13px] font-semibold text-ink">
+                          Colour swatch <span className="font-normal text-ink-3">(optional)</span>
+                        </p>
+                        <SwatchPicker value={v.swatch} onChange={(hex) => update(v.key, { swatch: hex })} disabled={readOnly || !saved} labelledBy={`${v.key}-swatch`} />
+                        <p className="text-xs text-ink-3">
+                          {saved ? 'Shoppers pick colours as chips on your shop.' : 'Save the product first, then pick a colour.'}
+                        </p>
+                        {e.swatch && (
+                          <p role="alert" className="text-xs font-medium text-neg">
+                            {e.swatch}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div className="mt-4">
                       <Switch

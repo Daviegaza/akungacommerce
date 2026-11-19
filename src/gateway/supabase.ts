@@ -20,11 +20,63 @@ import type {
   StockMovement,
   Variant,
 } from './types'
+import type { ShopSettings } from './storefront'
+import { mapBands, mapImages } from './storefront-supabase'
 
 /* Row shapes returned by PostgREST (snake_case). Only the columns we select. */
 type Row = Record<string, unknown>
 const s = (v: unknown) => (v == null ? null : String(v))
 const n = (v: unknown) => Number(v ?? 0)
+const nOrNull = (v: unknown) => (v == null ? null : Number(v))
+
+export function mapShopSettings(r: Row): ShopSettings {
+  return {
+    slug: String(r.slug),
+    published: Boolean(r.published),
+    tagline: s(r.tagline),
+    about: s(r.about),
+    coverUrl: s(r.cover_url),
+    logoUrl: s(r.logo_url),
+    whatsappE164: s(r.whatsapp_e164),
+    registeredName: s(r.registered_name),
+    locationLat: nOrNull(r.location_lat),
+    locationLng: nOrNull(r.location_lng),
+    locationLabel: s(r.location_label),
+    pickupEnabled: Boolean(r.pickup_enabled),
+    deliveryEnabled: Boolean(r.delivery_enabled),
+    deliveryBands: mapBands(r.delivery_bands),
+    deliveryPromise: s(r.delivery_promise),
+    codEnabled: Boolean(r.cod_enabled),
+    mpesaTill: s(r.mpesa_till),
+    mpesaPaybill: s(r.mpesa_paybill),
+    returnPolicy: s(r.return_policy),
+  }
+}
+
+/** ShopSettings -> the snake_case JSON save_shop_settings expects. */
+export function shopSettingsPayload(x: ShopSettings): Row {
+  return {
+    slug: x.slug.trim().toLowerCase(),
+    published: x.published,
+    tagline: x.tagline,
+    about: x.about,
+    cover_url: x.coverUrl,
+    logo_url: x.logoUrl,
+    whatsapp_e164: x.whatsappE164,
+    registered_name: x.registeredName,
+    location_lat: x.locationLat,
+    location_lng: x.locationLng,
+    location_label: x.locationLabel,
+    pickup_enabled: x.pickupEnabled,
+    delivery_enabled: x.deliveryEnabled,
+    delivery_bands: x.deliveryBands.map((b) => ({ max_km: b.maxKm, fee_minor: b.feeMinor })),
+    delivery_promise: x.deliveryPromise,
+    cod_enabled: x.codEnabled,
+    mpesa_till: x.mpesaTill,
+    mpesa_paybill: x.mpesaPaybill,
+    return_policy: x.returnPolicy,
+  }
+}
 
 function fail(error: { message: string; code?: string } | null): never {
   throw new GatewayError(error?.message ?? 'Something went wrong', error?.code)
@@ -68,6 +120,8 @@ function mapVariant(r: Row): Variant {
     onHand: levels.reduce((a, l) => a + n(l.on_hand), 0),
     reserved: levels.reduce((a, l) => a + n(l.reserved), 0),
     costMinor: costRow ? n(costRow.cost_minor) : null,
+    compareAtMinor: nOrNull(r.compare_at_minor),
+    swatch: s(r.swatch),
   }
 }
 
@@ -251,6 +305,9 @@ export function createSupabaseGateway(url: string, anonKey: string): CommerceGat
           variants: ((r.product_variants as Row[]) ?? [])
             .sort((a, b) => n(a.position) - n(b.position))
             .map(mapVariant),
+          images: mapImages(r.images),
+          featured: Boolean(r.featured),
+          availableFrom: s(r.available_from),
         }),
       )
     },
@@ -538,6 +595,35 @@ export function createSupabaseGateway(url: string, anonKey: string): CommerceGat
           lastTestedAt: s(row.last_tested_at),
         }
       })
+    },
+
+    async getShopSettings(orgId) {
+      const row = check(await sb.from('shop_settings').select('*').eq('org_id', orgId).maybeSingle()) as Row | null
+      return row ? mapShopSettings(row) : null
+    },
+    async saveShopSettings(orgId, settings) {
+      check(await sb.rpc('save_shop_settings', { p_org: orgId, p_settings: shopSettingsPayload(settings) }))
+    },
+    async setProductMerchandising(orgId, productId, m) {
+      check(
+        await sb.rpc('set_product_merchandising', {
+          p_org: orgId,
+          p_product: productId,
+          p_images: m.images.map((i) => (i.alt ? { url: i.url, alt: i.alt } : { url: i.url })),
+          p_featured: m.featured,
+          p_available_from: m.availableFrom,
+        }),
+      )
+    },
+    async setVariantMerchandising(orgId, variantId, m) {
+      check(
+        await sb.rpc('set_variant_merchandising', {
+          p_org: orgId,
+          p_variant: variantId,
+          p_compare_at_minor: m.compareAtMinor,
+          p_swatch: m.swatch,
+        }),
+      )
     },
   }
 }

@@ -1,9 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- shared UI module exports small helpers next to components */
+import { Camera, Footprints, Globe, MessageCircle, MoreHorizontal, Music2, Phone as PhoneIcon, Store, ThumbsUp, Truck, User } from 'lucide-react'
 import { formatMoney, money } from '@/domain/money'
 import { formatDateTime, formatPhone } from '@/domain/locale'
 import { ORDER_STATUS_LABEL, type OrderStatus } from '@/domain/orders'
 import type { OrderPaymentState, PaymentVerification } from '@/domain/payments'
+import { CHANNEL_LABEL, type FulfilmentMethod, type OrderChannel } from '@/gateway/types'
 import { useOrg } from '../context'
+import { formatRelative, useNow } from '../live/clock'
 import { Badge, type Tone } from './primitives'
 import { cn } from '@/lib/utils'
 
@@ -24,6 +27,17 @@ export function When({ iso, dateOnly, className }: { iso: string; dateOnly?: boo
   return (
     <time dateTime={iso} className={cn('tnum whitespace-nowrap', className)} title={`${iso} (UTC)`}>
       {formatDateTime(iso, org.locale, org.timezone, !dateOnly)}
+    </time>
+  )
+}
+
+/** Relative time ("5 min ago") that refreshes itself; the exact time is in the tooltip. */
+export function RelativeTime({ iso, className }: { iso: string; className?: string }) {
+  const { org } = useOrg()
+  const now = useNow()
+  return (
+    <time dateTime={iso} className={cn('tnum whitespace-nowrap', className)} title={formatDateTime(iso, org.locale, org.timezone, true)}>
+      {formatRelative(iso, now, org.locale)}
     </time>
   )
 }
@@ -49,11 +63,54 @@ const STATUS_TONE: Record<OrderStatus, Tone> = {
   refunded: 'neg',
 }
 
-export function OrderStatusBadge({ status }: { status: OrderStatus }) {
+export function orderStatusTone(status: OrderStatus): Tone {
+  return STATUS_TONE[status]
+}
+
+export function OrderStatusBadge({ status, className }: { status: OrderStatus; className?: string }) {
   return (
-    <Badge tone={STATUS_TONE[status]} dot>
+    <Badge tone={STATUS_TONE[status]} dot className={className}>
       {ORDER_STATUS_LABEL[status]}
     </Badge>
+  )
+}
+
+/* ───────────── Channel & fulfilment ───────────── */
+
+const CHANNEL_STYLE: Record<OrderChannel, { icon: typeof Store; className: string }> = {
+  whatsapp: { icon: MessageCircle, className: 'bg-[#25D366]/15 text-[#0B7A3E] dark:text-[#4ade80]' },
+  instagram: { icon: Camera, className: 'bg-brand-soft text-brand-strong dark:text-brand' },
+  facebook: { icon: ThumbsUp, className: 'bg-info-soft text-info' },
+  tiktok: { icon: Music2, className: 'bg-sunken text-ink' },
+  storefront: { icon: Globe, className: 'bg-mango-soft text-warn' },
+  direct: { icon: User, className: 'bg-sunken text-ink-2' },
+  phone: { icon: PhoneIcon, className: 'bg-sunken text-ink-2' },
+  walk_in: { icon: Footprints, className: 'bg-sunken text-ink-2' },
+  other: { icon: MoreHorizontal, className: 'bg-sunken text-ink-2' },
+}
+
+/** Where the order came from, as an icon chip with its name. */
+export function ChannelBadge({ channel, iconOnly, className }: { channel: OrderChannel; iconOnly?: boolean; className?: string }) {
+  const s = CHANNEL_STYLE[channel]
+  const Icon = s.icon
+  return (
+    <span
+      className={cn('inline-flex h-6 items-center gap-1 rounded-full text-xs font-semibold whitespace-nowrap', iconOnly ? 'w-6 justify-center' : 'px-2.5', s.className, className)}
+      title={CHANNEL_LABEL[channel]}
+    >
+      <Icon className="size-3.5" aria-hidden />
+      {iconOnly ? <span className="sr-only">{CHANNEL_LABEL[channel]}</span> : CHANNEL_LABEL[channel]}
+    </span>
+  )
+}
+
+export function FulfilmentBadge({ method, className }: { method: FulfilmentMethod; className?: string }) {
+  const Icon = method === 'delivery' ? Truck : Store
+  return (
+    <span className={cn('inline-flex h-6 items-center gap-1 rounded-full bg-sunken px-2.5 text-xs font-semibold whitespace-nowrap text-ink-2', className)}>
+      <Icon className="size-3.5" aria-hidden />
+      {method === 'delivery' ? 'Delivery' : 'Pickup'}
+    </span>
   )
 }
 

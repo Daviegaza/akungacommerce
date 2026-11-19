@@ -19,6 +19,10 @@ const AccountPage = lazy(() => import('@/pages/AccountPage'))
 const SearchPage = lazy(() => import('@/pages/SearchPage'))
 // Merchant workspace (the commerce operating system) lives under /app.
 const WorkspaceApp = lazy(() => import('@/app/WorkspaceApp'))
+// Rafu product landing ("/"), public merchant shops ("/s/:slug") and buyer order tracking ("/t/:token").
+const LandingPage = lazy(() => import('@/landing/LandingPage'))
+const StorefrontApp = lazy(() => import('@/storefront/StorefrontApp'))
+const TrackPage = lazy(() => import('@/storefront/pages/TrackPage'))
 
 function PageLoader() {
   return (
@@ -28,11 +32,23 @@ function PageLoader() {
   )
 }
 
+/** Calm full-screen placeholder for the Rafu surfaces while their code loads. */
+function RafuLoader() {
+  return (
+    <div className="ak-root flex min-h-dvh items-center justify-center" role="status" aria-label="Loading">
+      <span className="size-8 animate-pulse rounded-xl bg-brand" aria-hidden />
+    </div>
+  )
+}
+
 function RouteWrapper({ children }: { children: React.ReactNode }) {
   return <PageTransition>{children}</PageTransition>
 }
 
-/** The original storefront template, kept intact as the public shop prototype. */
+/**
+ * The original storefront template, kept intact as the public shop prototype.
+ * Its home moved from "/" to "/classic" (the Rafu landing owns "/"); every other route is unchanged.
+ */
 function Storefront() {
   return (
     <>
@@ -43,7 +59,7 @@ function Storefront() {
         <main className="flex-1">
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              <Route path="/" element={<RouteWrapper><HomePage /></RouteWrapper>} />
+              <Route path="/classic" element={<RouteWrapper><HomePage /></RouteWrapper>} />
               <Route path="/products" element={<RouteWrapper><ProductListPage /></RouteWrapper>} />
               <Route path="/products/:id" element={<RouteWrapper><ProductDetailPage /></RouteWrapper>} />
               <Route path="/cart" element={<RouteWrapper><CartPage /></RouteWrapper>} />
@@ -66,6 +82,30 @@ export default function App() {
       <ThemeProvider>
         <ReducedMotionProvider>
           <Routes>
+            <Route
+              path="/"
+              element={
+                <Suspense fallback={<RafuLoader />}>
+                  <LandingPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/s/:slug/*"
+              element={
+                <Suspense fallback={<RafuLoader />}>
+                  <StorefrontApp />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/t/:token"
+              element={
+                <Suspense fallback={<RafuLoader />}>
+                  <TrackPage />
+                </Suspense>
+              }
+            />
             <Route
               path="/app/*"
               element={

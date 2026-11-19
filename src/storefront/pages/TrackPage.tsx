@@ -1,0 +1,897 @@
+import { Suspense, useState, type ReactNode } from 'react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import type { CountryCode } from 'libphonenumber-js/min'
+import {
+  AlertCircle,
+  ArrowLeft,
+  Banknote,
+  Bike,
+  Check,
+  CheckCircle2,
+  Copy,
+  Info,
+  Link2,
+  Loader2,
+  MapPin,
+  RefreshCw,
+  Smartphone,
+  Star,
+  Store,
+  XCircle,
+} from 'lucide-react'
+import { Badge, Button, Field, Input, Skeleton, Textarea, buttonClass } from '@/app/ui/primitives'
+import { cn } from '@/lib/utils'
+import { formatDateTime, toE164 } from '@/domain/locale'
+import { money as moneyOf, toMajorString } from '@/domain/money'
+import { ORDER_STATUS_LABEL, type OrderStatus } from '@/domain/orders'
+import type { StkResult, TrackedOrder } from '@/gateway/storefront'
+import { whatsappChatLink } from '@/integrations/whatsapp-link'
+import { getStorefrontGateway } from '@/storefront/gateway'
+import { safeLocalStorage } from '@/storefront/cart'
+import { useNow } from '@/storefront/components/hooks'
+import { WhatsAppGlyph } from '@/storefront/components/WhatsAppGlyph'
+import { fmtMoney, isNotFoundError } from '@/storefront/components/storefront-utils'
+import { MapFallback, StaticMap } from '@/maps'
+
+/** /t/:token is standalone (outside StorefrontApp), so it owns its query client. */
+const trackQueryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: true } },
+})
+
+const REFRESH_MS = 20_000
+const TERMINAL = new Set(['delivered', 'cancelled', 'refunded'])
+const EASE = [0.2, 0.8, 0.2, 1] as const
+
+export default function TrackPage() {
+  return (
+    <QueryClientProvider client={trackQueryClient}>
+      <div className="ak-root min-h-dvh">
+        <TrackScreen />
+      </div>
+    </QueryClientProvider>
+  )
+}
+
+/* ───────────── Helpers ───────────── */
+function errorMessage(err: unknown): string {
+  if (err && typeof err === 'object' && 'message' in err && typeof err.message === 'string' && err.message) return err.message
+  return 'Something went wrong. Please try again.'
+}
+
+function statusLabel(status: string, method: 'pickup' | 'delivery'): string {
+  if (status === 'pending_confirmation' || status === 'draft') return 'Order placed'
+  if (method === 'delivery' && status === 'dispatched') return 'Out for delivery'
+  if (method === 'pickup' && status === 'ready') return 'Ready for pickup'
+  if (method === 'pickup' && status === 'delivered') return 'Collected'
+  return status in ORDER_STATUS_LABEL ? ORDER_STATUS_LABEL[status as OrderStatus] : status.replace(/_/g, ' ')
+}
+
+function regionOf(locale: string): CountryCode | undefined {
+  try {
+    return (new Intl.Locale(locale).region as CountryCode | undefined) ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
+function savedPhone(): string {
+  try {
+    const raw = safeLocalStorage.getItem('rafu-buyer')
+    if (typeof raw !== 'string') return ''
+    const v = JSON.parse(raw) as { phone?: unknown }
+    return typeof v.phone === 'string' ? v.phone : ''
+  } catch {
+    return ''
+  }
+}
+
+function useCopy() {
+  const [copied, setCopied] = useState<string | null>(null)
+  async function copy(id: string, text: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(id)
+      setTimeout(() => setCopied((c) => (c === id ? null : c)), 2000)
+    } catch {
+      setCopied(null)
+    }
+  }
+  return { copied, copy }
+}
+
+/* ───────────── Screen ───────────── */
+function TrackScreen() {
+  const { token = '' } = useParams()
+  const [params] = useSearchParams()
+  const isNew = params.get('new') === '1'
+
+  const query = useQuery({
+    queryKey: ['track', token],
+    queryFn: async () => (await getStorefrontGateway()).track(token),
+    enabled: Boolean(token),
+    refetchInterval: (q) => (q.state.data && TERMINAL.has(q.state.data.status) ? false : REFRESH_MS),
+    refetchIntervalInBackground: false,
+  })
+
+  if (query.isPending) return <TrackSkeleton />
+
+  if (query.isError) {
+    const notFound = isNotFoundError(query.error)
+    return (
+      <main className="mx-auto flex max-w-md flex-col items-center gap-3 px-4 py-24 text-center">
+        <AlertCircle className="size-8 text-neg" aria-hidden />
+        <h1 className="text-2xl font-extrabold tracking-tight">{notFound ? 'We could not find this order' : 'Order status is unavailable'}</h1>
+        <p className="text-sm text-ink-2">
+          {notFound ? 'Check that you opened the full link the shop sent you.' : errorMessage(query.error)}
+        </p>
+        {!notFound && (
+          <Button variant="secondary" onClick={() => void query.refetch()} icon={<RefreshCw className="size-4" aria-hidden />}>
+            Try again
+          </Button>
+        )}
+      </main>
+    )
+  }
+
+  return (
+    <OrderView
+      token={token}
+      order={query.data}
+      isNew={isNew}
+      updatedAt={query.dataUpdatedAt}
+      fetching={query.isFetching}
+      onRefresh={() => void query.refetch()}
+    />
+  )
+}
+
+function TrackSkeleton() {
+  return (
+    <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6" aria-busy="true" aria-label="Loading your order">
+      <Skeleton className="h-6 w-32" />
+      <Skeleton className="h-28 w-full rounded-[var(--radius-card)]" />
+      <Skeleton className="h-44 w-full rounded-[var(--radius-card)]" />
+      <Skeleton className="h-72 w-full rounded-[var(--radius-card)]" />
+      <Skeleton className="h-52 w-full rounded-[var(--radius-card)]" />
+    </main>
+  )
+}
+
+function Card({ title, children, className, action }: { title?: string; children: ReactNode; className?: string; action?: ReactNode }) {
+  return (
+    <section className={cn('rounded-[var(--radius-card)] bg-panel p-4 shadow-[var(--shadow-card)] sm:p-5 ak-rise', className)}>
+      {(title || action) && (
+        <div className="mb-3 flex items-center justify-between gap-3">
+          {title && <h2 className="text-lg font-extrabold tracking-tight">{title}</h2>}
+          {action}
+        </div>
+      )}
+      {children}
+    </section>
+  )
+}
+
+function OrderView({
+  token,
+  order,
+  isNew,
+  updatedAt,
+  fetching,
+  onRefresh,
+}: {
+  token: string
+  order: TrackedOrder
+  isNew: boolean
+  updatedAt: number
+  fetching: boolean
+  onRefresh(): void
+}) {
+  const { shop, fulfilment } = order
+  const locale = shop.locale || 'en'
+  const money = (minor: number) => fmtMoney(minor, order.currency, locale)
+  const terminal = TERMINAL.has(order.status)
+  const cancelled = order.status === 'cancelled' || order.status === 'refunded'
+  const paid = order.paidMinor >= order.totalMinor
+  const { copied, copy } = useCopy()
+
+  const shopLoc =
+    shop.locationLat != null && shop.locationLng != null ? { lat: shop.locationLat, lng: shop.locationLng } : null
+  const dropLoc =
+    fulfilment.method === 'delivery' && fulfilment.dropLat != null && fulfilment.dropLng != null
+      ? { lat: fulfilment.dropLat, lng: fulfilment.dropLng }
+      : null
+
+  let waLink: string | null = null
+  if (shop.whatsappE164) {
+    try {
+      waLink = whatsappChatLink(shop.whatsappE164, `Hi ${shop.name}, I'm asking about my order #${order.number}.`)
+    } catch {
+      waLink = null
+    }
+  }
+
+  return (
+    <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 pb-16 pt-4">
+      <nav className="flex items-center justify-between gap-2">
+        {shop.slug ? (
+          <Link to={`/s/${shop.slug}`} className="-ml-2 inline-flex h-11 items-center gap-1.5 rounded-xl px-2 text-sm font-medium text-ink-2 hover:bg-sunken hover:text-ink">
+            <ArrowLeft className="size-4" aria-hidden /> Back to shop
+          </Link>
+        ) : (
+          <span className="text-sm font-semibold text-ink">{shop.name}</span>
+        )}
+        {!terminal && <UpdatedLabel updatedAt={updatedAt} fetching={fetching} onRefresh={onRefresh} />}
+      </nav>
+
+      {isNew ? (
+        <PlacedHeader order={order} money={money} />
+      ) : (
+        <header className="ak-rise">
+          <p className="text-sm text-ink-3">{shop.name}</p>
+          <h1 className="text-3xl font-extrabold tracking-tight">
+            Order <span className="tnum">#{order.number}</span>
+          </h1>
+          <p className="mt-1 text-sm text-ink-2">Placed {formatDateTime(order.createdAt, locale, shop.timezone)}</p>
+        </header>
+      )}
+
+      {!cancelled && !paid && <PaymentPanel token={token} order={order} money={money} />}
+      {!cancelled && paid && (
+        <div className="flex items-center gap-2 rounded-2xl bg-pos-soft px-4 py-3 text-sm font-medium text-pos ak-rise">
+          <CheckCircle2 className="size-5" aria-hidden /> Paid {money(order.paidMinor)}. Confirmed by {shop.name}.
+        </div>
+      )}
+
+      <Card title="Status">
+        <Timeline order={order} />
+      </Card>
+
+      {fulfilment.method === 'delivery' ? (
+        <Card title="Delivery">
+          {(shopLoc || dropLoc) && (
+            <Suspense fallback={<MapFallback height={220} />}>
+              <StaticMap
+                markers={[
+                  ...(shopLoc ? [{ ...shopLoc, kind: 'shop' as const, label: shop.locationLabel ?? shop.name }] : []),
+                  ...(dropLoc ? [{ ...dropLoc, kind: 'drop' as const, label: fulfilment.landmark ?? 'Drop-off' }] : []),
+                ]}
+                height={220}
+              />
+            </Suspense>
+          )}
+          <dl className="mt-3 grid gap-2 text-sm">
+            {fulfilment.landmark && <InfoRow icon={<MapPin className="size-4" aria-hidden />} label="Drop-off" value={fulfilment.landmark} />}
+            {fulfilment.rider && <InfoRow icon={<Bike className="size-4" aria-hidden />} label="Rider" value={fulfilment.rider} />}
+            {fulfilment.trackingRef && (
+              <InfoRow
+                icon={<Link2 className="size-4" aria-hidden />}
+                label="Tracking ref"
+                value={
+                  <span className="inline-flex items-center gap-2">
+                    <span className="tnum">{fulfilment.trackingRef}</span>
+                    <CopyButton id="ref" text={fulfilment.trackingRef} copied={copied} copy={copy} label="Copy tracking reference" />
+                  </span>
+                }
+              />
+            )}
+            {fulfilment.deliveredAt && (
+              <InfoRow
+                icon={<Check className="size-4" aria-hidden />}
+                label="Delivered"
+                value={formatDateTime(fulfilment.deliveredAt, locale, shop.timezone)}
+              />
+            )}
+          </dl>
+          {!terminal && (
+            <p className="mt-3 flex items-start gap-2 text-xs text-ink-3">
+              <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+              Live rider location is not available. We'll update you at each step.
+            </p>
+          )}
+        </Card>
+      ) : (
+        <Card title="Pickup">
+          {shopLoc && (
+            <Suspense fallback={<MapFallback height={200} />}>
+              <StaticMap markers={[{ ...shopLoc, kind: 'shop', label: shop.locationLabel ?? shop.name }]} height={200} />
+            </Suspense>
+          )}
+          <p className="mt-3 flex items-start gap-2 text-sm text-ink-2">
+            <Store className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
+            {shop.locationLabel ? `Collect from ${shop.name}, ${shop.locationLabel}.` : `Collect from ${shop.name}. They'll share the spot when your order is ready.`}
+          </p>
+        </Card>
+      )}
+
+      {waLink && (
+        <a
+          href={waLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={buttonClass('secondary', 'lg', 'w-full rounded-2xl')}
+        >
+          <WhatsAppGlyph className="size-5 text-[#25D366]" /> Message the shop on WhatsApp
+        </a>
+      )}
+
+      <Card title="Your order">
+        <ul className="flex flex-col gap-2.5">
+          {order.lines.map((l, i) => (
+            <li key={`${l.productId ?? 'x'}-${i}`} className="flex items-start justify-between gap-3 text-sm">
+              <span className="min-w-0">
+                <span className="tnum text-ink-3">{l.quantity} × </span>
+                <span className="font-medium text-ink">{l.name}</span>
+                {l.variant && l.variant !== 'Default' && <span className="block text-xs text-ink-3">{l.variant}</span>}
+              </span>
+              <span className="font-semibold text-ink tnum">{money(l.totalMinor)}</span>
+            </li>
+          ))}
+        </ul>
+        <dl className="mt-4 flex flex-col gap-1.5 border-t border-line pt-3 text-sm">
+          <TotalRow label="Subtotal" value={money(order.subtotalMinor)} />
+          {order.taxMinor > 0 && <TotalRow label="Tax" value={money(order.taxMinor)} />}
+          <TotalRow
+            label={fulfilment.method === 'pickup' ? 'Pickup' : 'Delivery'}
+            value={order.deliveryFeeMinor === 0 ? 'Free' : money(order.deliveryFeeMinor)}
+          />
+          {order.paidMinor > 0 && <TotalRow label="Paid" value={money(order.paidMinor)} />}
+        </dl>
+        <div className="mt-3 flex items-baseline justify-between">
+          <span className="text-sm font-semibold">Total</span>
+          <span className="font-display text-2xl font-extrabold tracking-tight tnum">{money(order.totalMinor)}</span>
+        </div>
+      </Card>
+
+      {order.status === 'delivered' && <ReviewSection token={token} order={order} />}
+
+      {shop.slug && (
+        <Link to={`/s/${shop.slug}`} className={buttonClass('ghost', 'lg', 'w-full')}>
+          Back to {shop.name}
+        </Link>
+      )}
+    </main>
+  )
+}
+
+/* ───────────── Header pieces ───────────── */
+function UpdatedLabel({ updatedAt, fetching, onRefresh }: { updatedAt: number; fetching: boolean; onRefresh(): void }) {
+  const now = useNow(5000)
+  const secs = Math.max(0, Math.round((now - updatedAt) / 1000))
+  const text = secs < 15 ? 'Updated just now' : secs < 60 ? `Updated ${secs}s ago` : `Updated ${Math.round(secs / 60)} min ago`
+  return (
+    <button
+      type="button"
+      onClick={onRefresh}
+      aria-label={`${text}. Refresh now`}
+      className="inline-flex h-11 items-center gap-1.5 rounded-xl px-2 text-xs text-ink-3 hover:bg-sunken hover:text-ink"
+    >
+      {fetching ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <RefreshCw className="size-3.5" aria-hidden />}
+      <span aria-live="polite">{text}</span>
+    </button>
+  )
+}
+
+function PlacedHeader({ order, money }: { order: TrackedOrder; money(minor: number): string }) {
+  const reduce = useReducedMotion()
+  const { copied, copy } = useCopy()
+  return (
+    <header className="flex flex-col items-center gap-3 rounded-[var(--radius-card)] bg-panel px-4 py-7 text-center shadow-[var(--shadow-card)]">
+      <motion.span
+        initial={reduce ? false : { scale: 0.6, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.35, ease: EASE }}
+        className="grid size-16 place-items-center rounded-full bg-brand-soft"
+        aria-hidden
+      >
+        <svg viewBox="0 0 24 24" className="size-9 text-brand" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+          <motion.path
+            d="M5 12.5l4.5 4.5L19 7.5"
+            initial={reduce ? false : { pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.45, delay: 0.2, ease: EASE }}
+          />
+        </svg>
+      </motion.span>
+      <div>
+        <h1 className="text-3xl font-extrabold tracking-tight">
+          Order <span className="tnum">#{order.number}</span> placed
+        </h1>
+        <p className="mt-1 text-sm text-ink-2">
+          Thanks{order.customerFirstName ? `, ${order.customerFirstName}` : ''}. {order.shop.name} has your order for{' '}
+          <span className="font-semibold text-ink tnum">{money(order.totalMinor)}</span>. This page updates as it moves.
+        </p>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => void copy('link', window.location.href.replace(/[?#].*$/, ''))}
+        icon={copied === 'link' ? <Check className="size-4 text-pos" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+        className="h-11"
+      >
+        {copied === 'link' ? 'Link copied' : 'Copy link to this page'}
+      </Button>
+    </header>
+  )
+}
+
+/* ───────────── Payment ───────────── */
+function PaymentPanel({ token, order, money }: { token: string; order: TrackedOrder; money(minor: number): string }) {
+  const { shop } = order
+  const due = order.totalMinor - order.paidMinor
+  const { copied, copy } = useCopy()
+
+  if (order.paymentPreference === 'cod') {
+    return (
+      <Card className="border border-line">
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-mango-soft text-on-mango">
+            <Banknote className="size-5" aria-hidden />
+          </span>
+          <div>
+            <p className="font-display text-xl font-extrabold tracking-tight tnum">
+              Pay {money(due)} on {order.fulfilment.method === 'pickup' ? 'pickup' : 'delivery'}
+            </p>
+            <p className="text-sm text-ink-2">
+              {order.paidMinor > 0 ? `${money(order.paidMinor)} already received. ` : ''}Have the amount ready in cash or M-Pesa.
+            </p>
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
+  if (order.paymentPreference !== 'mpesa') {
+    return (
+      <Card className="border border-line">
+        <p className="font-display text-xl font-extrabold tracking-tight tnum">{money(due)} to pay</p>
+        <p className="text-sm text-ink-2">{shop.name} will contact you with how to pay.</p>
+      </Card>
+    )
+  }
+
+  return <MpesaPanel token={token} order={order} due={due} money={money} copied={copied} copy={copy} />
+}
+
+function MpesaPanel({
+  token,
+  order,
+  due,
+  money,
+  copied,
+  copy,
+}: {
+  token: string
+  order: TrackedOrder
+  due: number
+  money(minor: number): string
+  copied: string | null
+  copy(id: string, text: string): Promise<void>
+}) {
+  const { shop } = order
+  const [phone, setPhone] = useState(savedPhone)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [showManual, setShowManual] = useState(false)
+  const hasManual = Boolean(shop.mpesaTill || shop.mpesaPaybill)
+
+  const prompt = useMutation<StkResult, unknown, string>({
+    mutationFn: async (e164) => (await getStorefrontGateway()).requestMpesaPrompt(token, e164),
+  })
+  const result = prompt.data
+  const fallback = showManual || result?.status === 'not_configured' || result?.status === 'failed' || prompt.isError
+
+  function send() {
+    const r = toE164(phone, regionOf(shop.locale))
+    if (!r.ok) {
+      setPhoneError(r.error)
+      return
+    }
+    setPhoneError(null)
+    prompt.mutate(r.e164)
+  }
+
+  return (
+    <Card className="border border-brand/25">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm text-ink-2">Amount to pay</p>
+          <p className="font-display text-4xl font-extrabold leading-tight tracking-tight tnum">{money(due)}</p>
+          {order.paidMinor > 0 && <p className="text-xs text-ink-3 tnum">{money(order.paidMinor)} of {money(order.totalMinor)} received</p>}
+        </div>
+        <Badge tone="warn">Not paid yet</Badge>
+      </div>
+
+      <AnimatePresence mode="wait" initial={false}>
+        {result?.status === 'prompt_sent' && !showManual ? (
+          <motion.div key="sent" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4 flex flex-col gap-3">
+            <div className="flex items-start gap-3 rounded-xl bg-info-soft p-3 text-sm" role="status">
+              <Smartphone className="mt-0.5 size-5 shrink-0 text-info" aria-hidden />
+              <div>
+                <p className="font-semibold text-ink">Check your phone</p>
+                <p className="text-ink-2">
+                  Enter your M-Pesa PIN on the prompt{shop.registeredName ? ` from ${shop.registeredName}` : ''}. This page shows "Paid" once
+                  the payment is confirmed.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={send} loading={prompt.isPending}>
+                Send again
+              </Button>
+              {hasManual && (
+                <Button variant="ghost" onClick={() => setShowManual(true)}>
+                  Pay with {shop.mpesaTill ? 'Till' : 'Paybill'} instead
+                </Button>
+              )}
+            </div>
+          </motion.div>
+        ) : !fallback ? (
+          <motion.div key="ask" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4 flex flex-col gap-3">
+            <Field label="M-Pesa phone number" error={phoneError}>
+              {(p) => (
+                <Input
+                  {...p}
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="h-11 rounded-xl tnum"
+                  placeholder="0712 345 678"
+                />
+              )}
+            </Field>
+            <Button variant="brand" size="lg" onClick={send} loading={prompt.isPending} className="w-full rounded-2xl" icon={<Smartphone className="size-4" aria-hidden />}>
+              Send M-Pesa prompt to my phone
+            </Button>
+            {hasManual && (
+              <button type="button" onClick={() => setShowManual(true)} className="min-h-11 text-sm font-medium text-ink-2 underline-offset-4 hover:text-ink hover:underline">
+                Pay with {shop.mpesaTill ? 'Till number' : 'Paybill'} instead
+              </button>
+            )}
+          </motion.div>
+        ) : (
+          <motion.div key="manual" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4 flex flex-col gap-3">
+            {(result?.status === 'failed' || prompt.isError) && (
+              <p role="alert" className="flex items-start gap-2 rounded-xl bg-neg-soft p-3 text-sm text-neg">
+                <XCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+                {result?.status === 'failed' ? result.error : errorMessage(prompt.error)}. You can pay manually below.
+              </p>
+            )}
+            {result?.status === 'not_configured' && !showManual && (
+              <p className="text-sm text-ink-2">Automatic prompts aren't set up for this shop yet. Pay in a few steps on your phone:</p>
+            )}
+            {hasManual ? (
+              <ol className="flex flex-col gap-2 rounded-xl bg-sunken p-3 text-sm">
+                <Step n={1}>Open M-Pesa and choose <strong>Lipa na M-Pesa</strong></Step>
+                {shop.mpesaTill ? (
+                  <>
+                    <Step n={2}>Choose <strong>Buy Goods and Services</strong></Step>
+                    <Step n={3}>
+                      <CopyLine label="Till number" value={shop.mpesaTill} id="till" copied={copied} copy={copy} />
+                    </Step>
+                  </>
+                ) : (
+                  <>
+                    <Step n={2}>Choose <strong>Pay Bill</strong></Step>
+                    <Step n={3}>
+                      <CopyLine label="Business number" value={shop.mpesaPaybill ?? ''} id="paybill" copied={copied} copy={copy} />
+                    </Step>
+                    <Step n={4}>
+                      <CopyLine label="Account number" value={String(order.number)} id="acct" copied={copied} copy={copy} />
+                    </Step>
+                  </>
+                )}
+                <Step n={shop.mpesaTill ? 4 : 5}>
+                  <CopyLine label="Amount" value={money(due)} copyValue={majorString(due, order.currency)} id="amt" copied={copied} copy={copy} />
+                </Step>
+                <Step n={shop.mpesaTill ? 5 : 6}>
+                  Check the name{shop.registeredName ? <> shows <strong>{shop.registeredName}</strong></> : ''}, then enter your PIN
+                </Step>
+              </ol>
+            ) : (
+              <p className="rounded-xl bg-sunken p-3 text-sm text-ink-2">{shop.name} will send you payment details shortly.</p>
+            )}
+            <p className="flex items-start gap-2 text-xs text-ink-3">
+              <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+              The shop confirms your payment. This page shows "Paid" once they have it.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Card>
+  )
+}
+
+function majorString(minor: number, currency: string): string {
+  try {
+    return toMajorString(moneyOf(minor, currency))
+  } catch {
+    return String(minor)
+  }
+}
+
+function Step({ n, children }: { n: number; children: ReactNode }) {
+  return (
+    <li className="flex items-start gap-2.5">
+      <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-panel text-[11px] font-bold text-ink-2 tnum" aria-hidden>
+        {n}
+      </span>
+      <span className="min-w-0 flex-1 text-ink">{children}</span>
+    </li>
+  )
+}
+
+function CopyLine({
+  label,
+  value,
+  copyValue,
+  id,
+  copied,
+  copy,
+}: {
+  label: string
+  value: string
+  copyValue?: string
+  id: string
+  copied: string | null
+  copy(id: string, text: string): Promise<void>
+}) {
+  return (
+    <span className="flex items-center justify-between gap-2">
+      <span>
+        {label}: <strong className="font-display text-base tracking-tight tnum">{value}</strong>
+      </span>
+      <CopyButton id={id} text={copyValue ?? value} copied={copied} copy={copy} label={`Copy ${label.toLowerCase()}`} />
+    </span>
+  )
+}
+
+function CopyButton({
+  id,
+  text,
+  copied,
+  copy,
+  label,
+}: {
+  id: string
+  text: string
+  copied: string | null
+  copy(id: string, text: string): Promise<void>
+  label: string
+}) {
+  const done = copied === id
+  return (
+    <button
+      type="button"
+      onClick={() => void copy(id, text)}
+      aria-label={done ? 'Copied' : label}
+      className="-my-2 grid size-11 shrink-0 place-items-center rounded-xl text-ink-2 hover:bg-panel hover:text-ink"
+    >
+      {done ? <Check className="size-4 text-pos" aria-hidden /> : <Copy className="size-4" aria-hidden />}
+    </button>
+  )
+}
+
+/* ───────────── Timeline ───────────── */
+const FLOW: Record<'pickup' | 'delivery', string[]> = {
+  delivery: ['pending_confirmation', 'confirmed', 'preparing', 'ready', 'dispatched', 'delivered'],
+  pickup: ['pending_confirmation', 'confirmed', 'preparing', 'ready', 'delivered'],
+}
+
+interface TimelineStep {
+  key: string
+  label: string
+  at: string | null
+  state: 'done' | 'current' | 'upcoming' | 'stopped'
+}
+
+function buildSteps(order: TrackedOrder): TimelineStep[] {
+  const method = order.fulfilment.method
+  const history = [...order.history].sort((a, b) => a.at.localeCompare(b.at))
+  const lastAt = new Map<string, string>()
+  for (const h of history) lastAt.set(h.status === 'draft' ? 'pending_confirmation' : h.status, h.at)
+  if (!lastAt.has('pending_confirmation')) lastAt.set('pending_confirmation', order.createdAt)
+
+  const status = order.status === 'draft' ? 'pending_confirmation' : order.status
+  const flow = FLOW[method]
+  const idx = flow.indexOf(status)
+
+  if (idx === -1) {
+    // Cancelled / refunded (or an unknown status): show only what really happened.
+    const seen = new Set<string>()
+    const steps: TimelineStep[] = [{ key: 'pending_confirmation', label: statusLabel('pending_confirmation', method), at: lastAt.get('pending_confirmation') ?? null, state: 'done' }]
+    seen.add('pending_confirmation')
+    for (const h of history) {
+      const k = h.status === 'draft' ? 'pending_confirmation' : h.status
+      if (seen.has(k) || k === status) continue
+      seen.add(k)
+      steps.push({ key: k, label: statusLabel(k, method), at: h.at, state: 'done' })
+    }
+    steps.push({ key: status, label: statusLabel(status, method), at: lastAt.get(status) ?? null, state: 'stopped' })
+    return steps
+  }
+
+  const steps: TimelineStep[] = []
+  flow.forEach((k, i) => {
+    if (i < idx) {
+      // Steps the shop skipped are left out rather than shown with invented times.
+      if (lastAt.has(k)) steps.push({ key: k, label: statusLabel(k, method), at: lastAt.get(k) ?? null, state: 'done' })
+    } else if (i === idx) {
+      steps.push({ key: k, label: statusLabel(k, method), at: lastAt.get(k) ?? null, state: status === 'delivered' ? 'done' : 'current' })
+    } else {
+      steps.push({ key: k, label: statusLabel(k, method), at: null, state: 'upcoming' })
+    }
+  })
+  return steps
+}
+
+const CURRENT_HINT: Record<string, string> = {
+  pending_confirmation: 'Waiting for the shop to confirm',
+  confirmed: 'The shop accepted your order',
+  preparing: 'Your order is being packed',
+  ready: 'Packed and ready',
+  dispatched: 'On the way to you',
+}
+
+function Timeline({ order }: { order: TrackedOrder }) {
+  const steps = buildSteps(order)
+  const { locale, timezone } = order.shop
+  return (
+    <ol className="relative flex flex-col" aria-label="Order progress">
+      {steps.map((s, i) => {
+        const last = i === steps.length - 1
+        return (
+          <li key={s.key} className="relative flex gap-3 pb-5 last:pb-0" aria-current={s.state === 'current' ? 'step' : undefined}>
+            {!last && (
+              <span
+                aria-hidden
+                className={cn('absolute left-[11px] top-6 h-[calc(100%-1.5rem)] w-0.5', s.state === 'done' ? 'bg-brand' : 'bg-line')}
+              />
+            )}
+            <span aria-hidden className="relative z-10 mt-0.5 grid size-6 shrink-0 place-items-center">
+              {s.state === 'done' && (
+                <span className="grid size-6 place-items-center rounded-full bg-brand text-on-brand">
+                  <Check className="size-3.5" strokeWidth={3} />
+                </span>
+              )}
+              {s.state === 'current' && (
+                <span className="grid size-6 place-items-center rounded-full bg-brand-soft">
+                  <span className="ak-live-dot size-2.5 rounded-full bg-brand" />
+                </span>
+              )}
+              {s.state === 'upcoming' && <span className="size-3 rounded-full border-2 border-line-strong bg-panel" />}
+              {s.state === 'stopped' && (
+                <span className="grid size-6 place-items-center rounded-full bg-neg-soft text-neg">
+                  <XCircle className="size-4" />
+                </span>
+              )}
+            </span>
+            <div className="min-w-0">
+              <p
+                className={cn(
+                  'text-[15px] font-semibold leading-6',
+                  s.state === 'upcoming' ? 'text-ink-3' : s.state === 'stopped' ? 'text-neg' : 'text-ink',
+                )}
+              >
+                {s.label}
+                {s.state === 'current' && <span className="sr-only"> (current step)</span>}
+              </p>
+              {s.state === 'current' && CURRENT_HINT[s.key] && <p className="text-sm text-ink-2">{CURRENT_HINT[s.key]}</p>}
+              {s.at && (
+                <p className="text-xs text-ink-3 tnum">
+                  <time dateTime={s.at}>{formatDateTime(s.at, locale || 'en', timezone)}</time>
+                </p>
+              )}
+            </div>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+/* ───────────── Rows ───────────── */
+function InfoRow({ icon, label, value }: { icon: ReactNode; label: string; value: ReactNode }) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="mt-0.5 text-ink-3">{icon}</span>
+      <dt className="w-24 shrink-0 text-ink-3">{label}</dt>
+      <dd className="min-w-0 font-medium text-ink">{value}</dd>
+    </div>
+  )
+}
+
+function TotalRow({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <dt className="text-ink-2">{label}</dt>
+      <dd className="text-ink tnum">{value}</dd>
+    </div>
+  )
+}
+
+/* ───────────── Verified reviews (delivered orders only) ───────────── */
+function ReviewSection({ token, order }: { token: string; order: TrackedOrder }) {
+  const reviewed = new Set(order.reviewedProductIds)
+  const products: { id: string; name: string }[] = []
+  for (const l of order.lines) {
+    if (l.productId && !reviewed.has(l.productId) && !products.some((p) => p.id === l.productId)) {
+      products.push({ id: l.productId, name: l.name })
+    }
+  }
+  if (products.length === 0) return null
+  return (
+    <Card title="How was it?">
+      <p className="-mt-2 mb-4 text-sm text-ink-2">Your review is marked as a verified purchase.</p>
+      <div className="flex flex-col divide-y divide-line">
+        {products.map((p) => (
+          <ReviewForm key={p.id} token={token} productId={p.id} name={p.name} />
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+function ReviewForm({ token, productId, name }: { token: string; productId: string; name: string }) {
+  const qc = useQueryClient()
+  const [rating, setRating] = useState(0)
+  const [body, setBody] = useState('')
+  const submit = useMutation({
+    mutationFn: async () => (await getStorefrontGateway()).submitReview(token, productId, rating, body.trim() || null),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['track', token] }),
+  })
+  const groupName = `rating-${productId}`
+
+  if (submit.isSuccess) {
+    return (
+      <p className="flex items-center gap-2 py-4 text-sm font-medium text-pos first:pt-0" role="status">
+        <CheckCircle2 className="size-4" aria-hidden /> Thanks for reviewing {name}.
+      </p>
+    )
+  }
+
+  return (
+    <form
+      className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (rating >= 1) submit.mutate()
+      }}
+    >
+      <fieldset>
+        <legend className="mb-1.5 text-sm font-semibold text-ink">{name}</legend>
+        <div className="flex gap-1">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <label
+              key={n}
+              className="grid size-11 cursor-pointer place-items-center rounded-xl hover:bg-sunken has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand"
+            >
+              <input type="radio" name={groupName} value={n} checked={rating === n} onChange={() => setRating(n)} className="sr-only" />
+              <Star className={cn('size-6 transition-colors', n <= rating ? 'fill-mango text-mango' : 'text-line-strong')} aria-hidden />
+              <span className="sr-only">
+                {n} star{n > 1 ? 's' : ''}
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      {rating > 0 && (
+        <Field label="Add a few words" optional>
+          {(p) => (
+            <Textarea {...p} value={body} onChange={(e) => setBody(e.target.value)} rows={2} maxLength={1000} className="rounded-xl" placeholder="What did you like?" />
+          )}
+        </Field>
+      )}
+      {submit.isError && (
+        <p role="alert" className="text-sm text-neg">
+          {errorMessage(submit.error)}
+        </p>
+      )}
+      <Button type="submit" variant="brand" disabled={rating < 1} loading={submit.isPending} className="self-start">
+        Submit review
+      </Button>
+    </form>
+  )
+}

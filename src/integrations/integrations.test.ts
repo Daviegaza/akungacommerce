@@ -23,7 +23,7 @@ describe('integration registry', () => {
       twilio: 'adapter_only',
       stripe: 'adapter_only',
       paystack: 'adapter_only',
-      mpesa_daraja: 'not_implemented',
+      mpesa: 'adapter_only',
       flutterwave: 'not_implemented',
       courier: 'not_implemented',
       xero: 'not_implemented',

@@ -27,3 +27,6 @@ dist-ssr
 .env
 .env.*
 !.env.example
+research_notes/
+reports/
+bash.exe.stackdump

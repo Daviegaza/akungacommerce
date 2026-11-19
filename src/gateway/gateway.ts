@@ -25,6 +25,7 @@ import type {
   StockMovement,
 } from './types'
 import type { Role } from '@/domain/permissions'
+import type { ShopAdminGateway } from './storefront'
 
 export type GatewayMode = 'supabase' | 'demo'
 
@@ -32,7 +33,7 @@ export type GatewayMode = 'supabase' | 'demo'
  * The only boundary between UI and data. Every mutation that touches money or
  * stock takes an idempotency key so retries (double taps, flaky networks) are safe.
  */
-export interface CommerceGateway {
+export interface CommerceGateway extends ShopAdminGateway {
   readonly mode: GatewayMode
 
   // Session

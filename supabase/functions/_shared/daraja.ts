@@ -1,0 +1,224 @@
+/**
+ * Safaricom M-Pesa Daraja (Lipa na M-Pesa Online / STK push) adapter.
+ * Label: adapter_only. Nothing is connected until Daraja credentials are set,
+ * the callback URL is registered and an end-to-end test passes.
+ *
+ * Runtime-agnostic (fetch, btoa, Intl only) so it runs in Supabase Edge
+ * Functions (Deno) and in Node/vitest. Never logs credentials.
+ */
+
+export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
+
+export type DarajaEnv = 'sandbox' | 'production'
+export type StkTransactionType = 'CustomerPayBillOnline' | 'CustomerBuyGoodsOnline'
+
+export class DarajaError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'DarajaError'
+  }
+}
+
+export function darajaBaseUrl(env: DarajaEnv): string {
+  return env === 'production' ? 'https://api.safaricom.co.ke' : 'https://sandbox.safaricom.co.ke'
+}
+
+/** yyyyMMddHHmmss in Africa/Nairobi (EAT, UTC+3, no DST), as Daraja expects. */
+export function darajaTimestamp(at: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Africa/Nairobi',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(at)
+  const get = (t: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === t)?.value ?? '00'
+  return `${get('year')}${get('month')}${get('day')}${get('hour')}${get('minute')}${get('second')}`
+}
+
+/** Parse a Daraja yyyyMMddHHmmss (Nairobi time) into an ISO instant, or null. */
+export function parseDarajaTimestamp(v: unknown): string | null {
+  const str = typeof v === 'number' ? String(v) : typeof v === 'string' ? v : ''
+  const m = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(str)
+  if (!m) return null
+  const [, y, mo, d, h, mi, s] = m.map(Number)
+  const back = new Date(Date.UTC(y, mo - 1, d, h - 3, mi, s))
+  // Reject impossible dates (e.g. month 13) that Date.UTC would silently roll over.
+  if (Number.isNaN(back.getTime()) || darajaTimestamp(back) !== str) return null
+  return back.toISOString()
+}
+
+/** Password = base64(BusinessShortCode + Passkey + Timestamp). */
+export function darajaPassword(shortcode: string, passkey: string, timestamp: string): string {
+  return btoa(`${shortcode}${passkey}${timestamp}`)
+}
+
+/**
+ * E.164 Kenyan mobile (+2547XXXXXXXX or +2541XXXXXXXX) -> Daraja's 2547XXXXXXXX
+ * form. Returns null for anything else (Daraja only prompts Kenyan lines).
+ */
+export function toDarajaPhone(e164: string): string | null {
+  const m = /^\+254([71]\d{8})$/.exec(String(e164 ?? '').trim())
+  return m ? `254${m[1]}` : null
+}
+
+export interface StkPushInput {
+  shortcode: string
+  passkey: string
+  transactionType: StkTransactionType
+  /** KES minor units (cents). Must be a whole number of shillings: Daraja takes integers only. */
+  amountMinor: number
+  phoneE164: string
+  callbackUrl: string
+  /** Shown on the customer's phone; max 12 characters (we use the order number). */
+  accountReference: string
+  transactionDesc: string
+  /** Till number for Buy Goods; defaults to the shortcode (Paybill). */
+  partyB?: string
+  at?: Date
+}
+
+export interface StkPushPayload {
+  BusinessShortCode: string
+  Password: string
+  Timestamp: string
+  TransactionType: StkTransactionType
+  Amount: number
+  PartyA: string
+  PartyB: string
+  PhoneNumber: string
+  CallBackURL: string
+  AccountReference: string
+  TransactionDesc: string
+}
+
+export function buildStkPushPayload(input: StkPushInput): StkPushPayload {
+  if (!/^\d{5,8}$/.test(input.shortcode ?? '')) throw new DarajaError('Shortcode must be 5–8 digits')
+  if (!input.passkey) throw new DarajaError('Passkey is required')
+  if (input.transactionType !== 'CustomerPayBillOnline' && input.transactionType !== 'CustomerBuyGoodsOnline') {
+    throw new DarajaError('Unknown transaction type')
+  }
+  const partyB = input.partyB ?? input.shortcode
+  if (!/^\d{5,8}$/.test(partyB)) throw new DarajaError('PartyB must be 5–8 digits')
+  if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor <= 0) throw new DarajaError('Amount must be a positive whole number')
+  if (input.amountMinor % 100 !== 0) throw new DarajaError('M-Pesa only accepts whole shillings')
+  const phone = toDarajaPhone(input.phoneE164)
+  if (!phone) throw new DarajaError('Enter a Kenyan mobile number, e.g. +254712345678')
+  let callback: URL
+  try {
+    callback = new URL(input.callbackUrl)
+  } catch {
+    throw new DarajaError('Callback URL is invalid')
+  }
+  if (callback.protocol !== 'https:') throw new DarajaError('Callback URL must be https')
+  const ref = String(input.accountReference ?? '').trim()
+  if (ref.length < 1 || ref.length > 12) throw new DarajaError('Account reference must be 1–12 characters')
+  const timestamp = darajaTimestamp(input.at)
+  return {
+    BusinessShortCode: input.shortcode,
+    Password: darajaPassword(input.shortcode, input.passkey, timestamp),
+    Timestamp: timestamp,
+    TransactionType: input.transactionType,
+    Amount: input.amountMinor / 100,
+    PartyA: phone,
+    PartyB: partyB,
+    PhoneNumber: phone,
+    CallBackURL: callback.toString(),
+    AccountReference: ref,
+    TransactionDesc: (String(input.transactionDesc ?? '').trim() || 'Payment').slice(0, 13),
+  }
+}
+
+/** OAuth client-credentials token. Throws DarajaError without echoing secrets. */
+export async function getDarajaToken(fetchImpl: FetchLike, env: DarajaEnv, consumerKey: string, consumerSecret: string): Promise<string> {
+  const res = await fetchImpl(`${darajaBaseUrl(env)}/oauth/v1/generate?grant_type=client_credentials`, {
+    method: 'GET',
+    headers: { Authorization: `Basic ${btoa(`${consumerKey}:${consumerSecret}`)}` },
+  })
+  if (!res.ok) throw new DarajaError(`Daraja auth failed (${res.status})`)
+  const body = (await res.json().catch(() => null)) as { access_token?: unknown } | null
+  if (!body || typeof body.access_token !== 'string' || !body.access_token) throw new DarajaError('Daraja auth returned no token')
+  return body.access_token
+}
+
+export interface StkPushResult {
+  checkoutRequestId: string
+  merchantRequestId: string | null
+  customerMessage: string | null
+}
+
+export async function sendStkPush(fetchImpl: FetchLike, env: DarajaEnv, token: string, payload: StkPushPayload): Promise<StkPushResult> {
+  const res = await fetchImpl(`${darajaBaseUrl(env)}/mpesa/stkpush/v1/processrequest`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  const body = (await res.json().catch(() => null)) as Record<string, unknown> | null
+  const code = body?.ResponseCode
+  if (!res.ok || (code !== '0' && code !== 0) || typeof body?.CheckoutRequestID !== 'string') {
+    const msg = typeof body?.errorMessage === 'string' ? body.errorMessage : typeof body?.ResponseDescription === 'string' ? body.ResponseDescription : ''
+    throw new DarajaError(`STK push rejected (${res.status})${msg ? `: ${msg}` : ''}`)
+  }
+  return {
+    checkoutRequestId: body.CheckoutRequestID,
+    merchantRequestId: typeof body.MerchantRequestID === 'string' ? body.MerchantRequestID : null,
+    customerMessage: typeof body.CustomerMessage === 'string' ? body.CustomerMessage : null,
+  }
+}
+
+export interface StkCallback {
+  merchantRequestId: string | null
+  checkoutRequestId: string
+  /** 0 = paid. Anything else (1032 cancelled, 1037 timeout, 2001 wrong PIN, ...) = not paid. */
+  resultCode: number
+  resultDesc: string
+  succeeded: boolean
+  /** Whole KES as reported by Daraja (only on success). */
+  amount: number | null
+  mpesaReceipt: string | null
+  phone: string | null
+  transactionDate: string | null
+}
+
+/** Parse Daraja's STK callback body. Returns null when the shape is not an STK callback. */
+export function parseStkCallback(body: unknown): StkCallback | null {
+  const cb = (body as { Body?: { stkCallback?: Record<string, unknown> } } | null)?.Body?.stkCallback
+  if (!cb || typeof cb !== 'object') return null
+  const checkoutRequestId = cb.CheckoutRequestID
+  const resultCode = typeof cb.ResultCode === 'string' ? Number(cb.ResultCode) : cb.ResultCode
+  if (typeof checkoutRequestId !== 'string' || !checkoutRequestId || typeof resultCode !== 'number' || !Number.isFinite(resultCode)) return null
+  const items = (cb.CallbackMetadata as { Item?: unknown } | undefined)?.Item
+  const meta = new Map<string, unknown>()
+  if (Array.isArray(items)) {
+    for (const it of items) {
+      if (it && typeof it === 'object' && typeof (it as { Name?: unknown }).Name === 'string') {
+        meta.set((it as { Name: string }).Name, (it as { Value?: unknown }).Value)
+      }
+    }
+  }
+  const amountRaw = meta.get('Amount')
+  const amount = typeof amountRaw === 'number' ? amountRaw : typeof amountRaw === 'string' && amountRaw.trim() ? Number(amountRaw) : null
+  const receipt = meta.get('MpesaReceiptNumber')
+  const phone = meta.get('PhoneNumber')
+  const succeeded = resultCode === 0
+  return {
+    merchantRequestId: typeof cb.MerchantRequestID === 'string' ? cb.MerchantRequestID : null,
+    checkoutRequestId,
+    resultCode,
+    resultDesc: typeof cb.ResultDesc === 'string' ? cb.ResultDesc : '',
+    succeeded,
+    amount: succeeded && amount !== null && Number.isFinite(amount) ? amount : null,
+    mpesaReceipt: succeeded && typeof receipt === 'string' && receipt ? receipt : null,
+    phone: phone === undefined || phone === null ? null : String(phone),
+    transactionDate: parseDarajaTimestamp(meta.get('TransactionDate')),
+  }
+}
+
+/** Whole KES -> minor units, refusing fractions or non-positive values. */
+export function kesToMinor(amount: number | null): number | null {
+  if (amount === null || !Number.isFinite(amount) || amount <= 0 || !Number.isInteger(amount)) return null
+  return amount * 100
+}

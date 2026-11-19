@@ -66,6 +66,10 @@ export interface Variant {
   reserved: number
   /** Present only when the viewer may see cost prices. */
   costMinor: number | null
+  /** Strike-through "was" price; must be greater than priceMinor. */
+  compareAtMinor: number | null
+  /** Hex colour for a swatch chip, e.g. #1f2937. */
+  swatch: string | null
 }
 
 export interface Product {
@@ -80,6 +84,10 @@ export interface Product {
   createdAt: string
   updatedAt: string
   variants: Variant[]
+  images: { url: string; alt?: string }[]
+  featured: boolean
+  /** Scheduled drop: not sellable on the storefront before this instant. */
+  availableFrom: string | null
 }
 
 export interface VariantInput {

@@ -1,6 +1,46 @@
-# Akunga Commerce
+# Rafu
 
-A merchant operating system for businesses that sell through WhatsApp, Instagram, other social channels, direct links and in person. Merchants use it to run their catalogue, orders, stock, payments, fulfilment and customer history, in any country and currency.
+> **Rafu** (Swahili for "shelf") is the proposed product name. It is set in `src/brand/brand.ts` (repository name: akungacommerce). Design system: [`docs/DESIGN.md`](docs/DESIGN.md).
+
+## Routes
+
+| Route | Surface |
+| --- | --- |
+| `/` | Rafu landing page |
+| `/s/:slug` | Public shop: home, product pages, cart, wishlist, checkout (demo shops: `/s/mto-home`, `/s/atelier-lumen`) |
+| `/t/:token` | Buyer order tracking. No login: status timeline, map, payment instructions, verified reviews |
+| `/app` | Merchant workspace (Today, orders, products, My shop, inventory, customers, payments, analytics, settings) |
+| `/classic` | Original storefront template, kept for reference |
+
+## Storefront features
+
+- **Image-first shop and product cards:**
+  - swipeable galleries, wishlist and search suggestions
+  - category chips, rails for featured items, deals and coming-soon drops
+  - a sticky Add to cart / Order on WhatsApp bar
+- **Guest checkout:**
+  - delivery pin on a map (MapLibre with OpenFreeMap tiles: free, no key), with landmark and building fields
+  - delivery fee calculated on the server from distance bands
+  - the full total, including delivery, shown before the order button
+  - M-Pesa Till/Paybill instructions or cash on delivery
+  - marketing opt-in is unticked by default
+- **Order tracking link** with real timestamps. It never shows a moving rider unless one is real.
+- **Honest signals only:**
+  - ratings come from verified delivered orders
+  - sold counts come from real deliveries and are hidden below 5
+  - "only N left" comes from real stock
+  - countdowns appear only for scheduled drops
+  - a "was" price must be higher than the current price
+- **Merchant side:**
+  - live activity feed and an optional sale chime
+  - milestone celebrations, KPI sparklines for each currency
+  - order cards with status tabs and one-tap next actions
+  - photo-grid products with storefront settings (images, compare-at price, swatches, drops)
+  - "My shop" settings with a delivery-zone map, QR code and WhatsApp share kit
+- **M-Pesa STK push:** Daraja adapter plus callback Edge Functions. It is **adapter only, not connected**, and payments are still confirmed by the merchant.
+
+
+Under the hood: a merchant operating system for businesses that sell through WhatsApp, Instagram, other social channels, direct links and in person. Merchants use it to run their catalogue, orders, stock, payments, fulfilment and customer history, in any country and currency.
 
 Product specification: [`PRODUCT_BUILD_BRIEF.md`](PRODUCT_BUILD_BRIEF.md).
 
