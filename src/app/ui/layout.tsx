@@ -187,7 +187,7 @@ export function Table({ children, className }: { children: ReactNode; className?
 }
 export function Th({ children, className, align = 'left' }: { children?: ReactNode; className?: string; align?: 'left' | 'right' }) {
   return (
-    <th scope="col" className={cn('border-b border-line py-2 pr-4 text-xs font-medium whitespace-nowrap text-ink-3 last:pr-0', align === 'right' && 'text-right', className)}>
+    <th scope="col" className={cn('border-b border-line py-2 pr-4 text-xs font-medium whitespace-nowrap text-ink-3 last:pr-0', align === 'right' ? 'text-right' : 'text-left', className)}>
       {children}
     </th>
   )

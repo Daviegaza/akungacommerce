@@ -153,6 +153,7 @@ export default function NewOrderPage() {
   if (preview instanceof Error) formErrors.push(preview.message)
   if (method === 'delivery' && !address.line1?.trim()) formErrors.push('Add a delivery address.')
   if (recipientPhoneResult && !recipientPhoneResult.ok) formErrors.push('Recipient phone is not valid.')
+  if (!customerId && quickPhoneResult && !quickPhoneResult.ok) formErrors.push('Customer phone is not valid.')
   if (stockWarnings.length) formErrors.push('Some items do not have enough stock.')
 
   async function submit(e: FormEvent) {

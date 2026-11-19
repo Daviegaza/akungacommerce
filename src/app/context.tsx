@@ -19,7 +19,15 @@ export function resolveDataMode(): DataMode {
   return hasSupabase ? 'supabase' : 'demo'
 }
 
-async function loadGateway(mode: DataMode): Promise<CommerceGateway> {
+let gatewayPromise: Promise<CommerceGateway> | null = null
+
+/** One gateway (and one auth client) per page load, even under StrictMode double effects. */
+function loadGateway(mode: DataMode): Promise<CommerceGateway> {
+  gatewayPromise ??= createGateway(mode)
+  return gatewayPromise
+}
+
+async function createGateway(mode: DataMode): Promise<CommerceGateway> {
   if (mode === 'supabase') {
     const { createSupabaseGateway } = await import('@/gateway/supabase')
     return createSupabaseGateway(import.meta.env.VITE_SUPABASE_URL as string, import.meta.env.VITE_SUPABASE_ANON_KEY as string)

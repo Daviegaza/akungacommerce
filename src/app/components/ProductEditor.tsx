@@ -324,7 +324,7 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Tax rate (metadata)" error={shown(formErrors.taxRate)} hint="Stored with the product for records only. It does not calculate tax on its own; confirm rates with an adviser.">
+            <Field label="Tax rate (metadata)" error={shown(formErrors.taxRate)} hint="Applied to new orders using your business's tax setting. Treat it as configuration, not tax advice; confirm rates with an adviser.">
               {(p) => (
                 <div className="relative">
                   <Input {...p} inputMode="decimal" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} className="tnum pr-9" />

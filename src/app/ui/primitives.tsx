@@ -110,7 +110,7 @@ export function Field({
     <div className={cn('flex flex-col gap-1.5', className)}>
       <label htmlFor={id} className="text-[13px] font-medium text-ink">
         {label}
-        {optional && <span className="ml-1 font-normal text-ink-3">optional</span>}
+        {optional && <span className="ml-1 font-normal text-ink-3"> (optional)</span>}
       </label>
       {children({ id, 'aria-describedby': describedBy, 'aria-invalid': error ? true : undefined })}
       {hint && !error && (
