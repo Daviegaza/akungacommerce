@@ -258,7 +258,7 @@ function MobileNav({ toConfirm, slug }: { toConfirm: number; slug: string | null
   const tab = (active: boolean) =>
     cn(
       'relative flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors',
-      active ? 'text-ink' : 'text-ink-3 hover:text-ink-2',
+      active ? 'text-brand' : 'text-ink-3 hover:text-ink-2',
     )
 
   return (
