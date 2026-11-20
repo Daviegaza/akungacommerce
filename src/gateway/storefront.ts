@@ -3,6 +3,7 @@
  * Mirrors supabase/migrations/20261120000007_storefront.sql. Two implementations:
  * Supabase (anon RPCs) and demo (localStorage, same rules).
  */
+import type { ImageUploadOptions } from '@/media/upload'
 
 export interface DeliveryBand {
   maxKm: number
@@ -212,6 +213,12 @@ export interface ShopAdminGateway {
   saveShopSettings(orgId: string, settings: ShopSettings): Promise<void>
   setProductMerchandising(orgId: string, productId: string, m: ProductMerchandising): Promise<void>
   setVariantMerchandising(orgId: string, variantId: string, m: VariantMerchandising): Promise<void>
+  /**
+   * Store an already-compressed product photo and return the URL to put in the
+   * product's images. Supabase: public 'product-images' bucket under "<org_id>/".
+   * Demo: a data URL (persisted only when the product is saved).
+   */
+  uploadProductImage(orgId: string, image: Blob, opts?: ImageUploadOptions): Promise<string>
 }
 
 /** Pure helper mirrored by SQL delivery_fee_for + haversine_km (tested for parity). */

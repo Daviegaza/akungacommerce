@@ -61,6 +61,8 @@ import {
   type StockMovement,
 } from './types'
 import type { DeliveryBand, PaymentChoice, ProductMerchandising, ShopSettings, VariantMerchandising } from './storefront'
+import { dataUrlBytes } from '@/media/compress'
+import { DEMO_DATA_URL_RE, DEMO_MAX_IMAGE_BYTES, DEMO_MAX_UPLOADED_IMAGES, blobToDataUrl } from '@/media/upload'
 
 export const DEMO_NOTICE = 'Demo workspace · fictional data · stored only in this browser'
 
@@ -258,6 +260,33 @@ function writeRaw(raw: string): void {
   }
 }
 
+/** localStorage "full" across browsers (QuotaExceededError, legacy codes 22 / 1014). */
+export function isQuotaError(e: unknown): boolean {
+  if (!e || typeof e !== 'object') return false
+  const err = e as { name?: string; code?: number }
+  return err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED' || err.code === 22 || err.code === 1014
+}
+
+/**
+ * Like writeRaw, but a full localStorage is reported instead of silently kept
+ * in memory (where it would vanish on reload). Used for writes that can grow
+ * the state a lot, such as uploaded demo photos.
+ */
+function writeRawStrict(raw: string): void {
+  try {
+    globalThis.localStorage?.setItem(STORAGE_KEY, raw)
+  } catch (e) {
+    if (isQuotaError(e)) {
+      fail(
+        'This browser has run out of space for demo photos. Remove some photos (or reset the demo in Settings), then save again.',
+        'storage_full',
+      )
+    }
+    // blocked storage (private mode, node) — memory copy below still holds the state
+  }
+  memoryRaw = raw
+}
+
 function isState(v: unknown): v is DemoState {
   if (!v || typeof v !== 'object') return false
   const s = v as Partial<DemoState>
@@ -330,6 +359,18 @@ function tx<T>(fn: (s: DemoState) => T): Promise<T> {
     const s = loadState()
     const result = fn(s)
     saveState(s)
+    return Promise.resolve(result)
+  } catch (e) {
+    return Promise.reject(toGatewayError(e))
+  }
+}
+
+/** tx() variant whose write fails loudly when localStorage is full; nothing is committed then. */
+function txStrict<T>(fn: (s: DemoState) => T): Promise<T> {
+  try {
+    const s = loadState()
+    const result = fn(s)
+    writeRawStrict(JSON.stringify(s))
     return Promise.resolve(result)
   } catch (e) {
     return Promise.reject(toGatewayError(e))
@@ -1008,10 +1049,20 @@ const ops = {
   setProductMerchandising(s: DemoState, orgId: string, productId: string, m: ProductMerchandising): void {
     requirePermission(s, orgId, 'catalogue.write')
     const images = Array.isArray(m.images) ? m.images : []
+    let uploaded = 0
     for (const img of images) {
-      if (typeof img?.url !== 'string' || !/^https:\/\//.test(img.url)) fail('Images must be https URLs', 'invalid')
+      if (typeof img?.url !== 'string') fail('Images must be https URLs or uploaded photos', 'invalid')
+      if (img.url.startsWith('data:')) {
+        // Demo-only: photos uploaded in this browser are stored inline as small data URLs.
+        if (!DEMO_DATA_URL_RE.test(img.url)) fail('Uploaded photos must be JPG, PNG or WebP', 'invalid')
+        if (dataUrlBytes(img.url) > DEMO_MAX_IMAGE_BYTES) fail('An uploaded photo is too large for the demo workspace', 'invalid')
+        uploaded++
+      } else if (!/^https:\/\//.test(img.url)) {
+        fail('Images must be https URLs or uploaded photos', 'invalid')
+      }
     }
     if (images.length > 12) fail('A product can have at most 12 images', 'invalid')
+    if (uploaded > DEMO_MAX_UPLOADED_IMAGES) fail(`The demo workspace keeps at most ${DEMO_MAX_UPLOADED_IMAGES} uploaded photos per product`, 'invalid')
     let availableFrom: string | null = null
     if (m.availableFrom) {
       const d = new Date(m.availableFrom)
@@ -1504,8 +1555,17 @@ export function createDemoGateway(): CommerceGateway {
         return { ...settings, deliveryBands: settings.deliveryBands.map((b) => ({ ...b })) }
       }),
     saveShopSettings: (orgId, settings) => tx((s) => ops.saveShopSettings(s, orgId, settings)),
-    setProductMerchandising: (orgId, productId, m) => tx((s) => ops.setProductMerchandising(s, orgId, productId, m)),
+    setProductMerchandising: (orgId, productId, m) => txStrict((s) => ops.setProductMerchandising(s, orgId, productId, m)),
     setVariantMerchandising: (orgId, variantId, m) => tx((s) => ops.setVariantMerchandising(s, orgId, variantId, m)),
+    uploadProductImage: async (orgId, image, opts) => {
+      await read((s) => requirePermission(s, orgId, 'catalogue.write'))
+      if (!['image/webp', 'image/jpeg', 'image/png'].includes(image.type)) fail('Uploaded photos must be JPG, PNG or WebP', 'invalid')
+      if (image.size > DEMO_MAX_IMAGE_BYTES) fail('This photo is too large for the demo workspace', 'invalid')
+      if (opts?.signal?.aborted) fail('Upload cancelled', 'aborted')
+      const url = await blobToDataUrl(image)
+      opts?.onProgress?.(1)
+      return url
+    },
   }
 }
 

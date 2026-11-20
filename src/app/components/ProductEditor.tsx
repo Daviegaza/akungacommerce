@@ -11,11 +11,10 @@ import {
   ProductMerchandising,
   SWATCH_RE,
   SwatchPicker,
-  imageUrlError,
   isoToLocalInput,
   localInputToIso,
-  type ImageDraft,
 } from './ProductMerchandising'
+import { imageDraftError, photosBusy, type ImageDraft } from './ProductPhotos'
 import { ErrorNotice, Notice, Sheet } from '../ui/layout'
 import { Button, Field, Input, Select, Switch, Textarea } from '../ui/primitives'
 import { cn } from '@/lib/utils'
@@ -272,17 +271,22 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
     name: !name.trim() ? 'Enter a product name' : undefined,
     taxRate: taxBps == null ? 'Enter a percentage between 0 and 100, up to two decimals' : undefined,
     variants: variants.length === 0 ? 'Add at least one variant' : undefined,
-    images: images.some((i) => imageUrlError(i.url)) ? 'Fix or remove the highlighted photo links' : undefined,
+    images: images.some((i) => i.upload?.status === 'error')
+      ? 'Retry or remove the photos that failed to upload'
+      : images.some((i) => imageDraftError(i))
+        ? 'Fix or remove the highlighted photo links'
+        : undefined,
     dropAt: dropAt.trim() && localInputToIso(dropAt) == null ? 'Pick a valid drop time' : undefined,
   }
   const hasErrors =
     Boolean(formErrors.name || formErrors.taxRate || formErrors.variants || formErrors.images || formErrors.dropAt) ||
     [...rowErrors.values()].some((e) => Object.keys(e).length > 0)
   const shown = (msg: string | undefined) => (attempted ? msg : undefined)
+  const uploadingPhotos = photosBusy(images)
 
   function submit(e: FormEvent) {
     e.preventDefault()
-    if (readOnly) return
+    if (readOnly || uploadingPhotos) return
     setAttempted(true)
     if (hasErrors || taxBps == null) return
     const input: ProductInput = {
@@ -308,7 +312,7 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
       }),
     }
     const merchNext: ProductMerch = {
-      images: images.map((i) => ({ url: i.url.trim(), ...(i.alt.trim() ? { alt: i.alt.trim() } : {}) })),
+      images: images.filter((i) => i.url).map((i) => ({ url: i.url.trim(), ...(i.alt.trim() ? { alt: i.alt.trim() } : {}) })),
       featured,
       availableFrom: localInputToIso(dropAt),
     }
@@ -367,9 +371,20 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
       <Button variant="ghost" onClick={onClose}>
         Cancel
       </Button>
-      <Button type="submit" form={formId} variant="primary" loading={save.isPending}>
-        {product ? 'Save changes' : 'Add product'}
+      <Button
+        type="submit"
+        form={formId}
+        variant="primary"
+        loading={save.isPending || uploadingPhotos}
+        aria-describedby={uploadingPhotos ? `${formId}-uploading` : undefined}
+      >
+        {uploadingPhotos ? 'Uploading photos…' : product ? 'Save changes' : 'Add product'}
       </Button>
+      {uploadingPhotos && (
+        <span id={`${formId}-uploading`} className="sr-only">
+          Saving is available once all photos have uploaded.
+        </span>
+      )}
     </>
   )
 
