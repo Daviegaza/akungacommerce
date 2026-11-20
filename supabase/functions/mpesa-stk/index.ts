@@ -1,7 +1,9 @@
 // M-Pesa STK push: POST /mpesa-stk  { tracking_token, phone_e164 }
 // Label: adapter_only. Returns 503 { status: 'not_configured' } unless the shop's
 // collections provider (shop_settings.collections_provider) can prompt:
-//   daraja      every Daraja secret is set AND the business has a verified 'mpesa'
+//   daraja      the shop's own Daraja credentials are saved (Settings -> Payments; Vault),
+//               or the operator allows the platform account (DARAJA_ALLOW_PLATFORM_SHORTCODE=true
+//               plus every DARAJA_* secret), AND the business has a verified 'mpesa'
 //               connection (integration_connections.state = 'connected_verified')
 //   aggregator  a verified adapter exists for the chosen aggregator (none yet) AND
 //               its connection is verified
@@ -65,10 +67,17 @@ Deno.serve(async (req) => {
     .select('collections_provider, collections_aggregator')
     .eq('org_id', order.org_id)
     .maybeSingle()
+  let shopCredentials: unknown = null
+  if (shop?.collections_provider === 'daraja') {
+    const { data: creds, error: credsError } = await db.rpc('mpesa_credentials_for', { p_org: order.org_id })
+    if (credsError) console.error('mpesa-stk: credentials lookup failed', credsError.code)
+    shopCredentials = creds ?? null
+  }
   const provider = resolveCollectionsProvider(
     { provider: shop?.collections_provider, aggregator: shop?.collections_aggregator },
     (k) => Deno.env.get(k),
     fetch,
+    shopCredentials,
   )
   if (!provider.supportsStk) return notConfigured()
 

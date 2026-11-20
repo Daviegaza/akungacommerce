@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   AGGREGATORS,
   callbackUrlWithSecret,
+  chooseDarajaConfig,
   createAggregatorProvider,
   createDarajaProvider,
   createManualProvider,
@@ -140,9 +141,52 @@ describe('aggregator and manual providers', () => {
 
   it('resolves the shop choice and degrades to manual when Daraja is not configured', () => {
     const f = mockFetch()
-    expect(resolveCollectionsProvider({ provider: 'daraja', aggregator: null }, get(ENV), f).id).toBe('daraja')
+    // Platform env credentials alone no longer pay a shop (they would collect into one account)...
+    expect(resolveCollectionsProvider({ provider: 'daraja', aggregator: null }, get(ENV), f).id).toBe('manual')
+    // ...unless the operator opts in, or the shop saved its own credentials.
+    expect(resolveCollectionsProvider({ provider: 'daraja', aggregator: null }, get({ ...ENV, DARAJA_ALLOW_PLATFORM_SHORTCODE: 'true' }), f).id).toBe('daraja')
+    expect(resolveCollectionsProvider({ provider: 'daraja', aggregator: null }, get(ENV), f, SHOP).id).toBe('daraja')
     expect(resolveCollectionsProvider({ provider: 'daraja', aggregator: null }, get({}), f).id).toBe('manual')
     expect(resolveCollectionsProvider({ provider: 'aggregator', aggregator: 'pesapal' }, get(ENV), f).id).toBe('aggregator')
     expect(resolveCollectionsProvider({ provider: 'nope', aggregator: null }, get(ENV), f).id).toBe('manual')
+  })
+})
+
+const SHOP = {
+  environment: 'sandbox',
+  shortcode: '600111',
+  transaction_type: 'CustomerBuyGoodsOnline',
+  party_b: '654321',
+  consumer_key: 'shop-key',
+  consumer_secret: 'shop-secret',
+  passkey: 'shop-passkey',
+}
+
+describe('chooseDarajaConfig (payout model)', () => {
+  it("uses the shop's own credentials with the platform callback endpoint", () => {
+    const chosen = chooseDarajaConfig(SHOP, get(ENV))
+    expect(chosen?.source).toBe('shop')
+    expect(chosen?.cfg).toMatchObject({
+      shortcode: '600111',
+      partyB: '654321',
+      transactionType: 'CustomerBuyGoodsOnline',
+      consumerKey: 'shop-key',
+      callbackUrl: ENV.DARAJA_CALLBACK_URL,
+      callbackSecret: ENV.MPESA_CALLBACK_SECRET,
+    })
+  })
+
+  it('falls back to the platform account only when explicitly allowed', () => {
+    expect(chooseDarajaConfig(null, get(ENV))).toBeNull()
+    expect(chooseDarajaConfig(null, get({ ...ENV, DARAJA_ALLOW_PLATFORM_SHORTCODE: 'yes' }))).toBeNull()
+    expect(chooseDarajaConfig(null, get({ ...ENV, DARAJA_ALLOW_PLATFORM_SHORTCODE: 'true' }))?.source).toBe('platform')
+  })
+
+  it('rejects incomplete or invalid shop credentials, and needs the platform callback settings', () => {
+    expect(chooseDarajaConfig({ ...SHOP, passkey: '' }, get(ENV))).toBeNull()
+    expect(chooseDarajaConfig({ ...SHOP, environment: 'live' }, get(ENV))).toBeNull()
+    expect(chooseDarajaConfig({ ...SHOP, transaction_type: 'Nope' }, get(ENV))).toBeNull()
+    expect(chooseDarajaConfig('garbage', get(ENV))).toBeNull()
+    expect(chooseDarajaConfig(SHOP, get({ ...ENV, MPESA_CALLBACK_SECRET: '' }))).toBeNull()
   })
 })

@@ -12,7 +12,8 @@
  *   manual      The seller checks their own M-Pesa messages and confirms by hand.
  *               Nothing can be verified automatically.
  *
- * Secrets come only from the Edge Function environment (supabase secrets set ...).
+ * Secrets come from the shop's own credentials in Supabase Vault (org_mpesa_credentials) or, only
+ * when DARAJA_ALLOW_PLATFORM_SHORTCODE=true, from the Edge Function environment.
  * Nothing here logs or returns a credential. Runtime-agnostic (fetch only).
  */
 import {
@@ -99,6 +100,56 @@ export function readDarajaConfig(get: (name: string) => string | undefined): Dar
   const type = v('DARAJA_TRANSACTION_TYPE') || 'CustomerPayBillOnline'
   if (type !== 'CustomerPayBillOnline' && type !== 'CustomerBuyGoodsOnline') return null
   return { env, ...cfg, transactionType: type, partyB: v('DARAJA_PARTY_B') || undefined }
+}
+
+/** Decrypted per-shop credentials as returned by the service-role RPC mpesa_credentials_for. */
+export interface ShopDarajaCredentials {
+  environment: string
+  shortcode: string
+  transaction_type: string
+  party_b: string | null
+  consumer_key: string
+  consumer_secret: string
+  passkey: string
+}
+
+/**
+ * Build a config from a shop's own credentials (money goes to the shop's Till/Paybill).
+ * The callback URL and its secret are platform settings: Rafu's endpoint, not the shop's.
+ */
+export function darajaConfigFromShop(row: unknown, get: (name: string) => string | undefined): DarajaConfig | null {
+  if (!row || typeof row !== 'object') return null
+  const r = row as Partial<ShopDarajaCredentials>
+  const str = (x: unknown) => (typeof x === 'string' ? x.trim() : '')
+  const env = str(r.environment)
+  const type = str(r.transaction_type)
+  const cfg = {
+    consumerKey: str(r.consumer_key),
+    consumerSecret: str(r.consumer_secret),
+    shortcode: str(r.shortcode),
+    passkey: str(r.passkey),
+    callbackUrl: (get('DARAJA_CALLBACK_URL') ?? '').trim(),
+    callbackSecret: (get('MPESA_CALLBACK_SECRET') ?? '').trim(),
+  }
+  if ((env !== 'sandbox' && env !== 'production') || Object.values(cfg).some((x) => !x)) return null
+  if (type !== 'CustomerPayBillOnline' && type !== 'CustomerBuyGoodsOnline') return null
+  return { env, ...cfg, transactionType: type, partyB: str(r.party_b) || undefined }
+}
+
+/**
+ * Which Daraja credentials pay a shop. The shop's own credentials win. The platform-wide
+ * env credentials (one account collecting for every shop) are used only when the operator
+ * explicitly opts in with DARAJA_ALLOW_PLATFORM_SHORTCODE=true.
+ */
+export function chooseDarajaConfig(
+  shopRow: unknown,
+  get: (name: string) => string | undefined,
+): { cfg: DarajaConfig; source: 'shop' | 'platform' } | null {
+  const own = darajaConfigFromShop(shopRow, get)
+  if (own) return { cfg: own, source: 'shop' }
+  if ((get('DARAJA_ALLOW_PLATFORM_SHORTCODE') ?? '').trim() !== 'true') return null
+  const platform = readDarajaConfig(get)
+  return platform ? { cfg: platform, source: 'platform' } : null
 }
 
 /** Callback URL with the shared secret appended (Daraja does not sign callbacks). */
@@ -237,10 +288,12 @@ export function resolveCollectionsProvider(
   choice: { provider: string | null | undefined; aggregator: string | null | undefined },
   get: (name: string) => string | undefined,
   fetchImpl: FetchLike,
+  /** The shop's decrypted credentials (mpesa_credentials_for), or null. */
+  shopCredentials: unknown = null,
 ): CollectionsProvider {
   if (choice.provider === 'daraja') {
-    const cfg = readDarajaConfig(get)
-    return cfg ? createDarajaProvider(cfg, fetchImpl) : createManualProvider()
+    const chosen = chooseDarajaConfig(shopCredentials, get)
+    return chosen ? createDarajaProvider(chosen.cfg, fetchImpl) : createManualProvider()
   }
   if (choice.provider === 'aggregator') return createAggregatorProvider(choice.aggregator ?? null, fetchImpl)
   return createManualProvider()
