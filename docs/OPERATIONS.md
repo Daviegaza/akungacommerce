@@ -1,9 +1,10 @@
 # Operations and production readiness
 
-This is the runbook for taking Fungua from a local build to a production deployment. **Nothing described
-here has been done for a production project yet.** There is no hosted Supabase project, no deployed Edge
-Function, no production domain and no connected provider. Each section says what exists and what still
-has to be done.
+This is the runbook for taking Fungua from staging to a production deployment. A dedicated hosted staging
+project now exists, all 26 repository migrations are applied, all 10 Edge Functions are deployed, and a
+feature-branch Vercel preview is ready. **No production Supabase project, production domain, provider
+credentials, external monitoring or production release exists yet.** Each section distinguishes staging
+verification from production readiness.
 
 ## 1. Local setup
 
@@ -71,7 +72,9 @@ The exact names each function reads are listed at the top of its `index.ts` and 
 
 ## 3. Supabase project and migrations
 
-1. Create a project in the region closest to buyers. Enable Point-in-Time Recovery (paid plans).
+1. **Staging already exists:** `fungua-staging` (ref `vlliyapedfzuzgxkgmmt`, `eu-west-1`, ACTIVE_HEALTHY).
+   It is separate from AR Desk. No production project exists. Choose a production region based on buyer
+   latency and data-residency needs when production is approved; enable PITR on a paid plan.
 2. Auth: turn on email confirmation, set a production SMTP sender, set the Site URL and redirect URLs to the
    app origin, and review the auth rate limits.
 3. Apply migrations in filename order from an empty database:
@@ -82,7 +85,23 @@ The exact names each function reads are listed at the top of its `index.ts` and 
    ```
 
    Every migration has been applied from an empty database locally with `npx supabase db reset`, and CI
-   repeats that on every push. Migrations are forward-only. There are no down migrations (see Rollback).
+   repeats that on every push. The hosted staging project currently has all 26 repository migrations applied
+   through the Supabase management migration tool. **Before using `supabase db push` or
+   `scripts/deploy.sh --apply` against this staging project, reconcile the CLI migration history:**
+
+   ```sh
+   npx supabase link --project-ref vlliyapedfzuzgxkgmmt
+   npx supabase migration list
+   # For each repository migration whose SQL is already present in staging but whose filename timestamp
+   # is missing from the REMOTE column, mark that exact timestamp as applied (history only; no SQL runs):
+   npx supabase migration repair --status applied <migration-timestamp>
+   npx supabase migration list  # confirm LOCAL and REMOTE are aligned before db push
+   ```
+
+   The management tool records its own application timestamp in the remote history, while preserving the
+   repository migration name. Do not re-run the SQL or use `db reset` on hosted staging to fix this.
+   Once history is aligned, use normal forward-only `db push` for new migrations. There are no down
+   migrations (see Rollback).
 4. Create the platform admin row (Fungua reviewers) with the SQL editor, as the service role. No UI does this.
 5. Storage: the `product-images` (public, 5 MB, raster images only) and `verification-docs` (private) buckets
    and their policies are created by migrations. Check them in the dashboard after `db push`.
@@ -99,9 +118,11 @@ SUPABASE_PROJECT_REF=<staging-ref> SECRETS_FILE=.env.staging \
   SUPABASE_DB_URL=<staging db url> SUPABASE_SERVICE_ROLE_KEY=<staging service key> scripts/deploy.sh --apply
 ```
 
-The dry run has been executed; `--apply` has not (there is no hosted project yet).
-See `supabase/functions/README.md` for the per-function details and the webhook URLs to register with each
-provider. After deploying, call each function without credentials and confirm it refuses (401/403/503).
+All 10 functions are now deployed to Fungua staging and report ACTIVE, with the intended JWT settings.
+They are adapter endpoints only: no M-Pesa, Stripe, Paystack, WhatsApp, Resend or Twilio provider credentials
+have been configured or verified. The script's `--apply` path has not been run against staging; first
+reconcile migration history as described in section 3. The two Vault scheduler secrets are absent, so HTTP
+cron jobs intentionally remain idle. See `supabase/functions/README.md` for provider setup and callback URLs.
 
 ## 5. Scheduled jobs (built in, migration 20261122000100)
 
@@ -240,13 +261,16 @@ No external monitor or alerting is configured today; the endpoints above are rea
 
 ## 11. Production deployment checklist
 
-- [ ] Hosted Supabase project created, PITR on, region chosen
-- [ ] `supabase db push` from an empty database; `npm run test:db` passes against a staging copy
+- [x] Dedicated hosted staging Supabase project created (`fungua-staging`, `eu-west-1`); no production project/PITR yet
+- [x] All 26 repository migrations applied to staging; reconcile CLI migration history before any `db push`
+- [ ] `npm run test:db` passes against a hosted staging copy
 - [ ] Auth: email confirmation on, production SMTP, redirect URLs, rate limits reviewed
 - [ ] Platform admin row created
-- [ ] Frontend deployed with `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` (never the service key)
+- [x] Vercel preview deployed with `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` scoped to the feature branch only
+- [ ] Production frontend domain and environment configured (never the service key)
 - [ ] `ALLOWED_ORIGIN` set on browser-called functions
-- [ ] Edge Functions deployed; each refuses unauthenticated calls
+- [x] All 10 Edge Functions deployed to staging with their intended JWT settings
+- [ ] Hosted endpoint smoke tests completed; each function refuses unauthenticated/unconfigured calls as intended
 - [ ] Vault secrets `rafu_functions_url` and `rafu_service_role_key` set so the HTTP jobs in section 5 run
 - [ ] `GET /health` returns 200 and an external uptime monitor watches it
 - [ ] Monitoring and alerts from section 8 in place
