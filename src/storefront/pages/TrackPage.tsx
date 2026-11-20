@@ -35,6 +35,7 @@ import { getStorefrontGateway } from '@/storefront/gateway'
 import { safeLocalStorage } from '@/storefront/cart'
 import { useNow } from '@/storefront/components/hooks'
 import { WhatsAppGlyph } from '@/storefront/components/WhatsAppGlyph'
+import { TrackTrust } from '@/storefront/components/TrackTrust'
 import { fmtMoney, isNotFoundError } from '@/storefront/components/storefront-utils'
 import { DeliveryUpdates, DepositPaidNotice, LocationPreview } from '@/storefront/components/TrackDelivery'
 
@@ -346,6 +347,8 @@ function OrderView({
           <span className="font-display text-2xl font-extrabold tracking-tight tnum">{money(order.totalMinor)}</span>
         </div>
       </Card>
+
+      <TrackTrust token={token} paidMinor={order.paidMinor} shopName={shop.name} locale={locale} timezone={shop.timezone} />
 
       {order.status === 'delivered' && <ReviewSection token={token} order={order} />}
 

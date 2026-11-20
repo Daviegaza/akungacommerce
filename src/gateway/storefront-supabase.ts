@@ -6,6 +6,7 @@
  */
 import { GatewayError } from './gateway'
 import { PROMPT_STATUSES } from '@/domain/reconciliation'
+import { createSupabaseStorefrontTrust } from './trust-storefront-supabase'
 import type { PaymentOptions, PromptStatusResult } from './storefront'
 import type {
   DeliveryBand,
@@ -335,5 +336,6 @@ export function createSupabaseStorefront(url: string, anonKey: string, fetchImpl
     async riderAction(token, action, reason) {
       return mapRiderJob(await rpc<Row>('rider_update', { p_token: token, p_action: action, p_reason: reason ?? null }))
     },
+    ...createSupabaseStorefrontTrust(rpc),
   }
 }

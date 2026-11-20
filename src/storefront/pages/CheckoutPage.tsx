@@ -615,7 +615,7 @@ function CheckoutForm({
               onChange={(e) => setMarketingOptIn(e.target.checked)}
               className="mt-0.5 size-5 shrink-0 accent-[var(--ak-brand)]"
             />
-            <span className="text-sm text-ink-2">Send me offers on WhatsApp/SMS. Reply STOP anytime.</span>
+            <span className="text-sm text-ink-2">Send me offers from {shop.name} on WhatsApp. Optional. Reply STOP anytime to stop.</span>
           </label>
 
           <AnimatePresence initial={false}>

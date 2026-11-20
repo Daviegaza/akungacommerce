@@ -25,6 +25,8 @@ import { mapBands, mapImages } from './storefront-supabase'
 import { UploadError, uploadProductImageToStorage } from '@/media/upload'
 import { createSupabaseCollections } from './collections-supabase'
 import { createSupabaseDeliveryAdmin } from './delivery-supabase'
+import { createSupabaseTrust } from './trust-supabase'
+import { CONSENT_SOURCES } from '@/domain/marketing'
 
 /* Row shapes returned by PostgREST (snake_case). Only the columns we select. */
 type Row = Record<string, unknown>
@@ -390,6 +392,8 @@ export function createSupabaseGateway(url: string, anonKey: string): CommerceGat
           email: s(r.email),
           countryCode: s(r.country_code),
           marketingConsent: Boolean(r.marketing_consent),
+          consentUpdatedAt: s(r.consent_updated_at),
+          consentSource: CONSENT_SOURCES.find((x) => x === r.consent_source) ?? null,
           tags: (r.tags as string[]) ?? [],
           notes: s(r.notes),
           createdAt: String(r.created_at),
@@ -404,8 +408,8 @@ export function createSupabaseGateway(url: string, anonKey: string): CommerceGat
         phone_e164: input.phoneE164,
         email: input.email?.trim().toLowerCase() || null,
         country_code: input.countryCode,
+        // consent_updated_at / consent_source are stamped by a trigger, only when consent really changes.
         marketing_consent: input.marketingConsent,
-        consent_updated_at: new Date().toISOString(),
         tags: input.tags,
         notes: input.notes,
       }
@@ -644,5 +648,6 @@ export function createSupabaseGateway(url: string, anonKey: string): CommerceGat
 
     // Deposits, failed deliveries and handoff (delivery-supabase.ts).
     ...createSupabaseDeliveryAdmin(sb),
+    ...createSupabaseTrust(sb),
   }
 }

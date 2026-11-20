@@ -65,6 +65,7 @@ import type { DeliveryBand, PaymentChoice, ProductMerchandising, ShopSettings, V
 import { dataUrlBytes } from '@/media/compress'
 import { DEMO_DATA_URL_RE, DEMO_MAX_IMAGE_BYTES, DEMO_MAX_UPLOADED_IMAGES, blobToDataUrl } from '@/media/upload'
 import { createDemoCollections, type DemoCollectionsState } from './collections-demo'
+import { createDemoTrust, type DemoTrustState } from './trust-demo'
 
 export const DEMO_NOTICE = 'Demo workspace · fictional data · stored only in this browser'
 
@@ -188,7 +189,7 @@ interface StoredReview {
 }
 
 /** M-Pesa collections fields are optional so older saved demo states stay valid. */
-interface DemoState extends DemoCollectionsState {
+interface DemoState extends DemoCollectionsState, DemoTrustState {
   version: number
   signedIn: boolean
   orgs: StoredOrg[]
@@ -965,14 +966,26 @@ const ops = {
     const notes = maxLen(trimOrNull(input.notes), 5000, 'Notes')
     const tags = [...new Set((input.tags ?? []).map((t) => t.trim()).filter(Boolean))]
     const ts = nowIso()
-    const fields = { name, phoneE164: phone, email, countryCode: country, marketingConsent: !!input.marketingConsent, tags, notes }
+    const consent = !!input.marketingConsent
+    const fields = { name, phoneE164: phone, email, countryCode: country, marketingConsent: consent, tags, notes }
     if (input.id) {
       const c = s.customers.find((x) => x.id === input.id && x.orgId === orgId) ?? fail('Customer not found', 'not_found')
+      // Mirrors the customers_consent_stamp trigger: the consent timestamp moves only when consent changes.
+      const changed = c.marketingConsent !== consent
       Object.assign(c, fields, { updatedAt: ts })
+      if (changed) Object.assign(c, { consentUpdatedAt: ts, consentSource: 'staff' })
       return c.id
     }
     const id = uuid()
-    s.customers.push({ id, orgId, ...fields, createdAt: ts, updatedAt: ts })
+    s.customers.push({
+      id,
+      orgId,
+      ...fields,
+      consentUpdatedAt: consent ? ts : null,
+      consentSource: consent ? 'staff' : null,
+      createdAt: ts,
+      updatedAt: ts,
+    })
     return id
   },
 
@@ -1488,7 +1501,8 @@ export function createDemoGateway(): CommerceGateway {
           .sort((a, b) => a.name.localeCompare(b.name))
           .map(({ orgId: _o, ...rest }) => {
             void _o
-            return rest
+            // Older saved demo states predate consent provenance.
+            return { ...rest, consentUpdatedAt: rest.consentUpdatedAt ?? null, consentSource: rest.consentSource ?? null }
           })
       }),
     saveCustomer: (orgId, input) => tx((s) => ops.saveCustomer(s, orgId, input)),
@@ -1574,6 +1588,7 @@ export function createDemoGateway(): CommerceGateway {
 
     // Deposits, failed deliveries and handoff (delivery-demo.ts).
     ...createDemoDeliveryAdmin(),
+    ...createDemoTrust(demoInternals),
   }
 }
 

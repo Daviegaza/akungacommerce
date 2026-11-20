@@ -38,6 +38,7 @@ import {
   demoRiderJob,
   demoTrackedDelivery,
 } from './delivery-demo'
+import { createDemoStorefrontTrust, stampConsent } from './trust-demo'
 
 const { tx, read, uuid, now, nowIso, level, getOrg, createOrderCore } = demoInternals
 
@@ -289,6 +290,8 @@ function placeOrderIn(s: DemoState, slug: string, input: PlaceOrderInput, idempo
       email: null,
       countryCode: org.countryCode,
       marketingConsent: optIn,
+      consentUpdatedAt: optIn ? ts : null,
+      consentSource: optIn ? 'checkout' : null,
       tags: ['storefront'],
       notes: null,
       createdAt: ts,
@@ -296,8 +299,7 @@ function placeOrderIn(s: DemoState, slug: string, input: PlaceOrderInput, idempo
     }
     s.customers.push(customer)
   } else if (optIn) {
-    customer.marketingConsent = true
-    customer.updatedAt = nowIso()
+    stampConsent(customer, true, 'checkout', nowIso())
   }
 
   const method = input.method === 'pickup' ? 'pickup' : 'delivery'
@@ -480,5 +482,6 @@ export function createDemoStorefront(): StorefrontGateway {
     riderJob: (token) => read((s) => demoRiderJob(s, token)),
     riderAccept: (token, name) => tx((s) => demoRiderAccept(s, token, name)),
     riderAction: (token, action, reason) => tx((s) => demoRiderAction(s, token, action, reason)),
+    ...createDemoStorefrontTrust(demoInternals),
   }
 }

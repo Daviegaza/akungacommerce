@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, Search } from 'lucide-react'
+import { Download, MessageCircleHeart, Plus, Search } from 'lucide-react'
 import type { Customer } from '@/gateway/types'
 import { formatPhone } from '@/domain/locale'
-import { useCustomers, useOrders, useOrg } from '../context'
+import { canExportCustomers } from '@/domain/marketing'
+import { customersCsv, downloadCsv } from '@/integrations/csv'
+import { useCustomers, useGateway, useOrders, useOrg } from '../context'
 import { EmptyState, ErrorNotice, PageHeader, Table, Td, Th } from '../ui/layout'
 import { Phone, When } from '../ui/format'
-import { Badge, Button, Input, Skeleton } from '../ui/primitives'
+import { Badge, Button, Input, Skeleton, buttonClass } from '../ui/primitives'
 import { CustomerFormSheet } from '../components/CustomerForm'
 
 interface OrderStats {
@@ -45,11 +47,29 @@ function matchesSearch(c: Customer, needle: string): boolean {
 export default function CustomersPage() {
   const customers = useCustomers()
   const orders = useOrders()
-  const { can } = useOrg()
+  const { can, org } = useOrg()
+  const gateway = useGateway()
   const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [adding, setAdding] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<unknown>(null)
   const canWrite = can('customers.write')
+  const canExport = canExportCustomers(org.role)
+
+  async function exportList() {
+    setExporting(true)
+    setExportError(null)
+    try {
+      const rows = await gateway.exportCustomers(org.id)
+      const day = new Date().toISOString().slice(0, 10)
+      downloadCsv(`customers-${day}.csv`, customersCsv(rows))
+    } catch (e) {
+      setExportError(e)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const stats = useMemo(() => {
     const map = new Map<string, OrderStats>()
@@ -77,13 +97,31 @@ export default function CustomersPage() {
         title="Customers"
         description="People who buy from you, with their order history and marketing consent."
         actions={
-          canWrite && (
-            <Button variant="primary" icon={<Plus className="size-4" aria-hidden />} onClick={() => setAdding(true)}>
-              Add customer
-            </Button>
-          )
+          <>
+            {canWrite && (
+              <Link to="/app/customers/reach-out" className={buttonClass('secondary')}>
+                <MessageCircleHeart className="size-4" aria-hidden /> Reach out
+              </Link>
+            )}
+            {canExport && (
+              <Button icon={<Download className="size-4" aria-hidden />} onClick={() => void exportList()} loading={exporting}>
+                Export CSV
+              </Button>
+            )}
+            {canWrite && (
+              <Button variant="primary" icon={<Plus className="size-4" aria-hidden />} onClick={() => setAdding(true)}>
+                Add customer
+              </Button>
+            )}
+          </>
         }
       />
+
+      {exportError != null && (
+        <div className="mb-4">
+          <ErrorNotice error={exportError} />
+        </div>
+      )}
 
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <label className="relative block sm:w-80">

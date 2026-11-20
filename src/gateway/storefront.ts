@@ -5,6 +5,7 @@
  */
 import type { ImageUploadOptions } from '@/media/upload'
 import type { PromptStatus } from '@/domain/reconciliation'
+import type { StorefrontTrustGateway } from './trust'
 
 import type { CheckoutOptions, PickupPointSnapshot, RiderAction, RiderJob, TrackedDelivery } from './delivery'
 import type { PaymentMode } from '@/domain/delivery-policy'
@@ -226,7 +227,7 @@ export interface PromptStatusResult {
   resultCode: number | null
 }
 
-export interface StorefrontGateway {
+export interface StorefrontGateway extends StorefrontTrustGateway {
   readonly mode: 'supabase' | 'demo'
   getStorefront(slug: string): Promise<StorefrontData>
   listReviews(slug: string, productId: string): Promise<PublicReview[]>
