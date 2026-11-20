@@ -208,10 +208,10 @@ function CountDot({ count, className }: { count: number; className?: string }) {
 
 function SideNav({ toConfirm }: { toConfirm: number }) {
   return (
-    <nav aria-label="Workspace" className="flex flex-col gap-4">
+    <nav aria-label="Workspace" className="flex flex-col gap-5">
       {NAV_GROUPS.map((group, gi) => (
         <div key={group.label ?? gi} className="flex flex-col gap-px">
-          {group.label && <p className="px-2.5 pb-1 text-[11px] font-medium tracking-wide text-ink-3 uppercase">{group.label}</p>}
+          {group.label && <p className="px-3 pb-2 text-[10px] font-semibold tracking-[0.14em] text-ink-3 uppercase">{group.label}</p>}
           {group.items.map((item) => (
             <NavLink
               key={item.to}
@@ -226,7 +226,7 @@ function SideNav({ toConfirm }: { toConfirm: number }) {
             >
               {({ isActive }) => (
                 <>
-                  <item.icon className={cn('size-[17px]', isActive ? 'text-ink' : 'text-ink-3 group-hover:text-ink-2')} aria-hidden />
+                  <item.icon className={cn('size-[17px]', isActive ? 'text-brand' : 'text-ink-3 group-hover:text-ink-2')} aria-hidden />
                   <span className="flex-1 truncate">{item.label}</span>
                   {item.to === '/app/orders' && <CountDot count={toConfirm} />}
                 </>
@@ -265,9 +265,9 @@ function MobileNav({ toConfirm, slug }: { toConfirm: number; slug: string | null
     <>
       <nav
         aria-label="Workspace"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_28px_rgba(14,20,32,0.06)] backdrop-blur-xl md:hidden"
       >
-        <div className="flex h-16 items-stretch">
+        <div className="flex h-[68px] items-stretch">
           <NavLink to="/app" end className={({ isActive }) => tab(isActive)}>
             <Home className="size-[22px]" aria-hidden />
             Today
@@ -374,12 +374,12 @@ export function AppShell() {
         Skip to content
       </a>
       <DemoBanner />
-      <div className="md:grid md:grid-cols-[216px_1fr] lg:grid-cols-[240px_1fr]">
-        <aside className="sticky top-0 hidden h-dvh flex-col overflow-y-auto border-r border-line bg-panel px-3 py-4 md:flex">
-          <Link to="/app" className="mb-4 self-start rounded-lg px-2.5 py-1.5" aria-label="Fungua, go to Today">
+      <div className="md:grid md:grid-cols-[248px_1fr] xl:grid-cols-[264px_1fr]">
+        <aside className="sticky top-0 hidden h-dvh flex-col overflow-y-auto border-r border-line bg-panel px-4 py-5 md:flex">
+          <Link to="/app" className="mb-6 self-start rounded-lg px-2 py-1.5" aria-label="Fungua, go to Today">
             <FunguaLogo size={22} />
           </Link>
-          <div className="mb-3 border-b border-line px-2.5 pb-3">
+          <div className="mb-5 rounded-xl border border-line bg-canvas/70 px-3 py-3">
             <OrgSwitcher />
             <p className="mt-0.5 truncate text-xs text-ink-3">
               {org.baseCurrency} · {org.timezone.replace(/_/g, ' ')}
@@ -409,7 +409,7 @@ export function AppShell() {
         </aside>
 
         <div className="min-w-0">
-          <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-2 border-b border-line bg-canvas/90 px-3 backdrop-blur-md sm:px-4 md:justify-end md:px-6 lg:px-8">
+          <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-2 border-b border-line/80 bg-canvas/95 px-4 backdrop-blur-xl sm:px-6 md:justify-end lg:px-9">
             <div className="flex min-w-0 items-center gap-2.5 md:hidden">
               <Link to="/app" aria-label="Fungua, go to Today" className="shrink-0 rounded-lg">
                 <FunguaMark size={26} />
@@ -426,7 +426,7 @@ export function AppShell() {
               </span>
             </div>
           </header>
-          <main id="main" className="mx-auto w-full max-w-[1240px] px-4 pt-6 pb-28 sm:px-6 md:pb-16 lg:px-10 lg:pt-8">
+          <main id="main" className="mx-auto w-full max-w-[1320px] px-4 pt-7 pb-28 sm:px-6 md:pb-16 lg:px-10 lg:pt-9">
             <Outlet />
           </main>
         </div>
