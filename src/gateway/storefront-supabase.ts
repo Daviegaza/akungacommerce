@@ -261,6 +261,7 @@ export function createSupabaseStorefront(url: string, anonKey: string, fetchImpl
           note: input.note ?? '',
           marketing_opt_in: input.marketingOptIn === true,
           channel: input.channel ?? 'storefront',
+          ...(input.expectedTotalMinor !== undefined ? { expected_total_minor: input.expectedTotalMinor } : {}),
         },
       })
       const placed: PlacedOrder = {

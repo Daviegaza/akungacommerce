@@ -6,6 +6,7 @@
  * shared domain functions, so the demo never behaves more permissively than
  * production.
  */
+import { BRAND } from '@/brand/brand'
 import { CurrencyMismatchError, MoneyError, assertCurrency } from '@/domain/money'
 import {
   ORDER_STATUS_LABEL,
@@ -775,7 +776,7 @@ const ops = {
     const normalised = (email ?? '').trim().toLowerCase()
     const account =
       normalised === DEMO_USER.email ? { id: DEMO_USER.id, email: DEMO_USER.email, displayName: 'Owner' } : DEMO_ACCOUNTS.find((a) => a.email === normalised)
-    if (!account) fail('That person needs to create an Akunga account first, then you can add them.', 'not_found')
+    if (!account) fail(`That person needs to create a ${BRAND.name} account first, then you can add them.`, 'not_found')
     if (s.members.some((m) => m.orgId === orgId && m.userId === account.id)) return // on conflict do nothing
     s.members.push({ orgId, userId: account.id, email: account.email, displayName: account.displayName, role, createdAt: nowIso() })
     writeAudit(s, orgId, 'memberships', account.id, 'insert', null, { role, email: account.email })
@@ -1207,6 +1208,11 @@ const ops = {
     const received = input.receivedAt ? new Date(input.receivedAt) : now()
     if (Number.isNaN(received.getTime())) fail('Enter a valid payment date', 'invalid')
     if (received.getTime() > now().getTime() + 5 * 60_000) fail('Payment date cannot be in the future', 'invalid')
+    // Mirrors record_manual_payment (20261121000090): never more than the balance due.
+    const due = Math.max(0, order.totalMinor - toSummary(s, order).netPaidMinor)
+    if (input.amountMinor > due) {
+      fail(`This is more than the balance due (${due} minor units). Record only what was received for this order.`, 'invalid')
+    }
     const id = uuid()
     const payment: StoredPayment = {
       id,

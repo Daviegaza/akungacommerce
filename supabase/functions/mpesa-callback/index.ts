@@ -13,6 +13,7 @@
 //   5. set processed_at (unknown requests and invalid bodies stay unprocessed)
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { timingSafeEqual } from '../_shared/signatures.ts'
+import { checkSourceIp } from '../_shared/source-ip.ts'
 import { normaliseStkCallback } from '../_shared/collections.ts'
 
 const json = (body: unknown, status = 200) =>
@@ -30,6 +31,9 @@ Deno.serve(async (req) => {
   if (!secret) return json({ error: 'mpesa callback not configured' }, 503)
   const given = new URL(req.url).searchParams.get('secret') ?? ''
   if (!timingSafeEqual(enc.encode(given), enc.encode(secret))) return json({ error: 'Forbidden' }, 401)
+  // Optional: only accept calls from Safaricom's addresses (see _shared/source-ip.ts).
+  const ipCheck = checkSourceIp(req.headers, Deno.env.get('MPESA_ALLOWED_IPS'), Deno.env.get('MPESA_CLIENT_IP_HEADER'))
+  if (!ipCheck.ok) return json({ error: ipCheck.reason }, ipCheck.status)
 
   let payload: unknown
   try {

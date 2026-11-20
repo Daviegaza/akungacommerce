@@ -261,10 +261,24 @@ function placeOrderIn(s: DemoState, slug: string, input: PlaceOrderInput, idempo
   if (!PAYMENTS.includes(payment)) fail('Choose a payment method', 'invalid')
   if (payment === 'cod' && !shop.codEnabled) fail('Cash on delivery is not available here', 'invalid')
 
+  // Mirrors storefront_place_order (20261121000090): at most 3 open unpaid orders per phone per shop.
+  const openUnpaid = s.orders.filter((o) => {
+    if (o.orgId !== shop.orgId || o.status !== 'pending_confirmation' || !o.trackingToken) return false
+    const c = s.customers.find((x) => x.id === o.customerId)
+    if (c?.phoneE164 !== phone) return false
+    return !s.payments.some((p) => p.orderId === o.id && p.status === 'succeeded')
+  }).length
+  if (openUnpaid >= 3) {
+    fail('You already have 3 orders waiting for this shop. Pay for one, or wait for the shop to confirm it, before ordering again.', 'rate_limited')
+  }
+
   rateLimit(s, `sf:phone:${shop.orgId}:${phone}`, 6, HOUR)
   rateLimit(s, `sf:shop:${shop.orgId}`, 500, HOUR)
 
   const quote = quoteIn(s, shop, input)
+  if (input.expectedTotalMinor !== undefined && input.expectedTotalMinor !== quote.totalMinor) {
+    fail(`The total changed to ${quote.totalMinor} while you were checking out. Review your order and try again.`, 'invalid')
+  }
   const org = getOrg(s, shop.orgId)
   // Payment policy (mirrors storefront_place_order): the deposit is due now, so it needs a way to pay now.
   const policy = demoPolicyFor(s, org.id)
@@ -300,7 +314,9 @@ function placeOrderIn(s: DemoState, slug: string, input: PlaceOrderInput, idempo
     }
     s.customers.push(customer)
   } else if (optIn) {
-    stampConsent(customer, true, 'checkout', nowIso())
+    // An anonymous checkout cannot undo an explicit opt-out (STOP, staff or the buyer link).
+    const explicitOptOut = !customer.marketingConsent && ['stop_reply', 'staff', 'buyer_link'].includes(customer.consentSource ?? '')
+    if (!explicitOptOut) stampConsent(customer, true, 'checkout', nowIso())
   }
 
   const method = input.method === 'pickup' ? 'pickup' : 'delivery'

@@ -1,6 +1,6 @@
 // Outbound message dispatch: POST /send-message
 // Body: { orgId, channel: 'whatsapp'|'email'|'sms', purpose: 'transactional'|'marketing',
-//         customerId?, to?, body, subject?, template? }
+//         customerId, body, subject?, template? }   ("to" is ignored: the recipient comes from the database)
 // Returns the SendResult as JSON. With no provider secrets set (the current
 // state) it returns { status: 'not_configured', missing: [...] } — expected.
 //
@@ -15,7 +15,6 @@ import {
   type SendResult,
   type WhatsAppTemplate,
 } from '../_shared/providers.ts'
-import { canSendMarketing } from '../_shared/consent.ts'
 
 const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') ?? '*'
 const cors = {
@@ -120,32 +119,33 @@ Deno.serve(async (req) => {
   if (permError) return json({ error: 'Permission check failed' }, 500)
   if (allowed !== true) return json({ error: 'You do not have permission to send messages for this organisation' }, 403)
 
-  // Recipient and consent come from the database, never from the request, when a customer is named.
-  let to = parsed.to
-  if (parsed.customerId) {
-    const { data: customer, error } = await db
-      .from('customers')
-      .select('phone_e164, email, marketing_consent')
-      .eq('id', parsed.customerId)
-      .eq('org_id', parsed.orgId)
-      .maybeSingle()
-    if (error) return json({ error: 'Customer lookup failed' }, 500)
-    if (!customer) return json({ error: 'Customer not found' }, 404)
-    if (parsed.purpose === 'marketing' && !canSendMarketing({ marketingConsent: customer.marketing_consent === true })) {
-      return json({ error: 'Customer has not consented to marketing messages' }, 403)
-    }
-    to = parsed.channel === 'email' ? customer.email : customer.phone_e164
-    if (!to) return json({ error: `Customer has no ${parsed.channel === 'email' ? 'email address' : 'phone number'}` }, 422)
-  } else if (parsed.purpose === 'marketing') {
-    return json({ error: 'Marketing messages need a customerId so consent can be checked' }, 400)
+  // The recipient always comes from the database (a named customer of this organisation), never from
+  // the request. begin_outbound_message checks permission and marketing consent, applies per-org,
+  // per-user and per-customer limits, and logs the attempt BEFORE any provider is called.
+  if (!parsed.customerId) return json({ error: 'customerId is required: messages go only to customers of this business' }, 400)
+  const { data: begun, error: beginError } = await db.rpc('begin_outbound_message', {
+    p_org: parsed.orgId,
+    p_customer: parsed.customerId,
+    p_channel: parsed.channel,
+    p_purpose: parsed.purpose,
+  })
+  if (beginError) {
+    const status = beginError.code === '54000' ? 429 : beginError.code === 'P0002' ? 404 : beginError.code === '42501' ? 403 : 422
+    return json({ error: beginError.message }, status)
   }
-  if (!to) return json({ error: 'Recipient (to or customerId) is required' }, 400)
+  const { id: logId, to } = begun as { id: string; to: string }
+  const finish = (status: string, ref: string | null, err: string | null) =>
+    db.rpc('finish_outbound_message', { p_id: logId, p_status: status, p_provider_ref: ref, p_error: err })
 
-  // TODO: per-org rate limiting and an outbound message log before any provider is enabled.
   const sender = senderFor(parsed.channel)
-  if (!('send' in sender)) return json(sender)
+  if (!('send' in sender)) {
+    await finish('not_configured', null, null)
+    return json(sender)
+  }
 
   const msg: OutboundMessage = { to, body: parsed.body, subject: parsed.subject, template: parsed.template }
   const result = await sender.send(msg)
+  const r = result as { status: string; providerMessageId?: string; error?: string }
+  await finish(r.status === 'sent' ? 'sent' : r.status === 'not_configured' ? 'not_configured' : 'failed', r.providerMessageId ?? null, r.error ?? null)
   return json(result, result.status === 'failed' ? 502 : 200)
 })

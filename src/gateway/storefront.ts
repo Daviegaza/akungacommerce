@@ -152,6 +152,8 @@ export interface PlaceOrderInput extends QuoteInput {
   note?: string
   marketingOptIn: boolean
   channel?: 'storefront' | 'whatsapp' | 'instagram' | 'facebook' | 'tiktok'
+  /** The total the buyer was shown. If the server total differs, the order is refused and nothing is created. */
+  expectedTotalMinor?: number
 }
 
 export interface PlacedOrder {

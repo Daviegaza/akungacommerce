@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { DB_URL, addMember, asUser, closeDb, createOrg, createProduct, createUser, level, one, type TestUser } from './helpers'
+import { DB_URL, addMember, asUser, closeDb, createOrg, createProduct, createUser, db, level, one, type TestUser } from './helpers'
 import {
   asAnon,
   deliverOrder,
@@ -231,7 +231,11 @@ run('storefront: guest checkout', () => {
 
   it('rate-limits a phone after 6 orders an hour', async () => {
     const phone = '+254700333444'
-    for (let i = 0; i < 6; i++) await place(guestOrder({ lines: [{ variant_id: variantId, quantity: 1 }], phone_e164: phone }), sfKey(), slug, randomIp())
+    for (let i = 0; i < 6; i++) {
+      const o = await place(guestOrder({ lines: [{ variant_id: variantId, quantity: 1 }], phone_e164: phone }), sfKey(), slug, randomIp())
+      // Confirmed orders no longer count toward the open-unpaid cap (3), so the hourly limit is what stops the 7th.
+      await db().query(`select public._transition_order_core($1, 'confirmed', null)`, [o.order_id])
+    }
     await expect(place(guestOrder({ lines: [{ variant_id: variantId, quantity: 1 }], phone_e164: phone }), sfKey(), slug, randomIp())).rejects.toThrow(
       /Too many attempts/,
     )

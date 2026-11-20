@@ -361,6 +361,7 @@ function CheckoutForm({
       payment,
       marketingOptIn,
       channel: 'storefront',
+      expectedTotalMinor: freshQuote.totalMinor,
       ...(method === 'delivery'
         ? {
             addressLine: addressLine.trim() || undefined,

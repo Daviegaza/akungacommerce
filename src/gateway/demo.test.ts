@@ -497,9 +497,24 @@ describe('demo storefront', () => {
   it('rate-limits a phone after 6 orders an hour (failed attempts do not count)', async () => {
     const { v } = await variantOf('Soy Candle 200 g', 'Cedar & Lemongrass')
     const phone = '+254799000222'
-    for (let i = 0; i < 6; i++) await sf.placeOrder('mto-home', guest(v.id, 1, { phoneE164: phone }), key())
+    const org = await mto()
+    for (let i = 0; i < 6; i++) {
+      const o = await sf.placeOrder('mto-home', guest(v.id, 1, { phoneE164: phone }), key())
+      // Confirmed orders do not count toward the open-unpaid cap (3), so the hourly limit stops the 7th.
+      await gw.transitionOrder(org.id, o.orderId, 'confirmed', null)
+    }
     await expect(sf.placeOrder('mto-home', guest(v.id, 1, { phoneE164: phone }), key())).rejects.toThrow(/Too many attempts/)
     await sf.placeOrder('mto-home', guest(v.id, 1, { phoneE164: '+254799000333' }), key())
+  })
+
+  it('caps open unpaid orders per phone at 3 and refuses an order whose total changed', async () => {
+    const { v } = await variantOf('Soy Candle 200 g', 'Cedar & Lemongrass')
+    const phone = '+254799000444'
+    for (let i = 0; i < 3; i++) await sf.placeOrder('mto-home', guest(v.id, 1, { phoneE164: phone }), key())
+    await expect(sf.placeOrder('mto-home', guest(v.id, 1, { phoneE164: phone }), key())).rejects.toThrow(/already have 3 orders waiting/)
+    await expect(sf.placeOrder('mto-home', { ...guest(v.id, 1, { phoneE164: '+254799000555' }), expectedTotalMinor: 1 }, key())).rejects.toThrow(
+      /total changed/,
+    )
   })
 
   it('accepts verified reviews only after delivery, once per product', async () => {
