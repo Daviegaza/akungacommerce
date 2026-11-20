@@ -90,8 +90,12 @@ Deno.serve(async (req) => {
     db.from('refunds').select('amount_minor').eq('order_id', order.id).eq('status', 'succeeded'),
   ])
   const sum = (rows: { amount_minor: number }[] | null) => (rows ?? []).reduce((a, r) => a + Number(r.amount_minor), 0)
-  const outstanding = Number(order.total_minor) - (sum(pays) - sum(refunds))
-  if (outstanding <= 0) return json({ status: 'failed', error: 'This order is already paid' }, 409)
+  const balance = Number(order.total_minor) - (sum(pays) - sum(refunds))
+  if (balance <= 0) return json({ status: 'failed', error: 'This order is already paid' }, 409)
+  // Charge the amount due now: an unpaid deposit first, else the balance (20261120000030_deposits_handoff.sql).
+  // Falls back to the balance on a database without that migration.
+  const { data: dueNow, error: dueError } = await db.rpc('order_amount_due_now', { p_order: order.id })
+  const outstanding = !dueError && Number(dueNow) > 0 ? Math.min(Number(dueNow), balance) : balance
 
   // Throttle prompts per order (re-uses the storefront rate limiter; service role only).
   const { error: limitError } = await db.rpc('_rate_limit', { p_key: `stk:${order.id}`, p_max: 5, p_window: '1 hour' })

@@ -8,6 +8,7 @@ import { formatMoney, money, parseMajor, toMajorString } from '@/domain/money'
 import type { ShopSettings } from '@/gateway/storefront'
 import { MapFallback, PinPicker, StaticMap, type LatLng } from '@/maps'
 import { BRAND } from '@/brand/brand'
+import { DeliveryRulesSection, PickupPointsSection } from '../components/DeliveryRules'
 import { useAction, useOrg, useOrgQuery } from '../context'
 import { ErrorNotice, Notice, PageHeader, Section } from '../ui/layout'
 import { Badge, Button, Field, Input, Skeleton, Switch, Textarea, buttonClass } from '../ui/primitives'
@@ -225,6 +226,8 @@ export default function ShopSettingsPage() {
         // Remount when the saved settings change so the form always starts from what is stored.
         <ShopForm key={JSON.stringify(query.data)} saved={query.data ?? null} />
       )}
+      <DeliveryRulesSection />
+      <PickupPointsSection />
     </div>
   )
 }

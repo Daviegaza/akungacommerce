@@ -10,6 +10,7 @@ import {
   Bike,
   Loader2,
   Lock,
+  Map as MapIcon,
   MapPin,
   RotateCcw,
   ShieldCheck,
@@ -27,7 +28,10 @@ import { useCart, type UseCartResult, safeLocalStorage } from '@/storefront/cart
 import { useStorefront } from '@/storefront/components/hooks'
 import { ProductImg } from '@/storefront/components/ProductImg'
 import { fmtMoney, isNotFoundError } from '@/storefront/components/storefront-utils'
-import { MapFallback, PinPicker, StaticMap, type LatLng } from '@/maps'
+import { MapFallback, StaticMap, type LatLng } from '@/maps'
+import type { CheckoutOptions } from '@/gateway/delivery'
+import { DeliveryPinStep } from '@/storefront/components/DeliveryPinStep'
+import { PickupPointPicker, PolicyNote } from '@/storefront/components/CheckoutPolicy'
 
 /* ───────────── Device-only conveniences (never required, never shared) ───────────── */
 const BUYER_KEY = 'rafu-buyer'
@@ -186,7 +190,7 @@ function CheckoutSkeleton({ slug }: { slug: string }) {
 }
 
 /* ───────────── Form ───────────── */
-type Method = 'delivery' | 'pickup'
+type Method = 'delivery' | 'pickup_point' | 'pickup'
 
 function CheckoutForm({
   slug,
@@ -220,13 +224,27 @@ function CheckoutForm({
   const [marketingOptIn, setMarketingOptIn] = useState(false)
   const [showErrors, setShowErrors] = useState(false)
   const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey)
+  const [pickupPointId, setPickupPointId] = useState<string | null>(null)
+  const [pickupMapOpen, setPickupMapOpen] = useState(false)
+
+  /* Payment policy and pick-up points (server-side; the quote enforces them). */
+  const optionsQuery = useQuery({
+    queryKey: ['storefront', slug, 'checkout-options'],
+    queryFn: async () => (await getStorefrontGateway()).getCheckoutOptions(slug),
+    staleTime: 60_000,
+    retry: 1,
+  })
+  const options: CheckoutOptions | null = optionsQuery.data ?? null
+  const pickupPoints = options?.pickupPoints ?? []
 
   /* Methods and payments the shop actually offers. */
   const methods: Method[] = [
     ...(shop.deliveryEnabled ? (['delivery'] as const) : []),
+    ...(shop.deliveryEnabled && pickupPoints.length > 0 ? (['pickup_point'] as const) : []),
     ...(shop.pickupEnabled ? (['pickup'] as const) : []),
   ]
   const method: Method | null = chosenMethod && methods.includes(chosenMethod) ? chosenMethod : (methods[0] ?? null)
+  const chosenPoint = pickupPoints.find((p) => p.id === pickupPointId) ?? null
 
   const hasMpesa = Boolean(shop.mpesaTill || shop.mpesaPaybill)
   // Payment step: can this shop send an automatic M-Pesa prompt? (Failure = Till/Paybill wording, never a fake prompt.)
@@ -237,7 +255,9 @@ function CheckoutForm({
     retry: false,
   })
   const stk = payOptions.data?.stk === true
-  const payments: PaymentChoice[] = [...(hasMpesa ? (['mpesa'] as const) : []), ...(shop.codEnabled ? (['cod'] as const) : [])]
+  // A shop that needs full payment first does not offer cash on delivery (the server refuses it too).
+  const codAllowed = shop.codEnabled && options?.policy.paymentMode !== 'full_prepay'
+  const payments: PaymentChoice[] = [...(hasMpesa ? (['mpesa'] as const) : []), ...(codAllowed ? (['cod'] as const) : [])]
   const payment: PaymentChoice =
     chosenPayment && payments.includes(chosenPayment) ? chosenPayment : (payments[0] ?? 'other')
 
@@ -246,19 +266,20 @@ function CheckoutForm({
   const [pickerCenter] = useState<LatLng>(() => pin ?? shopLocation ?? { lat: 0, lng: 20 })
 
   /* Live server quote, debounced so dragging the map doesn't spam the server. */
-  const quoteInput: QuoteInput = useMemo(
-    () => ({
-      lines: cart.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
-      method: method ?? 'pickup',
-      ...(method === 'delivery' && pin ? { lat: Number(pin.lat.toFixed(5)), lng: Number(pin.lng.toFixed(5)) } : {}),
-    }),
-    [cart.lines, method, pin],
-  )
+  // Cheap to build each render; its JSON string is the stable key below.
+  const quoteInput: QuoteInput = {
+    lines: cart.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
+    method: method ?? 'pickup',
+    ...(method === 'delivery' && pin ? { lat: Number(pin.lat.toFixed(5)), lng: Number(pin.lng.toFixed(5)) } : {}),
+    ...(method === 'pickup_point' && chosenPoint ? { pickupPointId: chosenPoint.id } : {}),
+  }
   const quoteKey = JSON.stringify(quoteInput)
   const debouncedKey = useDebounce(quoteKey, 450)
   const debouncedInput = useMemo(() => JSON.parse(debouncedKey) as QuoteInput, [debouncedKey])
   const quoteEnabled =
-    method !== null && debouncedInput.lines.length > 0 && (debouncedInput.method === 'pickup' || debouncedInput.lat != null)
+    method !== null &&
+    debouncedInput.lines.length > 0 &&
+    (debouncedInput.method === 'pickup' || debouncedInput.lat != null || debouncedInput.pickupPointId != null)
 
   const quoteQuery = useQuery({
     queryKey: ['storefront', slug, 'quote', debouncedKey],
@@ -281,7 +302,8 @@ function CheckoutForm({
     name: name.trim().length < 2 ? 'Enter your name so the shop knows who the order is for' : null,
     phone: phoneResult.ok ? null : phone.trim() ? phoneResult.error : 'Enter your phone number',
     method: method ? null : 'This shop is not taking delivery or pickup orders right now',
-    pin: method === 'delivery' && !pin ? 'Move the map to drop a pin on your delivery spot' : null,
+    pin: method === 'delivery' && !pin ? 'Share your location or set a pin on the map so the shop can price delivery' : null,
+    point: method === 'pickup_point' && !chosenPoint ? 'Choose a pick-up point' : null,
     landmark:
       method === 'delivery' && !landmark.trim() && !addressLine.trim()
         ? 'Add a landmark or street so the rider can find you'
@@ -401,7 +423,14 @@ function CheckoutForm({
               options={methods.map((m) =>
                 m === 'delivery'
                   ? { value: m, label: 'Delivery', icon: <Bike className="size-4" aria-hidden />, note: shop.deliveryPromise ?? undefined }
-                  : { value: m, label: 'Pickup', icon: <Store className="size-4" aria-hidden />, note: 'Free' },
+                  : m === 'pickup_point'
+                    ? {
+                        value: m,
+                        label: 'Pick-up point',
+                        icon: <MapPin className="size-4" aria-hidden />,
+                        note: `From ${fmtMoney(Math.min(...pickupPoints.map((p) => p.feeMinor)), shop.currency, locale)}`,
+                      }
+                    : { value: m, label: 'Pickup', icon: <Store className="size-4" aria-hidden />, note: 'Free' },
               )}
             />
           )}
@@ -409,14 +438,7 @@ function CheckoutForm({
           <AnimatePresence mode="wait" initial={false}>
             {method === 'delivery' && (
               <motion.div key="delivery" {...fade} className="mt-4 flex flex-col gap-4">
-                <Suspense fallback={<MapFallback height={280} />}>
-                  <PinPicker value={pin} onChange={setPin} center={pickerCenter} zoom={pin ? 16 : 14} height={280} label="Delivery pin" />
-                </Suspense>
-                {fieldError(errors.pin) && (
-                  <p role="alert" className="-mt-2 text-xs font-medium text-neg">
-                    {errors.pin}
-                  </p>
-                )}
+                <DeliveryPinStep pin={pin} onPin={setPin} center={pickerCenter} restored={Boolean(saved.address)} error={fieldError(errors.pin)} />
 
                 <DeliveryQuoteStatus
                   shop={shop}
@@ -427,6 +449,7 @@ function CheckoutForm({
                   error={quoteQuery.isError ? quoteQuery.error : null}
                   outOfArea={outOfArea}
                   onRetry={() => void quoteQuery.refetch()}
+                  showMap={false}
                 />
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -484,16 +507,42 @@ function CheckoutForm({
               </motion.div>
             )}
 
+            {method === 'pickup_point' && (
+              <motion.div key="pickup_point" {...fade} className="mt-4 flex flex-col gap-4">
+                <PickupPointPicker
+                  points={pickupPoints}
+                  value={chosenPoint?.id ?? null}
+                  onChange={setPickupPointId}
+                  currency={shop.currency}
+                  locale={locale}
+                  error={fieldError(errors.point)}
+                />
+                {quoteQuery.isError && settled && (
+                  <p role="alert" className="rounded-xl bg-neg-soft p-3 text-sm text-neg">
+                    {errorMessage(quoteQuery.error)}
+                  </p>
+                )}
+              </motion.div>
+            )}
+
             {method === 'pickup' && (
               <motion.div key="pickup" {...fade} className="mt-4 flex flex-col gap-3">
-                {shopLocation && (
-                  <Suspense fallback={<MapFallback height={200} />}>
-                    <StaticMap
-                      markers={[{ ...shopLocation, kind: 'shop', label: shop.locationLabel ?? shop.name }]}
-                      height={200}
-                    />
-                  </Suspense>
-                )}
+                {shopLocation &&
+                  (pickupMapOpen ? (
+                    <Suspense fallback={<MapFallback height={200} />}>
+                      <StaticMap markers={[{ ...shopLocation, kind: 'shop', label: shop.locationLabel ?? shop.name }]} height={200} />
+                    </Suspense>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setPickupMapOpen(true)}
+                      icon={<MapIcon className="size-4" aria-hidden />}
+                      className="min-h-11 self-start"
+                    >
+                      Show the shop on a map
+                    </Button>
+                  ))}
                 <div className="flex items-start gap-3 rounded-xl bg-sunken p-3">
                   <MapPin className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
                   <div className="text-sm">
@@ -555,6 +604,9 @@ function CheckoutForm({
       <div className="lg:sticky lg:top-20">
         <Section step={4} title="Summary">
           <OrderSummary cart={cart} quote={freshQuote} busy={quoteBusy} locale={locale} method={method} taxMode={shop.taxMode} />
+          {options && (
+            <PolicyNote policy={options.policy} currency={shop.currency} locale={locale} delivers={shop.deliveryEnabled && method !== 'pickup'} />
+          )}
 
           <label className="mt-4 flex min-h-11 cursor-pointer items-start gap-3 rounded-xl p-2 -mx-2 hover:bg-sunken">
             <input
@@ -595,13 +647,17 @@ function CheckoutForm({
                 : quoteBusy
                   ? 'Checking total…'
                   : method === 'delivery' && !pin
-                    ? 'Drop a pin to see your total'
+                    ? 'Set your location to see your total'
+                    : method === 'pickup_point' && !chosenPoint
+                      ? 'Choose a pick-up point'
                     : outOfArea
                       ? 'Address is outside the delivery area'
                       : 'Place order'}
           </Button>
           <p className="mt-2 text-center text-xs text-ink-3">
-            {payment === 'mpesa'
+            {freshQuote?.depositDueMinor && freshQuote.depositDueMinor > 0 && freshQuote.depositDueMinor < freshQuote.totalMinor
+              ? `Nothing is charged yet. You pay the ${fmtMoney(freshQuote.depositDueMinor, freshQuote.currency, locale)} deposit on the next screen.`
+              : payment === 'mpesa'
               ? 'Nothing is charged yet. You pay by M-Pesa on the next screen.'
               : payment === 'cod'
                 ? 'Nothing is charged now.'
@@ -712,6 +768,7 @@ function DeliveryQuoteStatus({
   error,
   outOfArea,
   onRetry,
+  showMap,
 }: {
   shop: PublicShop
   pin: LatLng | null
@@ -721,12 +778,16 @@ function DeliveryQuoteStatus({
   error: unknown
   outOfArea: boolean
   onRetry(): void
+  /** The zone map pulls in MapLibre, so it stays off unless the buyer asked for a map. */
+  showMap: boolean
 }) {
   const locale = shop.locale || 'en'
   if (!pin) {
     return (
       <p className="rounded-xl bg-sunken p-3 text-sm text-ink-2">
-        Drop the pin on your delivery spot to see the delivery fee.
+        {shop.deliveryBands.length > 0
+          ? `Delivery from ${fmtMoney(Math.min(...shop.deliveryBands.map((b) => b.feeMinor)), shop.currency, locale)}, priced by distance from the shop.`
+          : 'The delivery fee appears once your location is set.'}
       </p>
     )
   }
@@ -738,10 +799,10 @@ function DeliveryQuoteStatus({
           <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
           <span>
             {errorMessage(error)}.{' '}
-            {shop.pickupEnabled ? 'Move the pin inside the shaded area, or choose pickup.' : 'Move the pin inside the shaded area.'}
+            {shop.pickupEnabled ? 'Move the pin closer to the shop, or choose pickup.' : 'Move the pin closer to the shop.'}
           </span>
         </p>
-        {shopLocation && (
+        {showMap && shopLocation && (
           <Suspense fallback={<MapFallback height={200} />}>
             <StaticMap
               markers={[
@@ -870,8 +931,8 @@ function OrderSummary({
               ) : (
                 money(quote.deliveryFeeMinor)
               )
-            ) : method === 'delivery' ? (
-              <span className="text-ink-3">{busy ? 'Calculating…' : 'Drop a pin'}</span>
+            ) : method === 'delivery' || method === 'pickup_point' ? (
+              <span className="text-ink-3">{busy ? 'Calculating…' : method === 'delivery' ? 'Set location' : 'Choose a point'}</span>
             ) : (
               <Skeleton className="h-4 w-14" />
             )
@@ -904,6 +965,23 @@ function OrderSummary({
           <Skeleton className="h-8 w-28" />
         )}
       </div>
+      {quote && (quote.depositDueMinor ?? 0) > 0 && (
+        <dl className="mt-2 flex flex-col gap-1.5 rounded-2xl border border-brand/25 p-3 text-sm" aria-label="How you pay">
+          <div className="flex items-center justify-between gap-3">
+            <dt className="font-semibold text-ink">{(quote.depositDueMinor ?? 0) >= quote.totalMinor ? 'Pay now (full amount)' : 'Deposit due now'}</dt>
+            <dd className="font-display text-lg font-extrabold tracking-tight text-ink tnum">{money(quote.depositDueMinor ?? 0)}</dd>
+          </div>
+          {(quote.balanceOnDeliveryMinor ?? 0) > 0 && (
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-ink-2">{method === 'pickup' ? 'Balance when you collect' : 'Balance on delivery'}</dt>
+              <dd className="font-semibold text-ink tnum">{money(quote.balanceOnDeliveryMinor ?? 0)}</dd>
+            </div>
+          )}
+        </dl>
+      )}
+      {quote && (quote.depositDueMinor ?? 0) === 0 && quote.paymentMode && (
+        <p className="mt-2 text-xs text-ink-3">Nothing is due before {method === 'pickup' ? 'you collect' : 'delivery'}.</p>
+      )}
       {!quote && <p className="mt-2 text-xs text-ink-3">Your full total, including delivery, appears here before you place the order.</p>}
     </div>
   )

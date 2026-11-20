@@ -168,7 +168,7 @@ export function decideStkCallback(input: {
 export type C2bDecision =
   | { kind: 'duplicate' }
   | { kind: 'unmatched'; reason: ReviewReason }
-  | { kind: 'record'; amountMinor: number; fullyPaid: true; autoConfirm: boolean }
+  | { kind: 'record'; amountMinor: number; fullyPaid: boolean; autoConfirm: boolean }
 
 /** Account reference typed by the customer -> order number, or null. Accepts "1042", "#1042", " 1042 ". */
 export function orderNumberFromRef(ref: string | null | undefined): number | null {
@@ -181,17 +181,27 @@ export function orderNumberFromRef(ref: string | null | undefined): number | nul
 /**
  * A direct Till/Paybill payment (C2B confirmation). It is matched automatically
  * only when the account reference names a live KES order AND the amount equals
- * its whole balance due. Everything else goes to the unmatched queue.
+ * its whole balance due, or the amount due now (an unpaid deposit). Everything else goes to the unmatched queue.
  */
-export function decideC2bReceipt(input: { receiptKnown: boolean; accountRef: string | null; order: ReconOrder | null; amountMinor: number }): C2bDecision {
+export function decideC2bReceipt(input: {
+  receiptKnown: boolean
+  accountRef: string | null
+  order: ReconOrder | null
+  amountMinor: number
+  /** Unpaid deposit (or balance) due now; deposits confirm the order like full payment. */
+  dueNowMinor?: number
+}): C2bDecision {
   if (input.receiptKnown) return { kind: 'duplicate' }
   if (orderNumberFromRef(input.accountRef) === null) return { kind: 'unmatched', reason: 'no_order_ref' }
   const order = input.order
   if (!order) return { kind: 'unmatched', reason: 'order_not_found' }
   if (CLOSED.includes(order.status)) return { kind: 'unmatched', reason: 'order_closed' }
   if (order.currency !== 'KES') return { kind: 'unmatched', reason: 'currency' }
-  if (input.amountMinor !== outstandingMinor(order)) return { kind: 'unmatched', reason: 'balance_differs' }
-  return { kind: 'record', amountMinor: input.amountMinor, fullyPaid: true, autoConfirm: order.status === 'pending_confirmation' }
+  const outstanding = outstandingMinor(order)
+  const isDueNow = input.dueNowMinor !== undefined && input.dueNowMinor > 0 && input.amountMinor === input.dueNowMinor
+  if (input.amountMinor !== outstanding && !isDueNow) return { kind: 'unmatched', reason: 'balance_differs' }
+  const fullyPaid = input.amountMinor === outstanding
+  return { kind: 'record', amountMinor: input.amountMinor, fullyPaid, autoConfirm: order.status === 'pending_confirmation' }
 }
 
 /** Staff attaching a queued receipt to an order. Returns an error message, or null when allowed. */
@@ -210,7 +220,7 @@ export const REVIEW_REASON_TEXT: Record<ReviewReason, string> = {
   already_paid: 'The order was already paid; this is an extra payment',
   no_order_ref: 'No order number in the account reference',
   order_not_found: 'No order with that number',
-  balance_differs: 'The amount does not equal the balance due',
+  balance_differs: 'The amount does not equal the deposit or balance due',
 }
 
 /** Note written into the order's status history when a verified payment confirms it. */

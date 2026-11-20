@@ -23,6 +23,7 @@ const WorkspaceApp = lazy(() => import('@/app/WorkspaceApp'))
 const LandingPage = lazy(() => import('@/landing/LandingPage'))
 const StorefrontApp = lazy(() => import('@/storefront/StorefrontApp'))
 const TrackPage = lazy(() => import('@/storefront/pages/TrackPage'))
+const RiderPage = lazy(() => import('@/storefront/pages/RiderPage'))
 
 function PageLoader() {
   return (
@@ -103,6 +104,14 @@ export default function App() {
               element={
                 <Suspense fallback={<RafuLoader />}>
                   <TrackPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/r/:token"
+              element={
+                <Suspense fallback={<RafuLoader />}>
+                  <RiderPage />
                 </Suspense>
               }
             />

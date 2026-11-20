@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
@@ -36,7 +36,7 @@ import { safeLocalStorage } from '@/storefront/cart'
 import { useNow } from '@/storefront/components/hooks'
 import { WhatsAppGlyph } from '@/storefront/components/WhatsAppGlyph'
 import { fmtMoney, isNotFoundError } from '@/storefront/components/storefront-utils'
-import { MapFallback, StaticMap } from '@/maps'
+import { DeliveryUpdates, DepositPaidNotice, LocationPreview } from '@/storefront/components/TrackDelivery'
 
 /** /t/:token is standalone (outside StorefrontApp), so it owns its query client. */
 const trackQueryClient = new QueryClient({
@@ -197,6 +197,9 @@ function OrderView({
   const terminal = TERMINAL.has(order.status)
   const cancelled = order.status === 'cancelled' || order.status === 'refunded'
   const paid = order.paidMinor >= order.totalMinor
+  const delivery = order.delivery
+  // Deposit in, balance due on delivery or collection: nothing more to pay right now.
+  const depositCovered = Boolean(delivery && delivery.depositDueMinor > 0 && delivery.depositPaidMinor >= delivery.depositDueMinor && !paid)
   const { copied, copy } = useCopy()
 
   const shopLoc =
@@ -240,7 +243,10 @@ function OrderView({
         </header>
       )}
 
-      {!cancelled && !paid && <PaymentPanel token={token} order={order} money={money} />}
+      {!cancelled && !paid && delivery && depositCovered && (
+        <DepositPaidNotice delivery={delivery} money={money} pickup={fulfilment.method === 'pickup'} />
+      )}
+      {!cancelled && !paid && !depositCovered && <PaymentPanel token={token} order={order} money={money} />}
       {!cancelled && paid && (
         <div className="flex items-center gap-2 rounded-2xl bg-pos-soft px-4 py-3 text-sm font-medium text-pos ak-rise">
           <CheckCircle2 className="size-5" aria-hidden /> Paid {money(order.paidMinor)}. Received by {shop.name}.
@@ -251,19 +257,17 @@ function OrderView({
         <Timeline order={order} />
       </Card>
 
+      <DeliveryUpdates order={order} money={money} />
+
       {fulfilment.method === 'delivery' ? (
         <Card title="Delivery">
-          {(shopLoc || dropLoc) && (
-            <Suspense fallback={<MapFallback height={220} />}>
-              <StaticMap
-                markers={[
-                  ...(shopLoc ? [{ ...shopLoc, kind: 'shop' as const, label: shop.locationLabel ?? shop.name }] : []),
-                  ...(dropLoc ? [{ ...dropLoc, kind: 'drop' as const, label: fulfilment.landmark ?? 'Drop-off' }] : []),
-                ]}
-                height={220}
-              />
-            </Suspense>
-          )}
+          <LocationPreview
+            shopLoc={shopLoc}
+            dropLoc={dropLoc}
+            shopLabel={shop.locationLabel ?? shop.name}
+            dropLabel={fulfilment.landmark}
+            height={220}
+          />
           <dl className="mt-3 grid gap-2 text-sm">
             {fulfilment.landmark && <InfoRow icon={<MapPin className="size-4" aria-hidden />} label="Drop-off" value={fulfilment.landmark} />}
             {fulfilment.rider && <InfoRow icon={<Bike className="size-4" aria-hidden />} label="Rider" value={fulfilment.rider} />}
@@ -296,11 +300,7 @@ function OrderView({
         </Card>
       ) : (
         <Card title="Pickup">
-          {shopLoc && (
-            <Suspense fallback={<MapFallback height={200} />}>
-              <StaticMap markers={[{ ...shopLoc, kind: 'shop', label: shop.locationLabel ?? shop.name }]} height={200} />
-            </Suspense>
-          )}
+          <LocationPreview shopLoc={shopLoc} dropLoc={null} shopLabel={shop.locationLabel ?? shop.name} dropLabel={null} height={200} />
           <p className="mt-3 flex items-start gap-2 text-sm text-ink-2">
             <Store className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
             {shop.locationLabel ? `Collect from ${shop.name}, ${shop.locationLabel}.` : `Collect from ${shop.name}. They'll share the spot when your order is ready.`}
@@ -422,10 +422,12 @@ function PlacedHeader({ order, money }: { order: TrackedOrder; money(minor: numb
 /* ───────────── Payment ───────────── */
 function PaymentPanel({ token, order, money }: { token: string; order: TrackedOrder; money(minor: number): string }) {
   const { shop } = order
-  const due = order.totalMinor - order.paidMinor
+  const due = order.delivery ? order.delivery.dueNowMinor : order.totalMinor - order.paidMinor
+  const depositOutstanding = order.delivery ? order.delivery.depositDueMinor - order.delivery.depositPaidMinor : 0
   const { copied, copy } = useCopy()
 
-  if (order.paymentPreference === 'cod') {
+  // A deposit is due now even when the balance is paid in cash on delivery.
+  if (order.paymentPreference === 'cod' && !(depositOutstanding > 0 && (shop.mpesaTill || shop.mpesaPaybill))) {
     return (
       <Card className="border border-line">
         <div className="flex items-center gap-3">
@@ -445,7 +447,7 @@ function PaymentPanel({ token, order, money }: { token: string; order: TrackedOr
     )
   }
 
-  if (order.paymentPreference !== 'mpesa') {
+  if (order.paymentPreference !== 'mpesa' && !(depositOutstanding > 0 && (shop.mpesaTill || shop.mpesaPaybill))) {
     return (
       <Card className="border border-line">
         <p className="font-display text-xl font-extrabold tracking-tight tnum">{money(due)} to pay</p>
@@ -865,7 +867,11 @@ function buildSteps(order: TrackedOrder): TimelineStep[] {
   const method = order.fulfilment.method
   const history = [...order.history].sort((a, b) => a.at.localeCompare(b.at))
   const lastAt = new Map<string, string>()
-  for (const h of history) lastAt.set(h.status === 'draft' ? 'pending_confirmation' : h.status, h.at)
+  // First time each status was reached (a failed delivery adds a same-status row; it must not move the time).
+  for (const h of history) {
+    const k = h.status === 'draft' ? 'pending_confirmation' : h.status
+    if (!lastAt.has(k)) lastAt.set(k, h.at)
+  }
   if (!lastAt.has('pending_confirmation')) lastAt.set('pending_confirmation', order.createdAt)
 
   const status = order.status === 'draft' ? 'pending_confirmation' : order.status

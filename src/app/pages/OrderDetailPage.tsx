@@ -10,6 +10,7 @@ import { newIdempotencyKey } from '@/gateway/gateway'
 import { CHANNEL_LABEL, PAYMENT_METHOD_LABEL, type FulfilmentPatch, type OrderDetail, type Payment, type PaymentMethod } from '@/gateway/types'
 import { whatsappChatLink } from '@/integrations/whatsapp-link'
 import { useAction, useOrder, useOrg } from '../context'
+import { OrderDeliveryPanel } from '../components/OrderDeliveryPanel'
 import { DefinitionList, EmptyState, ErrorNotice, Notice, PageHeader, Section, Sheet, Table, Td, Th } from '../ui/layout'
 import { Money, OrderStatusBadge, PaymentStateBadge, Phone, VerificationBadge, When, useFormatMoney } from '../ui/format'
 import { Badge, Button, Field, Input, Select, Skeleton, Textarea } from '../ui/primitives'
@@ -135,6 +136,7 @@ function OrderView({ order }: { order: OrderDetail }) {
 
           <PaymentsSection order={order} />
           <FulfilmentSection order={order} />
+          <OrderDeliveryPanel order={order} />
 
           <Section title="Timeline">
             <ol className="relative ml-1.5 border-l border-line">
@@ -143,7 +145,8 @@ function OrderView({ order }: { order: OrderDetail }) {
                   <span className="absolute top-1.5 -left-[5px] size-2.5 rounded-full border-2 border-canvas bg-ink-3" aria-hidden />
                   <p className="text-sm">
                     <span className="font-medium">{ORDER_STATUS_LABEL[h.toStatus]}</span>
-                    {h.fromStatus && <span className="text-ink-3"> from {ORDER_STATUS_LABEL[h.fromStatus].toLowerCase()}</span>}
+                    {h.fromStatus && h.fromStatus !== h.toStatus && <span className="text-ink-3"> from {ORDER_STATUS_LABEL[h.fromStatus].toLowerCase()}</span>}
+                    {h.fromStatus === h.toStatus && <span className="text-ink-3"> · delivery update</span>}
                   </p>
                   {h.note && <p className="text-sm text-ink-2">{h.note}</p>}
                   <p className="text-xs text-ink-3">

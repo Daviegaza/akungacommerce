@@ -22,6 +22,8 @@ import type {
   StorefrontGateway,
   TrackedOrder,
 } from './storefront'
+import type { PaymentMode } from '@/domain/delivery-policy'
+import { mapCheckoutOptions, mapPickupSnapshot, mapRiderJob, mapTrackedDelivery } from './delivery-supabase'
 
 type Row = Record<string, unknown>
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
@@ -127,6 +129,14 @@ export function mapQuote(r: Row): Quote {
     deliveryFeeMinor: n(r.delivery_fee_minor),
     distanceKm: nOrNull(r.distance_km),
     totalMinor: n(r.total_minor),
+    ...(r.deposit_due_minor !== undefined
+      ? {
+          depositDueMinor: n(r.deposit_due_minor),
+          balanceOnDeliveryMinor: n(r.balance_on_delivery_minor),
+          paymentMode: (s(r.payment_mode) ?? 'pay_on_delivery') as PaymentMode,
+          pickupPoint: mapPickupSnapshot(r.pickup_point),
+        }
+      : {}),
   }
 }
 
@@ -186,6 +196,7 @@ function quotePayload(input: QuoteInput): Row {
     method: input.method,
     ...(input.lat !== undefined ? { lat: input.lat } : {}),
     ...(input.lng !== undefined ? { lng: input.lng } : {}),
+    ...(input.pickupPointId !== undefined ? { pickup_point_id: input.pickupPointId } : {}),
   }
 }
 
@@ -255,11 +266,18 @@ export function createSupabaseStorefront(url: string, anonKey: string, fetchImpl
         trackingToken: String(r.tracking_token),
         totalMinor: n(r.total_minor),
         currency: String(r.currency),
+        ...(r.deposit_due_minor !== undefined ? { depositDueMinor: n(r.deposit_due_minor) } : {}),
       }
       return placed
     },
     async track(token) {
-      return mapTrackedOrder(await rpc<Row>('storefront_track', { p_token: token }))
+      // Deposit/handoff details come from a separate RPC; a server without that migration still tracks.
+      const [order, delivery] = await Promise.all([
+        rpc<Row>('storefront_track', { p_token: token }),
+        rpc<Row>('storefront_track_delivery', { p_token: token }).catch(() => null),
+      ])
+      const tracked = mapTrackedOrder(order)
+      return delivery ? { ...tracked, delivery: mapTrackedDelivery(delivery) } : tracked
     },
     async submitReview(token, productId, ratingValue, body) {
       await rpc('storefront_review', { p_token: token, p_product: productId, p_rating: ratingValue, p_body: body })
@@ -303,6 +321,19 @@ export function createSupabaseStorefront(url: string, anonKey: string, fetchImpl
       const r = await rpc<Row>('storefront_payment_status', { p_token: trackingToken, p_checkout_request_id: checkoutRequestId })
       const status = PROMPT_STATUSES.find((x) => x === r?.status) ?? 'pending'
       return { status, resultCode: r?.result_code == null ? null : Number(r.result_code) }
+    },
+
+    async getCheckoutOptions(slug) {
+      return mapCheckoutOptions(await rpc<Row>('storefront_checkout_options', { p_slug: slug }))
+    },
+    async riderJob(token) {
+      return mapRiderJob(await rpc<Row>('rider_job', { p_token: token }))
+    },
+    async riderAccept(token, name) {
+      return mapRiderJob(await rpc<Row>('rider_accept', { p_token: token, p_name: name }))
+    },
+    async riderAction(token, action, reason) {
+      return mapRiderJob(await rpc<Row>('rider_update', { p_token: token, p_action: action, p_reason: reason ?? null }))
     },
   }
 }

@@ -30,3 +30,6 @@ dist-ssr
 research_notes/
 reports/
 bash.exe.stackdump
+
+# Agent worktrees
+.claude/worktrees/

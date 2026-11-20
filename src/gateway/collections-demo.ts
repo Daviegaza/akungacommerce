@@ -20,6 +20,7 @@ import {
   type ReconOrder,
 } from '@/domain/reconciliation'
 import type { demoInternals as DemoInternalsValue, DemoState, StoredOrder } from './demo'
+import { demoTrackedDelivery } from './delivery-demo'
 import type { CollectionsAdminGateway, CollectionsSettings, MpesaPrompt, MpesaReceipt } from './collections'
 import type { PaymentOptions, PromptStatusResult, SimulatedOutcome, StkResult } from './storefront'
 
@@ -96,10 +97,17 @@ function recordVerified(I: Internals, s: DemoState, o: StoredOrder, provider: st
     method: 'mobile_money',
     verification: 'provider_verified',
   })
-  if (o.status === 'pending_confirmation' && I.toSummary(s, o).netPaidMinor >= o.totalMinor) {
-    o.status = 'confirmed'
-    o.updatedAt = I.nowIso()
-    s.history.push({ id: I.uuid(), orgId: o.orgId, orderId: o.id, fromStatus: 'pending_confirmation', toStatus: 'confirmed', note: confirmNote(receipt), createdAt: I.nowIso() })
+  if (o.status === 'pending_confirmation') {
+    // Same rule as public._mpesa_after_payment (20261120000031): full payment or a covered deposit confirms.
+    const fullyPaid = I.toSummary(s, o).netPaidMinor >= o.totalMinor
+    const d = demoTrackedDelivery(s, o)
+    const depositCovered = d.depositDueMinor > 0 && d.depositPaidMinor >= d.depositDueMinor
+    if (fullyPaid || depositCovered) {
+      o.status = 'confirmed'
+      o.updatedAt = I.nowIso()
+      const note = fullyPaid ? confirmNote(receipt) : `Deposit paid by M-Pesa (verified receipt ${receipt}); balance due on delivery`
+      s.history.push({ id: I.uuid(), orgId: o.orgId, orderId: o.id, fromStatus: 'pending_confirmation', toStatus: 'confirmed', note, createdAt: I.nowIso() })
+    }
   }
   return id
 }
@@ -178,7 +186,8 @@ export function demoRequestPrompt(I: Internals, s: DemoState, order: StoredOrder
   if (!/^\+254[71]\d{8}$/.test(String(phoneE164 ?? '').trim())) return { status: 'failed', error: 'Enter a Kenyan mobile number, e.g. +254712345678' }
   if (order.currency !== 'KES') return { status: 'failed', error: 'M-Pesa is only available for KES orders' }
   if (!PAYABLE.has(order.status)) return { status: 'failed', error: 'This order is not accepting payments' }
-  const outstanding = order.totalMinor - I.toSummary(s, order).netPaidMinor
+  // Charge the amount due now: an unpaid deposit first, else the balance (same as mpesa-stk).
+  const outstanding = demoTrackedDelivery(s, order).dueNowMinor
   if (outstanding <= 0) return { status: 'failed', error: 'This order is already paid' }
   if (outstanding % 100 !== 0) return { status: 'failed', error: 'M-Pesa only accepts whole shillings' }
   const hourAgo = I.now().getTime() - 3_600_000
@@ -325,6 +334,7 @@ export function createDemoCollections(I: Internals): Required<CollectionsAdminGa
           accountRef: input.accountRef,
           order: order ? reconOrder(I, s, order) : null,
           amountMinor: input.amountMinor,
+          dueNowMinor: order ? demoTrackedDelivery(s, order).dueNowMinor : undefined,
         })
         const row: StoredMpesaReceipt = {
           id: I.uuid(),

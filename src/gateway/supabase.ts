@@ -24,6 +24,7 @@ import type { ShopSettings } from './storefront'
 import { mapBands, mapImages } from './storefront-supabase'
 import { UploadError, uploadProductImageToStorage } from '@/media/upload'
 import { createSupabaseCollections } from './collections-supabase'
+import { createSupabaseDeliveryAdmin } from './delivery-supabase'
 
 /* Row shapes returned by PostgREST (snake_case). Only the columns we select. */
 type Row = Record<string, unknown>
@@ -640,5 +641,8 @@ export function createSupabaseGateway(url: string, anonKey: string): CommerceGat
     },
 
     ...createSupabaseCollections(sb),
+
+    // Deposits, failed deliveries and handoff (delivery-supabase.ts).
+    ...createSupabaseDeliveryAdmin(sb),
   }
 }

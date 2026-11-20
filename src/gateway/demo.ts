@@ -29,6 +29,7 @@ import { ROLES, ROLE_LABEL, can, type Permission, type Role } from '@/domain/per
 import { isValidTimezone } from '@/domain/locale'
 import { integrationStatuses } from '@/integrations/registry'
 import { GatewayError, type CommerceGateway } from './gateway'
+import { createDemoDeliveryAdmin } from './delivery-demo'
 import {
   ORDER_CHANNELS,
   type Address,
@@ -1570,6 +1571,9 @@ export function createDemoGateway(): CommerceGateway {
     },
 
     ...createDemoCollections(demoInternals),
+
+    // Deposits, failed deliveries and handoff (delivery-demo.ts).
+    ...createDemoDeliveryAdmin(),
   }
 }
 
@@ -1591,6 +1595,7 @@ export const demoInternals = {
   toSummary,
   requireMember,
   requirePermission,
+  getOrderRow,
   writeAudit,
 }
 export type {
