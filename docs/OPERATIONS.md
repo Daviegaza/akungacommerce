@@ -1,7 +1,7 @@
 # Operations and production readiness
 
 This is the runbook for taking Fungua from staging to a production deployment. A dedicated hosted staging
-project now exists, all 26 repository migrations are applied, all 10 Edge Functions are deployed, and a
+project now exists, all 27 repository migrations are applied, all 10 Edge Functions are deployed, and a
 feature-branch Vercel preview is ready. **No production Supabase project, production domain, provider
 credentials, external monitoring or production release exists yet.** Each section distinguishes staging
 verification from production readiness.
@@ -85,7 +85,7 @@ The exact names each function reads are listed at the top of its `index.ts` and 
    ```
 
    Every migration has been applied from an empty database locally with `npx supabase db reset`, and CI
-   repeats that on every push. The hosted staging project currently has all 26 current repository migration files applied
+   repeats that on every push. The hosted staging project currently has all 27 current repository migration files applied
    through the Supabase management migration tool. The remote history also contains superseded records from
    the initial placement of the two hardening migrations; those SQL changes are re-applied under the correctly
    ordered final filenames. **Before using `supabase db push` or
@@ -273,7 +273,7 @@ No external monitor or alerting is configured today; the endpoints above are rea
 ## 11. Production deployment checklist
 
 - [x] Dedicated hosted staging Supabase project created (`fungua-staging`, `eu-west-1`); no production project/PITR yet
-- [x] All 26 repository migrations applied to staging; reconcile CLI migration history before any `db push`
+- [x] All 27 repository migrations applied to staging; reconcile CLI migration history before any `db push`
 - [ ] `npm run test:db` passes against a hosted staging copy
 - [ ] Auth: email confirmation on, production SMTP, redirect URLs, rate limits reviewed
 - [ ] Platform admin row created
