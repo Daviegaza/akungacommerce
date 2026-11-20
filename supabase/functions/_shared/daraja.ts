@@ -291,3 +291,96 @@ export function parseC2bConfirmation(body: unknown): C2bConfirmation | null {
     payerHint: hint || null,
   }
 }
+
+/* ───────────── STK Push Query (fallback when a callback never arrives) ───────────── */
+
+export interface StkQueryPayload {
+  BusinessShortCode: string
+  Password: string
+  Timestamp: string
+  CheckoutRequestID: string
+}
+
+export function buildStkQueryPayload(input: { shortcode: string; passkey: string; checkoutRequestId: string; at?: Date }): StkQueryPayload {
+  if (!/^\d{5,8}$/.test(input.shortcode ?? '')) throw new DarajaError('Shortcode must be 5–8 digits')
+  if (!input.passkey) throw new DarajaError('Passkey is required')
+  const id = String(input.checkoutRequestId ?? '').trim()
+  if (id.length < 1 || id.length > 100) throw new DarajaError('CheckoutRequestID is required')
+  const timestamp = darajaTimestamp(input.at)
+  return {
+    BusinessShortCode: input.shortcode,
+    Password: darajaPassword(input.shortcode, input.passkey, timestamp),
+    Timestamp: timestamp,
+    CheckoutRequestID: id,
+  }
+}
+
+/**
+ * What an STK Push Query told us. It never carries a receipt number or an amount,
+ * so even `result` with code 0 is not proof of a payment we can record.
+ *   result      Daraja knows the outcome (ResultCode)
+ *   processing  Daraja says the transaction is still being processed
+ *   error       the query itself failed (auth, rate limit, unknown request, network)
+ */
+export type StkQueryResult =
+  | { kind: 'result'; resultCode: number; resultDesc: string }
+  | { kind: 'processing' }
+  | { kind: 'error'; message: string }
+
+/** Parse a Daraja STK query HTTP response (status + JSON body). Pure. */
+export function parseStkQueryResponse(httpStatus: number, body: unknown): StkQueryResult {
+  const b = body && typeof body === 'object' ? (body as Record<string, unknown>) : null
+  const rawCode = b?.ResultCode
+  const code = typeof rawCode === 'string' && rawCode.trim() !== '' ? Number(rawCode) : typeof rawCode === 'number' ? rawCode : NaN
+  const responseOk = b?.ResponseCode === '0' || b?.ResponseCode === 0
+  if (httpStatus >= 200 && httpStatus < 300 && responseOk && Number.isInteger(code)) {
+    return { kind: 'result', resultCode: code, resultDesc: typeof b?.ResultDesc === 'string' ? b.ResultDesc.slice(0, 300) : '' }
+  }
+  // Daraja answers an in-flight request with errorCode 500.001.1001 ("The transaction is being processed").
+  // Not verified against a live sandbox; anything else unexpected is treated as an error (prompt stays pending).
+  const errorCode = typeof b?.errorCode === 'string' ? b.errorCode : ''
+  const errorMessage = typeof b?.errorMessage === 'string' ? b.errorMessage : ''
+  if (errorCode === '500.001.1001' || /being processed/i.test(errorMessage)) return { kind: 'processing' }
+  return { kind: 'error', message: `STK query failed (${httpStatus})${errorMessage ? `: ${errorMessage.slice(0, 200)}` : ''}` }
+}
+
+export async function queryStkPush(fetchImpl: FetchLike, env: DarajaEnv, token: string, payload: StkQueryPayload): Promise<StkQueryResult> {
+  let res: Response
+  try {
+    res = await fetchImpl(`${darajaBaseUrl(env)}/mpesa/stkpushquery/v1/query`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  } catch {
+    return { kind: 'error', message: 'STK query network error' }
+  }
+  const body = await res.json().catch(() => null)
+  return parseStkQueryResponse(res.status, body)
+}
+
+/**
+ * Query answer -> what apply_mpesa_stk_query should do (mirrors the SQL in
+ * 20261120000061 and decideStkQuery in src/domain/reconciliation.ts).
+ * `awaiting_receipt` never records money: the query has no receipt and no amount.
+ */
+export type StkQueryAction =
+  | { action: 'awaiting_receipt'; resultCode: 0; resultDesc: string }
+  | { action: 'resolve'; status: 'cancelled' | 'timeout' | 'failed'; resultCode: number; resultDesc: string }
+  | { action: 'keep_pending' }
+
+export function stkQueryAction(result: StkQueryResult): StkQueryAction {
+  if (result.kind !== 'result') return { action: 'keep_pending' }
+  const status = stkResultStatus(result.resultCode)
+  if (status === 'paid') return { action: 'awaiting_receipt', resultCode: 0, resultDesc: result.resultDesc }
+  return { action: 'resolve', status, resultCode: result.resultCode, resultDesc: result.resultDesc }
+}
+
+/** Arguments for public.apply_mpesa_stk_query. keep_pending sends a null result code (bookkeeping only). */
+export function stkQueryRpcArgs(checkoutRequestId: string, action: StkQueryAction) {
+  return {
+    p_checkout_request_id: checkoutRequestId,
+    p_result_code: action.action === 'keep_pending' ? null : action.resultCode,
+    p_result_desc: action.action === 'keep_pending' ? null : action.resultDesc,
+  }
+}

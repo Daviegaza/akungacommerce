@@ -37,7 +37,8 @@ export interface MpesaPrompt {
 export interface MpesaReceipt {
   id: string
   provider: string
-  source: 'stk' | 'c2b' | 'aggregator'
+  /** bank_transfer: an NGN transfer into a dedicated account (receipt = provider reference). */
+  source: 'stk' | 'c2b' | 'aggregator' | 'bank_transfer'
   receipt: string
   amountMinor: number
   currency: string
@@ -71,10 +72,67 @@ export interface CollectionsAdminGateway {
   verifyMpesaReceipt(orgId: string, code: string): Promise<ReceiptVerification>
   /** Demo workspace only: pretend a customer paid the Till/Paybill directly. Absent in Supabase mode. */
   simulateIncomingMpesa?(orgId: string, input: SimulatedIncomingInput): Promise<void>
+
+  /* Nigeria bank transfer (dedicated virtual accounts), migration 20261120000060. */
+  /** Dedicated accounts stored for this business (only ever ones a provider returned, or simulated in the demo). */
+  listVirtualAccounts(orgId: string): Promise<VirtualAccountRecord[]>
+  /**
+   * Ask the shop's provider for a dedicated account for this order. adapter_only: the
+   * Supabase gateway never calls a provider and answers not_configured; the demo simulates one.
+   */
+  assignVirtualAccount(orgId: string, orderId: string): Promise<AssignVirtualAccountResult>
+  /** Demo workspace only: pretend a buyer transferred money into a dedicated account. Absent in Supabase mode. */
+  simulateBankTransfer?(orgId: string, input: SimulatedTransferInput): Promise<void>
+}
+
+export interface VirtualAccountRecord {
+  id: string
+  provider: 'paystack_dva' | 'flutterwave_va'
+  bankName: string
+  accountNumber: string
+  accountName: string | null
+  orderId: string | null
+  orderNumber: number | null
+  customerId: string | null
+  status: 'active' | 'retired'
+  createdAt: string
+  simulated: boolean
+}
+
+export type AssignVirtualAccountResult =
+  | { status: 'assigned'; account: VirtualAccountRecord }
+  | { status: 'not_configured'; reason: string }
+
+export interface SimulatedTransferInput {
+  /** The dedicated account the buyer paid into. */
+  accountNumber: string
+  /** Kobo (minor units). */
+  amountMinor: number
+}
+
+/** Where a queued payment came from, in plain words. */
+export function receiptSourceText(source: MpesaReceipt['source']): string {
+  switch (source) {
+    case 'c2b':
+      return 'Paid to your Till/Paybill directly'
+    case 'bank_transfer':
+      return 'Bank transfer to a dedicated account'
+    case 'aggregator':
+      return 'Through your payment aggregator'
+    default:
+      return 'From an M-Pesa prompt'
+  }
+}
+
+/** Short provider name for the queue's provider column. */
+export function receiptProviderText(r: Pick<MpesaReceipt, 'provider' | 'source'>): string {
+  if (r.source === 'bank_transfer') return r.provider === 'paystack' ? 'Paystack bank transfer' : r.provider === 'flutterwave' ? 'Flutterwave bank transfer' : 'Bank transfer'
+  return r.provider === 'mpesa' ? 'M-Pesa' : r.provider
 }
 
 export const PROMPT_STATUS_LABEL: Record<PromptStatus, string> = {
   pending: 'Waiting for PIN',
+  awaiting_receipt: 'M-Pesa says paid — waiting for receipt',
   paid: 'Paid',
   cancelled: 'Cancelled by customer',
   timeout: 'Expired',

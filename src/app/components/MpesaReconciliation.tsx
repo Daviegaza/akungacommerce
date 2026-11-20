@@ -1,10 +1,12 @@
 import { useId, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, CircleAlert, Radio, ScanSearch, ShieldCheck, ShieldQuestion, Smartphone, XCircle } from 'lucide-react'
+import { CheckCircle2, CircleAlert, Hourglass, Radio, ScanSearch, ShieldCheck, ShieldQuestion, Smartphone, XCircle } from 'lucide-react'
 import { isReviewable, type ReceiptVerification } from '@/domain/reconciliation'
 import {
   PROMPT_STATUS_LABEL,
   RECEIPT_STATUS_LABEL,
+  receiptProviderText,
+  receiptSourceText,
   type CollectionsProviderId,
   type CollectionsSettings,
   type MpesaPrompt,
@@ -12,7 +14,9 @@ import {
 } from '@/gateway/collections'
 import type { IntegrationLabel, IntegrationStatus, OrderSummary } from '@/gateway/types'
 import { INTEGRATION_LABEL_TEXT } from '@/integrations/registry'
+import { usePendingPoll } from '@/lib/usePendingPoll'
 import { useAction, useGateway, useIntegrations, useOrders, useOrg, useOrgQuery } from '../context'
+import { BankTransferAccounts } from './BankTransferAccounts'
 import { EmptyState, ErrorNotice, Section } from '../ui/layout'
 import { Money, When } from '../ui/format'
 import { Badge, Button, Input, PillTabs, Select, Skeleton, type Tone } from '../ui/primitives'
@@ -250,6 +254,7 @@ const RECEIPT_TONE: Record<MpesaReceipt['status'], Tone> = {
 }
 const PROMPT_TONE: Record<MpesaPrompt['status'], Tone> = {
   pending: 'info',
+  awaiting_receipt: 'info',
   paid: 'pos',
   cancelled: 'neutral',
   timeout: 'neutral',
@@ -286,14 +291,15 @@ function QueueItem({ r, orders }: { r: MpesaReceipt; orders: OrderSummary[] }) {
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-2 text-[15px]">
             <Money minor={r.amountMinor} currency={r.currency} className="font-semibold text-ink" />
-            <span className="font-mono text-sm text-ink-2">{r.receipt}</span>
+            <span className="break-all font-mono text-sm text-ink-2">{r.receipt}</span>
             <Badge tone={RECEIPT_TONE[r.status]}>{RECEIPT_STATUS_LABEL[r.status]}</Badge>
+            <Badge tone="neutral">{receiptProviderText(r)}</Badge>
             {r.simulated && <Badge tone="info">Simulated</Badge>}
           </p>
           <p className="mt-0.5 text-xs text-ink-3">
-            <When iso={r.transactedAt} /> · {r.source === 'c2b' ? 'Paid to your Till/Paybill directly' : 'From an M-Pesa prompt'}
-            {r.payerHint && <> · {r.payerHint}</>}
-            {r.accountRef && <> · account “{r.accountRef}”</>}
+            <When iso={r.transactedAt} /> · {receiptSourceText(r.source)}
+            {r.payerHint && <> · {r.source === 'bank_transfer' ? `from account ${r.payerHint}` : r.payerHint}</>}
+            {r.accountRef && <> · {r.source === 'bank_transfer' ? `into ${r.accountRef}` : `account “${r.accountRef}”`}</>}
           </p>
           {r.reason && <p className="mt-1 text-sm text-ink-2">{r.reason}</p>}
           {r.orderNumber != null && r.status !== 'unmatched' && (
@@ -372,8 +378,9 @@ function ReceiptRow({ r }: { r: MpesaReceipt }) {
           ) : (
             <span className="text-ink-3">No order</span>
           )}
-          <span className="font-mono text-xs text-ink-2">{r.receipt}</span>
+          <span className="break-all font-mono text-xs text-ink-2">{r.receipt}</span>
           <Badge tone={RECEIPT_TONE[r.status]}>{RECEIPT_STATUS_LABEL[r.status]}</Badge>
+          {r.source === 'bank_transfer' && <Badge tone="neutral">{receiptProviderText(r)}</Badge>}
           {r.simulated && <Badge tone="info">Simulated</Badge>}
         </p>
         <p className="mt-0.5 text-xs text-ink-3">
@@ -406,6 +413,45 @@ function PromptRow({ p }: { p: MpesaPrompt }) {
       </div>
       <Money minor={p.amountMinor} currency="KES" className="shrink-0 text-sm font-medium text-ink" />
     </li>
+  )
+}
+
+/** STK query said "paid" but no receipt yet: nothing recorded, nothing for staff to attach. */
+function AwaitingReceiptRow({ p }: { p: MpesaPrompt }) {
+  return (
+    <li className="flex items-start justify-between gap-3 py-3">
+      <div className="flex min-w-0 items-start gap-2.5">
+        <Hourglass className="mt-0.5 size-4 shrink-0 text-info" aria-hidden />
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-semibold text-ink">{PROMPT_STATUS_LABEL.awaiting_receipt}</span>
+            <Link to={`/app/orders/${p.orderId}`} className="tnum font-medium text-ink-2 hover:underline">
+              {p.orderNumber != null ? `#${p.orderNumber}` : 'Order'}
+            </Link>
+            {p.simulated && <Badge tone="info">Simulated</Badge>}
+          </p>
+          <p className="mt-0.5 text-xs text-ink-3">
+            Prompt sent <When iso={p.createdAt} />
+            {p.phoneHint && <> · phone ···{p.phoneHint}</>} · not counted as paid until the M-Pesa receipt arrives. Don't release goods yet.
+          </p>
+        </div>
+      </div>
+      <Money minor={p.amountMinor} currency="KES" className="shrink-0 text-sm font-medium text-ink-2" />
+    </li>
+  )
+}
+
+/** Subtle "live" marker while prompts are pending and the page is polling. */
+function LiveIndicator({ live }: { live: boolean }) {
+  if (!live) return null
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-2" role="status">
+      <span className="relative inline-flex size-2" aria-hidden>
+        <span className="absolute inline-flex size-full rounded-full bg-pos opacity-60 motion-safe:animate-ping" />
+        <span className="relative inline-flex size-2 rounded-full bg-pos" />
+      </span>
+      Live · checking for M-Pesa updates
+    </span>
   )
 }
 
@@ -444,8 +490,10 @@ export function MpesaReconciliation() {
   const prompts = useOrgQuery('mpesa-prompts', (g, o) => g.listMpesaPrompts(o))
   const integrations = useIntegrations()
   const orders = useOrders()
+  const { org } = useOrg()
   const [view, setView] = useState<View>('review')
   const demo = gateway.mode === 'demo'
+  const ngn = org.baseCurrency === 'NGN'
 
   const all = receipts.data ?? []
   const queue = all.filter((r) => isReviewable(r.status))
@@ -453,7 +501,18 @@ export function MpesaReconciliation() {
   const dismissed = all.filter((r) => r.status === 'dismissed')
   const promptRows = prompts.data ?? []
   const pending = promptRows.filter((p) => p.status === 'pending').length
+  const awaiting = promptRows.filter((p) => p.status === 'awaiting_receipt')
   const failed = promptRows.filter((p) => ['failed', 'cancelled', 'timeout'].includes(p.status)).length
+
+  // Poll while any prompt is unresolved: 5 s, backing off to 30 s, paused while the tab is hidden.
+  const live = usePendingPoll(
+    pending + awaiting.length > 0,
+    () => {
+      void prompts.refetch()
+      void receipts.refetch()
+    },
+    `${pending}:${awaiting.length}:${all.length}`,
+  )
 
   return (
     <>
@@ -475,9 +534,15 @@ export function MpesaReconciliation() {
         <VerifyCode />
       </Section>
 
+      {ngn && <BankTransferAccounts />}
+
       <Section
-        title="M-Pesa reconciliation"
-        description="Payments are marked paid only from verified M-Pesa confirmations. Anything that doesn't match exactly waits here for you."
+        title={ngn ? 'Payment reconciliation' : 'M-Pesa reconciliation'}
+        description={
+          ngn
+            ? 'Payments are marked paid only from verified provider confirmations (M-Pesa or bank transfer). Anything that does not match exactly waits here for you.'
+            : "Payments are marked paid only from verified M-Pesa confirmations. Anything that doesn't match exactly waits here for you."
+        }
         icon={<Smartphone className="size-4" aria-hidden />}
       >
         {receipts.isPending || prompts.isPending ? (
@@ -510,29 +575,43 @@ export function MpesaReconciliation() {
                 <dt className="text-ink-2">Prompts waiting</dt>
                 <dd className="tnum font-semibold text-ink">{pending}</dd>
               </div>
+              {awaiting.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <dt className="text-ink-2">Waiting for receipt</dt>
+                  <dd className="tnum font-semibold text-ink">{awaiting.length}</dd>
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <dt className="text-ink-2">Prompts not paid</dt>
                 <dd className="tnum font-semibold text-ink">{failed}</dd>
               </div>
             </dl>
+            <LiveIndicator live={live} />
 
-            {demo && gateway.simulateIncomingMpesa && <SimulateIncoming />}
+            {demo && !ngn && gateway.simulateIncomingMpesa && <SimulateIncoming />}
 
             <PillTabs<View>
               label="Reconciliation views"
               value={view}
               onChange={setView}
               tabs={[
-                { id: 'review', label: 'Needs you', count: queue.length },
+                { id: 'review', label: 'Needs you', count: queue.length + awaiting.length },
                 { id: 'matched', label: 'Matched', count: matched.length },
                 { id: 'prompts', label: 'Prompts', count: promptRows.length },
                 { id: 'resolved', label: 'Dismissed', count: dismissed.length },
               ]}
             />
 
+            {view === 'review' && awaiting.length > 0 && (
+              <ul className="divide-y divide-line rounded-xl bg-info-soft/50 px-3" aria-label="M-Pesa says paid, waiting for receipt">
+                {awaiting.map((p) => (
+                  <AwaitingReceiptRow key={p.checkoutRequestId} p={p} />
+                ))}
+              </ul>
+            )}
             {view === 'review' &&
               (queue.length === 0 ? (
-                <EmptyState
+                awaiting.length > 0 ? null : <EmptyState
                   title="Nothing to sort out"
                   body="Payments that arrive without a matching order, with a different amount, or after an order was cancelled will wait here."
                 />
