@@ -268,3 +268,43 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* ───────────── Product finish ───────────── */
+::selection { background: color-mix(in srgb, var(--ak-brand) 18%, transparent); color: var(--ak-ink); }
+.ak-root {
+  min-height: 100dvh;
+  text-rendering: optimizeLegibility;
+}
+.ak-root a, .ak-root button, .ak-root input, .ak-root select, .ak-root textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+.ak-root a:not([class*="button"]):not([class*="bg-"]) {
+  text-underline-offset: 3px;
+}
+.ak-root button, .ak-root [role="button"], .ak-root a {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: 160ms;
+  transition-timing-function: cubic-bezier(.2,.8,.2,1);
+}
+.ak-root button:disabled, .ak-root [aria-disabled="true"] {
+  cursor: not-allowed;
+}
+.ak-root :focus-visible {
+  outline: 2px solid var(--ak-brand);
+  outline-offset: 3px;
+}
+.ak-root .tnum, .ak-root [data-numeric="true"] {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+@media (max-width: 767px) {
+  .ak-root main {
+    scroll-margin-top: 4rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .ak-root a, .ak-root button, .ak-root input, .ak-root select, .ak-root textarea {
+    transition-duration: 0.01ms !important;
+  }
+}
