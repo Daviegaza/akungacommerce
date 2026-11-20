@@ -219,8 +219,8 @@ function SideNav({ toConfirm }: { toConfirm: number }) {
               end={item.end}
               className={({ isActive }) =>
                 cn(
-                  'group flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm transition-colors',
-                  isActive ? 'bg-ink/[0.07] font-medium text-ink' : 'text-ink-2 hover:bg-ink/[0.04] hover:text-ink',
+                  'group flex h-10 items-center gap-3 rounded-xl px-3 text-[13px] font-medium transition-colors',
+                  isActive ? 'bg-brand-soft font-semibold text-brand' : 'text-ink-2 hover:bg-sunken hover:text-ink',
                 )
               }
             >
