@@ -1,19 +1,25 @@
 # Edge Functions
 
-Nothing here is connected. Every integration is **adapter only** (code exists and is unit-tested,
+Nothing here is deployed or connected. Every integration is **adapter only** (code exists and is unit-tested,
 but no credentials, provider registration or end-to-end test). Do not relabel an integration as
 "connected and verified" until a real end-to-end test has passed.
 
 Shared, runtime-agnostic code lives in `_shared/` (Web Crypto only) and is tested with vitest:
-`npx vitest run supabase/functions`.
+`npx vitest run supabase/functions`. Every function type-checks with Deno
+(`deno check supabase/functions/*/index.ts`, also run in CI).
+
+**What has actually been run:** unit tests of the shared code, database tests of every SQL function the
+functions call, `deno check` of all nine functions, and (2026-11-20) a boot of all nine in the local
+Supabase edge runtime, where they refused unconfigured or unsigned requests. **No function has been called
+by a real provider (Meta, Safaricom, Stripe, Paystack, Resend, Twilio), and none is deployed.**
 
 ## Functions
 
 | Function | Purpose | Current label |
 | --- | --- | --- |
-| `whatsapp-webhook` | Meta verification handshake (GET); signature-verified inbound events, dedupe, opt-out recording (POST). Never replies. | adapter_only |
+| `whatsapp-webhook` | Meta verification handshake (GET); signature-verified inbound events, dedupe, reliable opt-out (POST); `POST ?retry=1` re-runs stored events that failed. Never replies. See "WhatsApp opt-outs". | adapter_only |
 | `payment-webhook` | `?provider=stripe` / `?provider=paystack`: verify signature, dedupe, record `provider_verified` payment via `record_verified_payment`. Paystack dedicated-account credits (`charge.success`, channel `dedicated_nuban`) go to `reconcile_bank_transfer` instead (see "Nigeria bank transfer" below). | adapter_only (Stripe, Paystack, Paystack DVA) |
-| `send-message` | Authenticated send over WhatsApp / email (Resend) / SMS (Twilio). Marketing requires recorded consent. Returns `not_configured` until secrets are set. | adapter_only |
+| `send-message` | Authenticated send over WhatsApp / email (Resend) / SMS (Twilio) to a **named customer only** (the recipient is read from the database). Marketing requires recorded consent. Every attempt is logged in `outbound_messages` and limited (300 an hour per business, 100 per staff member, 10 per customer) before any provider is called. Returns `not_configured` until secrets are set. | adapter_only |
 | `mpesa-stk` | Storefront asks M-Pesa (Daraja STK push) to show a payment prompt for a tracked order. Never marks anything paid. | adapter_only |
 | `mpesa-callback` | Daraja STK result callback: shared-secret check, dedupe, then `reconcile_mpesa_stk` (auto-match, mismatch/late to review queue). | adapter_only |
 | `mpesa-c2b` | Daraja C2B confirmation (customer paid the Till/Paybill directly): shared-secret check, dedupe, then `reconcile_mpesa_c2b`. | adapter_only |
@@ -26,14 +32,19 @@ Shared, runtime-agnostic code lives in `_shared/` (Web Crypto only) and is teste
 `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are injected by Supabase.
 Set the rest with `supabase secrets set NAME=value` — never commit values.
 
-- `whatsapp-webhook`: `WHATSAPP_VERIFY_TOKEN=<random-string>`, `WHATSAPP_APP_SECRET=<meta-app-secret>`
+- `whatsapp-webhook`: `WHATSAPP_VERIFY_TOKEN=<random-string>`, `WHATSAPP_APP_SECRET=<meta-app-secret>`, optional `WEBHOOK_RETRY_SECRET=<random, 16+ characters>` for the scheduled retry
 - `payment-webhook`: `STRIPE_WEBHOOK_SECRET=<whsec_...>`, `PAYSTACK_SECRET_KEY=<sk_...>`
 - `send-message`:
   - WhatsApp: `WHATSAPP_SEND_ENABLED=true` (feature flag, off by default), `WHATSAPP_PHONE_NUMBER_ID=<id>`, `WHATSAPP_ACCESS_TOKEN=<token>`
   - Email: `RESEND_API_KEY=<re_...>`, `RESEND_FROM="Shop <orders@your-verified-domain>"`
   - SMS: `TWILIO_ACCOUNT_SID=<AC...>`, `TWILIO_AUTH_TOKEN=<token>`, `TWILIO_FROM=<+E164 or MG... service sid>`
   - Optional: `ALLOWED_ORIGIN=<https://your-app-origin>` (CORS; defaults to `*`)
-- `mpesa-stk` / `mpesa-callback`: see the M-Pesa section below.
+- `mpesa-stk` / `mpesa-callback` / `mpesa-c2b`: see the M-Pesa section below. Optional for the two callbacks:
+  `MPESA_ALLOWED_IPS=<Safaricom IPv4 addresses or CIDR ranges>` together with
+  `MPESA_CLIENT_IP_HEADER=<the header your hosting sets to the true caller IP>`. Both unset = no IP check
+  (the URL secret still applies). An allowlist without the header is refused as a misconfiguration. Get the
+  current IP list from Safaricom; none is shipped here. Which header carries the real caller IP on Supabase
+  hosting has **not** been verified.
 
 ## Deploy (not run yet)
 
@@ -45,6 +56,8 @@ supabase functions deploy mpesa-stk                          # storefront calls 
 supabase functions deploy mpesa-callback --no-verify-jwt     # Safaricom cannot send a Supabase JWT
 supabase functions deploy mpesa-c2b --no-verify-jwt          # Safaricom cannot send a Supabase JWT
 supabase functions deploy mpesa-stk-query                    # scheduler sends the service role key
+supabase functions deploy media-cleanup --no-verify-jwt      # x-cleanup-secret or service-role bearer
+supabase functions deploy verify-custom-domain               # see "Custom domain DNS check"
 ```
 
 ## Webhook URLs to register (after deploy)
@@ -55,6 +68,27 @@ supabase functions deploy mpesa-stk-query                    # scheduler sends t
   (event `payment_intent.succeeded`; PaymentIntents must carry `metadata.akunga_order_id`)
 - Paystack Dashboard > Settings > API Keys & Webhooks: `https://<project-ref>.supabase.co/functions/v1/payment-webhook?provider=paystack`
   (transactions must carry `metadata.akunga_order_id`)
+
+## WhatsApp opt-outs (migration `20261121000080_webhook_retry.sql`)
+
+A customer who replies STOP must never stay subscribed because of a passing error.
+
+1. The event is stored in `webhook_events` (unique per provider and message id).
+2. `whatsapp_apply_opt_out` withdraws consent (source `stop_reply`) **and** marks the event processed in one
+   transaction, with the event row locked. Either both happen or neither does.
+3. On any failure, `webhook_event_failed` records the attempt and the error, and the webhook answers 500 so
+   Meta delivers the event again. A re-delivery of a stored but unprocessed event is processed again; a
+   processed one is skipped, so there is no second side effect.
+4. After 8 failed attempts the event is parked (`dead_at`) for a person to review. It is never marked processed.
+5. Optional scheduled retry: `POST /whatsapp-webhook?retry=1` with `x-retry-secret: <WEBHOOK_RETRY_SECRET>`
+   re-runs pending events, oldest first, with back-off (`webhook_events_pending`). Not scheduled anywhere.
+6. One WhatsApp business number can belong to only one organisation (unique index), so an opt-out always
+   routes to exactly one business.
+
+Tested: 8 unit tests (`_shared/whatsapp-process.test.ts`: success, duplicate, failed update then retry,
+scheduled retry, parking, and failure to record the failure) and 8 database tests
+(`tests/db/webhook-retry.db.test.ts`, including a simulated database outage during the consent update).
+Not tested with a real Meta delivery.
 
 ## Before relabelling anything as verified
 
