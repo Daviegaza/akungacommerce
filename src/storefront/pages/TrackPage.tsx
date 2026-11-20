@@ -1,4 +1,4 @@
-import { Suspense, useState, type ReactNode } from 'react'
+import { Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
@@ -16,6 +16,7 @@ import {
   Loader2,
   MapPin,
   RefreshCw,
+  ShieldCheck,
   Smartphone,
   Star,
   Store,
@@ -26,7 +27,9 @@ import { cn } from '@/lib/utils'
 import { formatDateTime, toE164 } from '@/domain/locale'
 import { money as moneyOf, toMajorString } from '@/domain/money'
 import { ORDER_STATUS_LABEL, type OrderStatus } from '@/domain/orders'
-import type { StkResult, TrackedOrder } from '@/gateway/storefront'
+import type { SimulatedOutcome, TrackedOrder } from '@/gateway/storefront'
+import { buyerPromptMessage } from '@/domain/reconciliation'
+import { RESEND_AFTER_SECONDS, WAIT_SECONDS, useMpesaPrompt, type PromptPhase } from '@/storefront/components/useMpesaPrompt'
 import { whatsappChatLink } from '@/integrations/whatsapp-link'
 import { getStorefrontGateway } from '@/storefront/gateway'
 import { safeLocalStorage } from '@/storefront/cart'
@@ -240,7 +243,7 @@ function OrderView({
       {!cancelled && !paid && <PaymentPanel token={token} order={order} money={money} />}
       {!cancelled && paid && (
         <div className="flex items-center gap-2 rounded-2xl bg-pos-soft px-4 py-3 text-sm font-medium text-pos ak-rise">
-          <CheckCircle2 className="size-5" aria-hidden /> Paid {money(order.paidMinor)}. Confirmed by {shop.name}.
+          <CheckCircle2 className="size-5" aria-hidden /> Paid {money(order.paidMinor)}. Received by {shop.name}.
         </div>
       )}
 
@@ -470,26 +473,40 @@ function MpesaPanel({
   copy(id: string, text: string): Promise<void>
 }) {
   const { shop } = order
+  const qc = useQueryClient()
   const [phone, setPhone] = useState(savedPhone)
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [showManual, setShowManual] = useState(false)
+  const [simulate, setSimulate] = useState<SimulatedOutcome>('success')
   const hasManual = Boolean(shop.mpesaTill || shop.mpesaPaybill)
 
-  const prompt = useMutation<StkResult, unknown, string>({
-    mutationFn: async (e164) => (await getStorefrontGateway()).requestMpesaPrompt(token, e164),
+  const options = useQuery({
+    queryKey: ['payment-options', shop.slug],
+    queryFn: async () => (await getStorefrontGateway()).getPaymentOptions(shop.slug as string),
+    enabled: Boolean(shop.slug),
+    staleTime: 60_000,
+    retry: false,
   })
-  const result = prompt.data
-  const fallback = showManual || result?.status === 'not_configured' || result?.status === 'failed' || prompt.isError
+  const simulated = options.data?.simulated === true
+  // No slug, or the lookup failed: still offer the prompt; the server answers not_configured if it can't.
+  const stkOffered = options.data ? options.data.stk : !options.isPending || !shop.slug
 
-  function send() {
+  const { phase, send, stopWaiting, reset } = useMpesaPrompt(token, (status) => {
+    if (status === 'paid' || status === 'mismatch' || status === 'late') void qc.invalidateQueries({ queryKey: ['track', token] })
+  })
+
+  function submit() {
     const r = toE164(phone, regionOf(shop.locale))
     if (!r.ok) {
       setPhoneError(r.error)
       return
     }
     setPhoneError(null)
-    prompt.mutate(r.e164)
+    void send(r.e164, simulated ? simulate : undefined)
   }
+
+  const manual =
+    showManual || phase.kind === 'not_configured' || phase.kind === 'error' || (options.isSuccess && !stkOffered)
 
   return (
     <Card className="border border-brand/25">
@@ -499,36 +516,43 @@ function MpesaPanel({
           <p className="font-display text-4xl font-extrabold leading-tight tracking-tight tnum">{money(due)}</p>
           {order.paidMinor > 0 && <p className="text-xs text-ink-3 tnum">{money(order.paidMinor)} of {money(order.totalMinor)} received</p>}
         </div>
-        <Badge tone="warn">Not paid yet</Badge>
+        <div className="flex flex-col items-end gap-1.5">
+          <Badge tone="warn">Not paid yet</Badge>
+          {simulated && <Badge tone="info">Demo · simulated</Badge>}
+        </div>
       </div>
 
       <AnimatePresence mode="wait" initial={false}>
-        {result?.status === 'prompt_sent' && !showManual ? (
-          <motion.div key="sent" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4 flex flex-col gap-3">
-            <div className="flex items-start gap-3 rounded-xl bg-info-soft p-3 text-sm" role="status">
-              <Smartphone className="mt-0.5 size-5 shrink-0 text-info" aria-hidden />
-              <div>
-                <p className="font-semibold text-ink">Check your phone</p>
-                <p className="text-ink-2">
-                  Enter your M-Pesa PIN on the prompt{shop.registeredName ? ` from ${shop.registeredName}` : ''}. This page shows "Paid" once
-                  the payment is confirmed.
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" onClick={send} loading={prompt.isPending}>
-                Send again
-              </Button>
-              {hasManual && (
-                <Button variant="ghost" onClick={() => setShowManual(true)}>
-                  Pay with {shop.mpesaTill ? 'Till' : 'Paybill'} instead
-                </Button>
-              )}
-            </div>
+        {!manual && phase.kind === 'waiting' ? (
+          <motion.div key="waiting" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4">
+            <PromptWaiting
+              startedAt={phase.startedAt}
+              registeredName={shop.registeredName}
+              simulated={simulated}
+              onResend={submit}
+              onCancel={() => stopWaiting('cancelled_by_buyer')}
+              onExpire={() => stopWaiting('no_answer')}
+            />
           </motion.div>
-        ) : !fallback ? (
+        ) : !manual && (phase.kind === 'done' || phase.kind === 'stopped') ? (
+          <motion.div key="outcome" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4 flex flex-col gap-3">
+            <PromptOutcome phase={phase} />
+            {!(phase.kind === 'done' && (phase.status === 'paid' || phase.status === 'mismatch' || phase.status === 'late')) && (
+              <div className="flex flex-wrap gap-2">
+                <Button variant="brand" onClick={reset} icon={<RefreshCw className="size-4" aria-hidden />}>
+                  Send a new prompt
+                </Button>
+                {hasManual && (
+                  <Button variant="ghost" onClick={() => setShowManual(true)}>
+                    Pay with {shop.mpesaTill ? 'Till' : 'Paybill'} instead
+                  </Button>
+                )}
+              </div>
+            )}
+          </motion.div>
+        ) : !manual ? (
           <motion.div key="ask" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4 flex flex-col gap-3">
-            <Field label="M-Pesa phone number" error={phoneError}>
+            <Field label="M-Pesa phone number" error={phoneError} hint="We send a payment prompt to this phone. You enter your PIN there, never here.">
               {(p) => (
                 <Input
                   {...p}
@@ -542,7 +566,38 @@ function MpesaPanel({
                 />
               )}
             </Field>
-            <Button variant="brand" size="lg" onClick={send} loading={prompt.isPending} className="w-full rounded-2xl" icon={<Smartphone className="size-4" aria-hidden />}>
+            {simulated && (
+              <label className="flex flex-col gap-1 rounded-xl bg-info-soft p-3 text-sm">
+                <span className="font-medium text-ink">Demo: choose what the simulated M-Pesa does</span>
+                <select
+                  value={simulate}
+                  onChange={(e) => setSimulate(e.target.value as SimulatedOutcome)}
+                  className="h-11 rounded-xl border border-line-strong bg-panel px-3 text-ink"
+                >
+                  <option value="success">Customer pays</option>
+                  <option value="cancelled">Customer cancels the prompt</option>
+                  <option value="timeout">Prompt times out</option>
+                  <option value="wrong_amount">Wrong amount arrives</option>
+                </select>
+                <span className="text-xs text-ink-2">Nothing is charged. No phone is contacted.</span>
+              </label>
+            )}
+            {shop.registeredName && (
+              <p className="flex items-start gap-2 text-sm text-ink-2">
+                <ShieldCheck className="mt-0.5 size-4 shrink-0 text-pos" aria-hidden />
+                <span>
+                  The prompt will say <strong className="font-semibold text-ink">{shop.registeredName}</strong>. Only enter your PIN if it does.
+                </span>
+              </p>
+            )}
+            <Button
+              variant="brand"
+              size="lg"
+              onClick={submit}
+              loading={phase.kind === 'sending'}
+              className="w-full rounded-2xl"
+              icon={<Smartphone className="size-4" aria-hidden />}
+            >
               Send M-Pesa prompt to my phone
             </Button>
             {hasManual && (
@@ -553,54 +608,173 @@ function MpesaPanel({
           </motion.div>
         ) : (
           <motion.div key="manual" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4 flex flex-col gap-3">
-            {(result?.status === 'failed' || prompt.isError) && (
+            {phase.kind === 'error' && (
               <p role="alert" className="flex items-start gap-2 rounded-xl bg-neg-soft p-3 text-sm text-neg">
                 <XCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
-                {result?.status === 'failed' ? result.error : errorMessage(prompt.error)}. You can pay manually below.
+                <span>{phase.message}. You can pay with the steps below instead.</span>
               </p>
             )}
-            {result?.status === 'not_configured' && !showManual && (
+            {(phase.kind === 'not_configured' || (options.isSuccess && !stkOffered)) && !showManual && (
               <p className="text-sm text-ink-2">Automatic prompts aren't set up for this shop yet. Pay in a few steps on your phone:</p>
             )}
             {hasManual ? (
-              <ol className="flex flex-col gap-2 rounded-xl bg-sunken p-3 text-sm">
-                <Step n={1}>Open M-Pesa and choose <strong>Lipa na M-Pesa</strong></Step>
-                {shop.mpesaTill ? (
-                  <>
-                    <Step n={2}>Choose <strong>Buy Goods and Services</strong></Step>
-                    <Step n={3}>
-                      <CopyLine label="Till number" value={shop.mpesaTill} id="till" copied={copied} copy={copy} />
-                    </Step>
-                  </>
-                ) : (
-                  <>
-                    <Step n={2}>Choose <strong>Pay Bill</strong></Step>
-                    <Step n={3}>
-                      <CopyLine label="Business number" value={shop.mpesaPaybill ?? ''} id="paybill" copied={copied} copy={copy} />
-                    </Step>
-                    <Step n={4}>
-                      <CopyLine label="Account number" value={String(order.number)} id="acct" copied={copied} copy={copy} />
-                    </Step>
-                  </>
+              <>
+                {shop.registeredName && (
+                  <p className="flex items-start gap-2 rounded-xl bg-pos-soft p-3 text-sm text-ink">
+                    <ShieldCheck className="mt-0.5 size-4 shrink-0 text-pos" aria-hidden />
+                    <span>
+                      Before you enter your PIN, M-Pesa must show <strong className="font-semibold">{shop.registeredName}</strong>. If it shows a
+                      different name, stop.
+                    </span>
+                  </p>
                 )}
-                <Step n={shop.mpesaTill ? 4 : 5}>
-                  <CopyLine label="Amount" value={money(due)} copyValue={majorString(due, order.currency)} id="amt" copied={copied} copy={copy} />
-                </Step>
-                <Step n={shop.mpesaTill ? 5 : 6}>
-                  Check the name{shop.registeredName ? <> shows <strong>{shop.registeredName}</strong></> : ''}, then enter your PIN
-                </Step>
-              </ol>
+                <ol className="flex flex-col gap-2 rounded-xl bg-sunken p-3 text-sm">
+                  <Step n={1}>Open M-Pesa and choose <strong>Lipa na M-Pesa</strong></Step>
+                  {shop.mpesaTill ? (
+                    <>
+                      <Step n={2}>Choose <strong>Buy Goods and Services</strong></Step>
+                      <Step n={3}>
+                        <CopyLine label="Till number" value={shop.mpesaTill} id="till" copied={copied} copy={copy} />
+                      </Step>
+                    </>
+                  ) : (
+                    <>
+                      <Step n={2}>Choose <strong>Pay Bill</strong></Step>
+                      <Step n={3}>
+                        <CopyLine label="Business number" value={shop.mpesaPaybill ?? ''} id="paybill" copied={copied} copy={copy} />
+                      </Step>
+                      <Step n={4}>
+                        <CopyLine label="Account number" value={String(order.number)} id="acct" copied={copied} copy={copy} />
+                      </Step>
+                    </>
+                  )}
+                  <Step n={shop.mpesaTill ? 4 : 5}>
+                    <CopyLine label="Amount" value={money(due)} copyValue={majorString(due, order.currency)} id="amt" copied={copied} copy={copy} />
+                  </Step>
+                  <Step n={shop.mpesaTill ? 5 : 6}>
+                    Check the name{shop.registeredName ? <> shows <strong>{shop.registeredName}</strong></> : ''}, then enter your PIN
+                  </Step>
+                </ol>
+              </>
             ) : (
               <p className="rounded-xl bg-sunken p-3 text-sm text-ink-2">{shop.name} will send you payment details shortly.</p>
             )}
             <p className="flex items-start gap-2 text-xs text-ink-3">
               <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-              The shop confirms your payment. This page shows "Paid" once they have it.
+              {options.data?.provider === 'daraja' && shop.mpesaPaybill && !shop.mpesaTill
+                ? 'This page shows "Paid" once M-Pesa confirms your payment.'
+                : 'The shop confirms your payment. This page shows "Paid" once they have it.'}
             </p>
+            {stkOffered && (showManual || phase.kind === 'error') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowManual(false)
+                  reset()
+                }}
+                className="min-h-11 self-start text-sm font-medium text-ink-2 underline-offset-4 hover:text-ink hover:underline"
+              >
+                Get an M-Pesa prompt instead
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
     </Card>
+  )
+}
+
+function PromptWaiting({
+  startedAt,
+  registeredName,
+  simulated,
+  onResend,
+  onCancel,
+  onExpire,
+}: {
+  startedAt: number
+  registeredName: string | null
+  simulated: boolean
+  onResend(): void
+  onCancel(): void
+  onExpire(): void
+}) {
+  const now = useNow(1000)
+  const elapsed = Math.max(0, Math.floor((now - startedAt) / 1000))
+  const left = Math.max(0, WAIT_SECONDS - elapsed)
+  const expireRef = useRef(onExpire)
+  useEffect(() => {
+    expireRef.current = onExpire
+  }, [onExpire])
+  useEffect(() => {
+    if (left === 0) expireRef.current()
+  }, [left])
+  const pct = Math.min(100, (elapsed / WAIT_SECONDS) * 100)
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-start gap-3 rounded-xl bg-info-soft p-3 text-sm" role="status" aria-live="polite">
+        <Loader2 className="mt-0.5 size-5 shrink-0 animate-spin text-info motion-reduce:animate-none" aria-hidden />
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-ink">{simulated ? 'Simulated prompt sent' : 'Check your phone'}</p>
+          <p className="text-ink-2">
+            Enter your M-Pesa PIN on the prompt{registeredName ? <> from <strong className="font-semibold text-ink">{registeredName}</strong></> : ''}. This page
+            updates by itself.
+          </p>
+          <p className="mt-2 text-xs text-ink-3 tnum">
+            Waiting for M-Pesa · {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}
+          </p>
+          <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-panel" aria-hidden>
+            <div className="h-full rounded-full bg-info transition-[width] duration-1000 ease-linear" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="secondary" onClick={onResend} disabled={elapsed < RESEND_AFTER_SECONDS}>
+          {elapsed < RESEND_AFTER_SECONDS ? `Resend in ${RESEND_AFTER_SECONDS - elapsed}s` : "Didn't get it? Resend"}
+        </Button>
+        <Button variant="ghost" onClick={onCancel}>
+          Stop waiting
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function PromptOutcome({ phase }: { phase: Extract<PromptPhase, { kind: 'done' | 'stopped' }> }) {
+  if (phase.kind === 'stopped') {
+    return (
+      <div className="flex items-start gap-3 rounded-xl bg-warn-soft p-3 text-sm" role="status">
+        <Info className="mt-0.5 size-5 shrink-0 text-warn" aria-hidden />
+        <div>
+          <p className="font-semibold text-ink">{phase.reason === 'cancelled_by_buyer' ? 'Stopped waiting' : "We haven't heard back from M-Pesa yet"}</p>
+          <p className="text-ink-2">
+            If you already entered your PIN, please don't pay again: this page will show "Paid" as soon as M-Pesa confirms it. If no prompt
+            appeared, send a new one.
+          </p>
+        </div>
+      </div>
+    )
+  }
+  const msg = buyerPromptMessage(phase.status, phase.resultCode)
+  const good = phase.status === 'paid'
+  const review = phase.status === 'mismatch' || phase.status === 'late'
+  return (
+    <div
+      className={cn('flex items-start gap-3 rounded-xl p-3 text-sm', good ? 'bg-pos-soft' : review ? 'bg-info-soft' : 'bg-neg-soft')}
+      role={good || review ? 'status' : 'alert'}
+    >
+      {good ? (
+        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-pos" aria-hidden />
+      ) : review ? (
+        <Info className="mt-0.5 size-5 shrink-0 text-info" aria-hidden />
+      ) : (
+        <XCircle className="mt-0.5 size-5 shrink-0 text-neg" aria-hidden />
+      )}
+      <div>
+        <p className="font-semibold text-ink">{msg.title}</p>
+        <p className="text-ink-2">{msg.body}</p>
+      </div>
+    </div>
   )
 }
 

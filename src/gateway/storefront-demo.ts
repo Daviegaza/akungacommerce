@@ -25,6 +25,7 @@ import {
   type TrackedOrder,
 } from './storefront'
 import type { Address } from './types'
+import { demoPaymentOptions, demoPromptStatus, demoRequestPrompt, settleDemoPrompts } from './collections-demo'
 
 const { tx, read, uuid, now, nowIso, level, getOrg, createOrderCore } = demoInternals
 
@@ -412,10 +413,16 @@ export function createDemoStorefront(): StorefrontGateway {
 
     quote: (slug, input) => read((s) => quoteIn(s, requireShop(s, slug), input)),
     placeOrder: (slug, input, idempotencyKey) => tx((s) => placeOrderIn(s, slug, input, idempotencyKey)),
-    track: (token) => read((s) => trackIn(s, token)),
+    track: (token) =>
+      tx((s) => {
+        settleDemoPrompts(demoInternals, s)
+        return trackIn(s, token)
+      }),
     submitReview: (token, productId, rating, body) => tx((s) => reviewIn(s, token, productId, rating, body)),
 
-    // The demo never contacts M-Pesa and nothing is charged.
-    requestMpesaPrompt: () => Promise.resolve({ status: 'not_configured' }),
+    // SIMULATED: the demo never contacts M-Pesa and nothing is charged (collections-demo.ts).
+    requestMpesaPrompt: (token, phoneE164, opts) => tx((s) => demoRequestPrompt(demoInternals, s, orderByToken(s, token), phoneE164, opts?.simulate)),
+    getPaymentOptions: (slug) => read((s) => demoPaymentOptions(s, requireShop(s, slug).orgId)),
+    getMpesaPromptStatus: (token, checkoutRequestId) => tx((s) => demoPromptStatus(demoInternals, s, orderByToken(s, token), checkoutRequestId)),
   }
 }

@@ -229,6 +229,14 @@ function CheckoutForm({
   const method: Method | null = chosenMethod && methods.includes(chosenMethod) ? chosenMethod : (methods[0] ?? null)
 
   const hasMpesa = Boolean(shop.mpesaTill || shop.mpesaPaybill)
+  // Payment step: can this shop send an automatic M-Pesa prompt? (Failure = Till/Paybill wording, never a fake prompt.)
+  const payOptions = useQuery({
+    queryKey: ['storefront', slug, 'payment-options'],
+    queryFn: async () => (await getStorefrontGateway()).getPaymentOptions(slug),
+    staleTime: 60_000,
+    retry: false,
+  })
+  const stk = payOptions.data?.stk === true
   const payments: PaymentChoice[] = [...(hasMpesa ? (['mpesa'] as const) : []), ...(shop.codEnabled ? (['cod'] as const) : [])]
   const payment: PaymentChoice =
     chosenPayment && payments.includes(chosenPayment) ? chosenPayment : (payments[0] ?? 'other')
@@ -518,7 +526,9 @@ function CheckoutForm({
                       value: p,
                       label: 'M-Pesa',
                       icon: <Smartphone className="size-4" aria-hidden />,
-                      note: 'Get a prompt on your phone, or pay by ' + (shop.mpesaTill ? 'Till' : 'Paybill') + ' after ordering',
+                      note: stk
+                        ? `We send a payment prompt to ${phoneResult.ok ? phoneResult.e164 : 'your phone'} after you order${payOptions.data?.simulated ? ' (simulated in the demo)' : ''}. Or pay by ${shop.mpesaTill ? 'Till' : 'Paybill'}.`
+                        : `Pay by ${shop.mpesaTill ? 'Till' : 'Paybill'} after ordering. We show you the steps.`,
                     }
                   : {
                       value: p,
@@ -533,8 +543,8 @@ function CheckoutForm({
             <p className="mt-3 flex items-start gap-2 rounded-xl bg-pos-soft p-3 text-sm text-ink">
               <ShieldCheck className="mt-0.5 size-4 shrink-0 text-pos" aria-hidden />
               <span>
-                The M-Pesa prompt will show <strong className="font-semibold">{shop.registeredName}</strong>. Check the name before
-                you enter your PIN.
+                {stk ? 'The M-Pesa prompt will show' : 'M-Pesa will show'} <strong className="font-semibold">{shop.registeredName}</strong>. Check
+                the name before you enter your PIN.
               </span>
             </p>
           )}

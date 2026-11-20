@@ -1,15 +1,20 @@
 // M-Pesa STK push: POST /mpesa-stk  { tracking_token, phone_e164 }
-// Label: adapter_only. Returns 503 { status: 'not_configured' } until every
-// Daraja secret is set AND the order's business has a verified 'mpesa'
-// connection (integration_connections.state = 'connected_verified').
+// Label: adapter_only. Returns 503 { status: 'not_configured' } unless the shop's
+// collections provider (shop_settings.collections_provider) can prompt:
+//   daraja      every Daraja secret is set AND the business has a verified 'mpesa'
+//               connection (integration_connections.state = 'connected_verified')
+//   aggregator  a verified adapter exists for the chosen aggregator (none yet) AND
+//               its connection is verified
+//   manual      never
 //
-// It only ASKS M-Pesa to show a prompt on the customer's phone. It never marks
-// anything paid: payment is recorded later by mpesa-callback, and only through
-// record_verified_payment.
+// It only ASKS the provider to show a prompt on the customer's phone. It never
+// marks anything paid: payment is recorded later by mpesa-callback through
+// reconcile_mpesa_stk -> record_verified_payment.
 //
 // Called by the public storefront with the anon key (verify_jwt stays on).
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { DarajaError, buildStkPushPayload, getDarajaToken, sendStkPush, toDarajaPhone, type DarajaEnv, type StkTransactionType } from '../_shared/daraja.ts'
+import { toDarajaPhone } from '../_shared/daraja.ts'
+import { callbackUrlWithSecret, resolveCollectionsProvider } from '../_shared/collections.ts'
 
 const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') ?? '*'
 const cors = {
@@ -21,27 +26,17 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 const notConfigured = () => json({ status: 'not_configured' }, 503)
 
-const REQUIRED = [
-  'DARAJA_CONSUMER_KEY',
-  'DARAJA_CONSUMER_SECRET',
-  'DARAJA_SHORTCODE',
-  'DARAJA_PASSKEY',
-  'DARAJA_CALLBACK_URL',
-  'DARAJA_ENV',
-  'MPESA_CALLBACK_SECRET',
-] as const
-
 const PAYABLE = new Set(['pending_confirmation', 'confirmed', 'preparing', 'ready', 'dispatched', 'delivered'])
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') return json({ status: 'failed', error: 'Method not allowed' }, 405)
 
-  const env = Object.fromEntries(REQUIRED.map((k) => [k, Deno.env.get(k) ?? ''])) as Record<(typeof REQUIRED)[number], string>
-  if (REQUIRED.some((k) => !env[k]) || (env.DARAJA_ENV !== 'sandbox' && env.DARAJA_ENV !== 'production')) return notConfigured()
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  if (!supabaseUrl || !serviceKey) return notConfigured()
+  const callbackBase = Deno.env.get('DARAJA_CALLBACK_URL')
+  const callbackSecret = Deno.env.get('MPESA_CALLBACK_SECRET')
+  if (!supabaseUrl || !serviceKey || !callbackBase || !callbackSecret) return notConfigured()
 
   let raw: unknown
   try {
@@ -65,13 +60,25 @@ Deno.serve(async (req) => {
   if (orderError) return json({ status: 'failed', error: 'Could not load the order' }, 500)
   if (!order) return json({ status: 'failed', error: 'Order not found' }, 404)
 
-  // The money goes to the configured shortcode, so only a business whose M-Pesa
-  // connection was verified end-to-end may trigger prompts.
+  const { data: shop } = await db
+    .from('shop_settings')
+    .select('collections_provider, collections_aggregator')
+    .eq('org_id', order.org_id)
+    .maybeSingle()
+  const provider = resolveCollectionsProvider(
+    { provider: shop?.collections_provider, aggregator: shop?.collections_aggregator },
+    (k) => Deno.env.get(k),
+    fetch,
+  )
+  if (!provider.supportsStk) return notConfigured()
+
+  // The money goes to the configured account, so only a business whose connection
+  // was verified end-to-end may trigger prompts.
   const { data: conn } = await db
     .from('integration_connections')
     .select('state')
     .eq('org_id', order.org_id)
-    .eq('provider', 'mpesa')
+    .eq('provider', provider.paymentProvider)
     .maybeSingle()
   if (conn?.state !== 'connected_verified') return notConfigured()
 
@@ -94,41 +101,29 @@ Deno.serve(async (req) => {
       : json({ status: 'failed', error: 'Could not send the prompt' }, 500)
   }
 
-  const callback = new URL(env.DARAJA_CALLBACK_URL)
-  callback.searchParams.set('secret', env.MPESA_CALLBACK_SECRET)
-  const transactionType = (Deno.env.get('DARAJA_TRANSACTION_TYPE') ?? 'CustomerPayBillOnline') as StkTransactionType
-  const darajaEnv = env.DARAJA_ENV as DarajaEnv
+  const outcome = await provider.requestPrompt({
+    orderNumber: Number(order.number),
+    amountMinor: outstanding,
+    currency: order.currency,
+    phoneE164: phone,
+    callbackUrl: callbackUrlWithSecret(callbackBase, callbackSecret),
+  })
+  if (outcome.status === 'not_configured') return notConfigured()
+  if (outcome.status === 'failed') return json({ status: 'failed', error: outcome.error }, 502)
 
-  try {
-    const payload = buildStkPushPayload({
-      shortcode: env.DARAJA_SHORTCODE,
-      passkey: env.DARAJA_PASSKEY,
-      transactionType,
-      partyB: Deno.env.get('DARAJA_PARTY_B') || undefined,
-      amountMinor: outstanding,
-      phoneE164: phone,
-      callbackUrl: callback.toString(),
-      accountReference: String(order.number),
-      transactionDesc: `Order ${order.number}`,
-    })
-    const accessToken = await getDarajaToken(fetch, darajaEnv, env.DARAJA_CONSUMER_KEY, env.DARAJA_CONSUMER_SECRET)
-    const result = await sendStkPush(fetch, darajaEnv, accessToken, payload)
-
-    const { error: insertError } = await db.from('mpesa_requests').insert({
-      checkout_request_id: result.checkoutRequestId,
-      org_id: order.org_id,
-      order_id: order.id,
-      amount_minor: outstanding,
-    })
-    if (insertError) {
-      // The prompt is already on the phone; without this row the callback cannot be matched,
-      // so the payment would land in webhook_events for manual review instead of auto-recording.
-      console.error('mpesa-stk: failed to record request', insertError.code)
-    }
-    return json({ status: 'prompt_sent', checkout_request_id: result.checkoutRequestId })
-  } catch (e) {
-    if (e instanceof DarajaError) return json({ status: 'failed', error: e.message }, 502)
-    console.error('mpesa-stk: unexpected error')
-    return json({ status: 'failed', error: 'Could not send the prompt' }, 500)
+  const { error: insertError } = await db.from('mpesa_requests').insert({
+    checkout_request_id: outcome.checkoutRequestId,
+    org_id: order.org_id,
+    order_id: order.id,
+    amount_minor: outstanding,
+    provider: provider.paymentProvider,
+    status: 'pending',
+    phone_hint: phone.replace(/\D/g, '').slice(-3),
+  })
+  if (insertError) {
+    // The prompt is already on the phone; without this row the callback cannot be matched,
+    // so the payment stays in webhook_events for manual review instead of auto-recording.
+    console.error('mpesa-stk: failed to record request', insertError.code)
   }
+  return json({ status: 'prompt_sent', checkout_request_id: outcome.checkoutRequestId })
 })

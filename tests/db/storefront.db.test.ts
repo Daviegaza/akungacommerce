@@ -80,9 +80,12 @@ run('storefront: public access', () => {
     await expect(asAnon(`select public.create_order($1, '{}'::jsonb, 'k')`, [org])).rejects.toThrow(/permission denied/)
   })
 
-  it('staff cannot write shop_settings or reviews directly, nor read mpesa_requests', async () => {
+  it('staff cannot write shop_settings or mpesa_requests directly; they read only their own prompts', async () => {
     await expect(asUser(owner, `update public.shop_settings set published = false where org_id = $1`, [org])).rejects.toThrow(/permission denied/)
-    await expect(asUser(owner, `select * from public.mpesa_requests`)).rejects.toThrow(/permission denied/)
+    // Since 20261120000020 members may read their own org's prompts (reconciliation view), never write them.
+    await expect(asUser(owner, `update public.mpesa_requests set status = 'paid'`)).rejects.toThrow(/permission denied/)
+    const foreign = await asUser(owner, `select 1 from public.mpesa_requests where org_id <> $1`, [org])
+    expect(foreign).toHaveLength(0)
   })
 })
 

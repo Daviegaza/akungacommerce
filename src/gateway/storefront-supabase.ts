@@ -5,6 +5,8 @@
  * fetch to keep the public storefront bundle small.
  */
 import { GatewayError } from './gateway'
+import { PROMPT_STATUSES } from '@/domain/reconciliation'
+import type { PaymentOptions, PromptStatusResult } from './storefront'
 import type {
   DeliveryBand,
   PaymentChoice,
@@ -286,6 +288,21 @@ export function createSupabaseStorefront(url: string, anonKey: string, fetchImpl
         return { status: 'prompt_sent', checkoutRequestId: body.checkout_request_id }
       }
       return { status: 'failed', error: typeof body.error === 'string' ? body.error : 'Could not send the M-Pesa prompt' }
+    },
+    async getPaymentOptions(slug): Promise<PaymentOptions> {
+      try {
+        const r = await rpc<Row>('storefront_payment_options', { p_slug: slug })
+        const provider = r?.provider === 'daraja' || r?.provider === 'aggregator' ? r.provider : 'manual'
+        return { provider, stk: r?.stk === true, simulated: false }
+      } catch {
+        // Function not deployed yet (older database) or offline: offer Till/Paybill, never a fake prompt.
+        return { provider: 'manual', stk: false, simulated: false }
+      }
+    },
+    async getMpesaPromptStatus(trackingToken, checkoutRequestId): Promise<PromptStatusResult> {
+      const r = await rpc<Row>('storefront_payment_status', { p_token: trackingToken, p_checkout_request_id: checkoutRequestId })
+      const status = PROMPT_STATUSES.find((x) => x === r?.status) ?? 'pending'
+      return { status, resultCode: r?.result_code == null ? null : Number(r.result_code) }
     },
   }
 }

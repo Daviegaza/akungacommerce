@@ -222,3 +222,72 @@ export function kesToMinor(amount: number | null): number | null {
   if (amount === null || !Number.isFinite(amount) || amount <= 0 || !Number.isInteger(amount)) return null
   return amount * 100
 }
+
+/** Daraja STK ResultCode -> prompt status stored in mpesa_requests (mirrors src/domain/reconciliation.ts). */
+export function stkResultStatus(code: number): 'paid' | 'cancelled' | 'timeout' | 'failed' {
+  if (code === 0) return 'paid'
+  if (code === 1032) return 'cancelled'
+  if (code === 1037 || code === 1019) return 'timeout'
+  return 'failed'
+}
+
+/** Upper-case M-Pesa receipt code (8–12 letters/digits), or null. */
+export function normaliseReceipt(v: unknown): string | null {
+  const code = typeof v === 'string' ? v.trim().toUpperCase() : ''
+  return /^[A-Z0-9]{8,12}$/.test(code) ? code : null
+}
+
+/** Last 3 digits only: we never store a customer's full number from a callback. */
+export function phoneHintOf(v: unknown): string | null {
+  const digits = String(v ?? '').replace(/\D/g, '')
+  return digits.length >= 6 ? digits.slice(-3) : null
+}
+
+/** "1500", "1500.00", 1500 -> 150000 minor units; refuses fractions of a cent and non-positive values. */
+export function kesDecimalToMinor(v: unknown): number | null {
+  const str = typeof v === 'number' ? String(v) : typeof v === 'string' ? v.trim() : ''
+  const m = /^(\d{1,9})(?:\.(\d{1,2}))?$/.exec(str)
+  if (!m) return null
+  const minor = Number(m[1]) * 100 + Number((m[2] ?? '').padEnd(2, '0') || 0)
+  return minor > 0 ? minor : null
+}
+
+export interface C2bConfirmation {
+  transId: string
+  transactionType: string | null
+  amountMinor: number
+  shortcode: string
+  /** BillRefNumber: the account number typed for a Paybill; usually empty for a Till. */
+  accountRef: string | null
+  transactedAt: string | null
+  /** First name + last 3 digits, for display only. */
+  payerHint: string | null
+}
+
+/**
+ * Parse a Daraja C2B confirmation body (TransID, TransTime, TransAmount,
+ * BusinessShortCode, BillRefNumber, MSISDN, FirstName). Returns null when the
+ * shape is wrong. Newer Daraja versions mask MSISDN; we keep only a hint anyway.
+ */
+export function parseC2bConfirmation(body: unknown): C2bConfirmation | null {
+  if (!body || typeof body !== 'object') return null
+  const b = body as Record<string, unknown>
+  const transId = normaliseReceipt(b.TransID)
+  const amountMinor = kesDecimalToMinor(b.TransAmount)
+  const rawCode = b.BusinessShortCode
+  const shortcode = typeof rawCode === 'number' ? String(rawCode) : typeof rawCode === 'string' ? rawCode.trim() : ''
+  if (!transId || amountMinor === null || !/^\d{5,8}$/.test(shortcode)) return null
+  const ref = typeof b.BillRefNumber === 'string' ? b.BillRefNumber.trim().slice(0, 40) : ''
+  const first = typeof b.FirstName === 'string' ? b.FirstName.trim().slice(0, 40) : ''
+  const digits = phoneHintOf(b.MSISDN)
+  const hint = [first, digits ? `···${digits}` : ''].filter(Boolean).join(' ')
+  return {
+    transId,
+    transactionType: typeof b.TransactionType === 'string' ? b.TransactionType : null,
+    amountMinor,
+    shortcode,
+    accountRef: ref || null,
+    transactedAt: parseDarajaTimestamp(b.TransTime),
+    payerHint: hint || null,
+  }
+}

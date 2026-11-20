@@ -10,6 +10,7 @@ import { EmptyState, ErrorNotice, Notice, PageHeader, Section, Table, Td, Th } f
 import { Money, VerificationBadge, When } from '../ui/format'
 import { Badge, Button, Select, Skeleton } from '../ui/primitives'
 import { cn } from '@/lib/utils'
+import { MpesaReconciliation } from '../components/MpesaReconciliation'
 
 const DAY_MS = 86_400_000
 
@@ -418,10 +419,12 @@ export default function PaymentsPage() {
 
       <div className="mb-8">
         <Notice>
-          Payments you record are marked manual and unverified. Provider verification appears only after a signed webhook from a connected payment
+          Payments you record are marked manual and unverified. Provider verification appears only after a verified callback from a connected payment
           provider{integrations.isSuccess && !providerConnected ? ' — none is connected yet.' : '.'}
         </Notice>
       </div>
+
+      <MpesaReconciliation />
 
       <Section title="Last 30 days" description="Grouped by currency. Different currencies are never added together.">
         {payments.isPending || refunds.isPending ? (

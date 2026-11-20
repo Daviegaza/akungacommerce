@@ -61,6 +61,7 @@ import {
   type StockMovement,
 } from './types'
 import type { DeliveryBand, PaymentChoice, ProductMerchandising, ShopSettings, VariantMerchandising } from './storefront'
+import { createDemoCollections, type DemoCollectionsState } from './collections-demo'
 
 export const DEMO_NOTICE = 'Demo workspace · fictional data · stored only in this browser'
 
@@ -183,7 +184,8 @@ interface StoredReview {
   createdAt: string
 }
 
-interface DemoState {
+/** M-Pesa collections fields are optional so older saved demo states stay valid. */
+interface DemoState extends DemoCollectionsState {
   version: number
   signedIn: boolean
   orgs: StoredOrg[]
@@ -1506,6 +1508,8 @@ export function createDemoGateway(): CommerceGateway {
     saveShopSettings: (orgId, settings) => tx((s) => ops.saveShopSettings(s, orgId, settings)),
     setProductMerchandising: (orgId, productId, m) => tx((s) => ops.setProductMerchandising(s, orgId, productId, m)),
     setVariantMerchandising: (orgId, variantId, m) => tx((s) => ops.setVariantMerchandising(s, orgId, variantId, m)),
+
+    ...createDemoCollections(demoInternals),
   }
 }
 
@@ -1525,6 +1529,9 @@ export const demoInternals = {
   orderStock,
   createOrderCore,
   toSummary,
+  requireMember,
+  requirePermission,
+  writeAudit,
 }
 export type {
   DemoState,
