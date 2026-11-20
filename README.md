@@ -47,6 +47,7 @@ workspace share the same browser-local state, so a product created in the demo w
 | `/r/:token` | Rider job link for the shop's own rider (no account, expires 1–72 h, revoked when the order closes) | Same as above |
 | `/app` | Merchant workspace: Today, orders, fulfilment, products, inventory, customers, payments, analytics, selling tools, settings | Same as above |
 | `/app/join/:token` | Accept a staff invitation | Same as above |
+| `/legal/privacy`, `/legal/terms` | **Draft** privacy notice and terms (not reviewed by a lawyer; placeholders for contact, governing law, liability) | Static |
 | `/classic` and any unknown URL | **Development builds only:** the original storefront template (mock products and invented testimonials, kept for reference). **Production builds show "This page doesn't exist" instead.** | Mock |
 
 ## Features (what is built, and how far it was verified)
@@ -74,6 +75,12 @@ workspace share the same browser-local state, so a product created in the demo w
 | Analytics per currency, CSV exports (decimal-exact, formula-injection safe) | Built | Unit |
 | eTIMS-style tax invoices (manual entry, nothing sent to KRA) | Built | Unit, DB |
 | Custom domains (DNS check only; no certificate or hosting) | Built, not deployed | Unit, DB |
+| Per-shop M-Pesa keys (payout model): each shop saves its own Daraja keys, stored in Supabase Vault; money goes to the shop's own Till/Paybill; prompts switch on only after a real test payment | Built, adapter only (no Daraja account) | Unit, DB, browser screenshots (demo) |
+| Scheduled jobs (pg_cron): stale orders, rate-limit pruning, tracking-link expiry, webhook payload retention, WhatsApp retry, STK query, photo cleanup, domain re-check | Built; SQL jobs run on migrate, HTTP jobs idle until two Vault secrets are set | DB; scheduler → function calls returned 200 against the local stack |
+| Tracking links expire N days after the order closes (shop setting, 7–3650, default 90) | Built | DB, Unit (demo) |
+| Webhook payloads (phone numbers) redacted after 30 days | Built | DB |
+| `GET /health` (uptime; operator view shows which integrations have secrets set, never values) | Built, not deployed | Unit, called against the local stack |
+| Backup-restore drill (`scripts/backup-restore-drill.sh`) and backend deploy script (`scripts/deploy.sh`, dry run by default) | Built | Drill: PASS locally. Deploy: dry run only. |
 
 ## Architecture
 
@@ -134,7 +141,8 @@ Production setup, environment variables, backups, monitoring and rollback: [`doc
 | `npm run build` | Production build | – |
 | `npm run test:db` | Database integration tests, including the two-org gateway end-to-end flow | `SUPABASE_DB_URL`; the gateway E2E file also needs `SUPABASE_API_URL` and `SUPABASE_ANON_KEY`. Without them those tests are **skipped, not passed**. |
 | `npm run test:e2e` | Playwright browser test against a real backend (builds the app in Supabase mode on :4174) | `SUPABASE_API_URL`, `SUPABASE_ANON_KEY`, a Chromium (`npx playwright install chromium`) or `PW_CHANNEL=chrome` |
-| `deno check supabase/functions/*/index.ts` | Type-checks every Edge Function | Deno 2 |
+| `deno check supabase/functions/*/index.ts` | Type-checks every Edge Function | Deno 2 (or `npx deno@2.5.6`) |
+| `scripts/backup-restore-drill.sh` | Dump, restore into a scratch DB, compare every table | Docker (local) or `SOURCE_DB_URL` + non-production `RESTORE_ADMIN_URL` |
 
 Local values: `SUPABASE_DB_URL=postgresql://postgres:postgres@127.0.0.1:58322/postgres`,
 `SUPABASE_API_URL=http://127.0.0.1:58321`, `SUPABASE_ANON_KEY=` the anon key from `npx supabase status`.
@@ -159,6 +167,7 @@ checks apply exactly as they do for browser requests. They cover:
 - trust, consent and invitations
 - WhatsApp opt-out reliability
 - checkout abuse limits
+- per-shop M-Pesa keys in Vault, tracking-link expiry, payload retention and the job schedule
 
 ## Global support
 
@@ -185,7 +194,7 @@ exists and is tested against fixtures, but no provider account, credentials or e
 | SMS (Twilio) | Adapter only | No account or secrets |
 | Stripe | Adapter only | Webhook signature and replay window. Rafu never creates charges. |
 | Paystack (incl. NGN dedicated virtual accounts) | Adapter only | Webhook signature verification; DVA credits go to `reconcile_bank_transfer`. Account assignment is not implemented, and the kobo amount unit is unconfirmed in sandbox. |
-| M-Pesa Daraja (STK, callback, C2B, STK query) | Adapter only | Reconciliation built and tested (unit + DB). Needs a registered Till/Paybill, Daraja keys and a sandbox end-to-end test. Callbacks are unsigned: protected by a URL secret, an optional IP allowlist, replay protection and exact-amount matching. |
+| M-Pesa Daraja (STK, callback, C2B, STK query) | Adapter only | Reconciliation built and tested (unit + DB). Each shop enters its own Daraja keys in the app (Vault); a platform-wide account is used only if `DARAJA_ALLOW_PLATFORM_SHORTCODE=true`. Needs a registered Till/Paybill, Daraja keys and a sandbox end-to-end test. Callbacks are unsigned: protected by a URL secret, an optional IP allowlist, replay protection and exact-amount matching. |
 | IntaSend, Pesapal (aggregators) | Adapter only | Interface only; no API called |
 | Flutterwave (NGN virtual accounts) | Adapter only | `verif-hash` check only; nothing is recorded from it |
 | Courier / delivery APIs, Pick Up Mtaani, Bolt Send | Not implemented | Rider links, your own pick-up points and manual carrier + tracking number are built in without any API |
@@ -197,30 +206,34 @@ exists and is tested against fixtures, but no provider account, credentials or e
 | KRA eTIMS | Not implemented (manual) | Printable numbered tax invoices and a CSV for manual eTIMS Lite entry. Nothing is submitted to KRA. |
 
 Edge Functions: [`supabase/functions/README.md`](supabase/functions/README.md). **No Edge Function is deployed.**
-All nine type-check with Deno and have booted in the local edge runtime, but none has received a real provider call.
+All ten type-check with Deno and have run in the local edge runtime, but none has received a real provider call.
 
 ## Production blockers
 
+Everything below needs an account, a person or a decision. The code side for each is built (see
+[docs/OPERATIONS.md](docs/OPERATIONS.md)).
+
 1. **Hosted infrastructure.** No hosted Supabase project, deployed Edge Functions, production domain or
    production auth email (SMTP) exist. Only Vercel preview builds of this branch exist (demo mode).
+   `scripts/deploy.sh` is ready (dry run tested); it has never been run with `--apply`.
 2. **Provider accounts.** Each integration needs a real account, secrets and a passing end-to-end test before
-   its label changes. For M-Pesa, Daraja does not support Pochi/personal numbers, so an aggregator decision is needed.
-3. **Payout model.** A platform-wide Daraja shortcode would collect money for every merchant into one account.
-   Choose per-merchant credentials (or an aggregator with sub-accounts) before going live.
-4. **Scheduled jobs.** The stale-order release, rate-limit pruning, WhatsApp retry, STK query, photo cleanup and
-   domain re-check jobs are built but not scheduled ([OPERATIONS §5](docs/OPERATIONS.md)).
-5. **Ops.** Monitoring, alerting, a timed backup-restore drill and data-retention limits (webhook payloads
-   contain phone numbers).
-6. **Open product and security decisions:**
+   its label changes. For M-Pesa: each shop needs a registered Till/Paybill and an approved Daraja app;
+   Pochi/personal numbers need an aggregator (none verified).
+3. **Scheduler secrets.** The HTTP jobs (WhatsApp retry, STK query, photo cleanup, domain re-check) stay idle
+   until `rafu_functions_url` and `rafu_service_role_key` are in Vault on the hosted project (deploy script does it).
+4. **Ops.** An external uptime monitor on `/health` with alerts, and a restore drill against a staging copy.
+   Note: a logical restore does not bring back Vault secrets (shops would re-enter M-Pesa keys); use Supabase
+   backups/PITR for disaster recovery.
+5. **Open product and security decisions:**
    - All staff roles, including analysts, can read customer contact details.
-   - Order tracking tokens never expire.
    - Rate-limit counters roll back when a public call fails, so failed attempts are not counted. Token
      entropy (144–256 bits) is what protects against guessing.
    - A Till or Paybill entered by two shops is not blocked. C2B matching refuses the ambiguity rather than
      guessing.
-7. **Legal and tax.** A privacy notice, terms and a data-protection review per launch country (Kenya: ODPC
-   registration) are needed. A tax adviser must review the invoices.
-8. **Brand.** The owner has not approved the name or the design.
+   - Tracking links now expire 90 days after an order closes by default; change the default if you prefer.
+6. **Legal and tax.** Draft privacy notice and terms exist at `/legal/*`; a lawyer must review them and fill the
+   placeholders. Data-protection registration per launch country (Kenya: ODPC). A tax adviser must review the invoices.
+7. **Brand.** The owner has not approved the name or the design.
 
 ## Data rules worth knowing
 

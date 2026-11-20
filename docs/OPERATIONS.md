@@ -51,7 +51,9 @@ npm run dev
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | send-message | SMS |
 | `ALLOWED_ORIGIN` | send-message, mpesa-stk | CORS origin of the app (defaults to `*`; set it in production) |
 | `STRIPE_WEBHOOK_SECRET`, `PAYSTACK_SECRET_KEY` | payment-webhook | Signature checks |
-| `DARAJA_*`, `MPESA_CALLBACK_SECRET` | mpesa-stk, mpesa-callback, mpesa-c2b, mpesa-stk-query | See `supabase/functions/README.md` |
+| `DARAJA_CALLBACK_URL`, `MPESA_CALLBACK_SECRET` | mpesa-stk, mpesa-callback, mpesa-c2b | Rafu's own callback endpoint and its URL secret (needed for any M-Pesa) |
+| `DARAJA_ENV`, `DARAJA_CONSUMER_KEY`, `DARAJA_CONSUMER_SECRET`, `DARAJA_SHORTCODE`, `DARAJA_PASSKEY`, `DARAJA_TRANSACTION_TYPE`, `DARAJA_PARTY_B` | mpesa-stk, mpesa-stk-query | **Platform-wide** account. Ignored unless `DARAJA_ALLOW_PLATFORM_SHORTCODE=true`. Normally each shop saves its own keys in the app instead (section 6). |
+| `DARAJA_ALLOW_PLATFORM_SHORTCODE` | mpesa-stk, mpesa-stk-query | `true` lets shops without their own keys be paid into the platform account. Leave unset unless that payout model is chosen. |
 | `MPESA_ALLOWED_IPS`, `MPESA_CLIENT_IP_HEADER` | mpesa-callback, mpesa-c2b | Optional source-IP allowlist |
 | `MEDIA_CLEANUP_SECRET` | media-cleanup | Scheduler authorisation |
 | `DOMAIN_CHECK_CRON_SECRET` | verify-custom-domain | Scheduler authorisation |
@@ -87,31 +89,49 @@ The exact names each function reads are listed at the top of its `index.ts` and 
 
 ## 4. Edge Function deployment
 
-See `supabase/functions/README.md` for the exact deploy commands, the `--no-verify-jwt` flags
-(providers cannot send a Supabase JWT) and the webhook URLs to register with each provider.
-After deploying, call each function without credentials and confirm it refuses (401/403/503).
+`scripts/deploy.sh` does the whole backend deploy: link, `db push` (dry run first), secrets from a file,
+every function with the right JWT setting, the two Vault secrets the scheduler needs, then `/health`.
+It is a **dry run unless you pass `--apply`**, and a production project also needs `CONFIRM_PRODUCTION=<ref>`:
 
-## 5. Scheduled jobs (none is enabled)
+```bash
+SUPABASE_PROJECT_REF=<staging-ref> SECRETS_FILE=.env.staging scripts/deploy.sh            # prints the plan
+SUPABASE_PROJECT_REF=<staging-ref> SECRETS_FILE=.env.staging \
+  SUPABASE_DB_URL=<staging db url> SUPABASE_SERVICE_ROLE_KEY=<staging service key> scripts/deploy.sh --apply
+```
 
-These are service-role database functions or Edge Functions meant to run on a schedule. Choose a scheduler
-(Supabase Cron / `pg_cron`, or an external cron that calls the function URL) and enable each one only
-after the related integration is verified.
+The dry run has been executed; `--apply` has not (there is no hosted project yet).
+See `supabase/functions/README.md` for the per-function details and the webhook URLs to register with each
+provider. After deploying, call each function without credentials and confirm it refuses (401/403/503).
 
-| Job | What it does | Suggested cadence |
+## 5. Scheduled jobs (built in, migration 20261122000100)
+
+The migration enables `pg_cron` and `pg_net` and schedules every job. The list lives in one place,
+`public.rafu_job_definitions()`; `select * from public.rafu_job_status()` (service role / SQL editor) shows each
+job's schedule and its last run.
+
+| Job | What it does | Schedule (UTC) |
 | --- | --- | --- |
-| `select public.cancel_stale_storefront_orders(interval '24 hours')` | Cancels unpaid, unconfirmed storefront orders older than the limit, releasing their stock. Skips orders with a pending M-Pesa prompt. | hourly |
-| `select public.prune_rate_limits(interval '2 days')` | Deletes old rate-limit windows | daily |
-| `POST /whatsapp-webhook?retry=1` | Retries WhatsApp events that failed processing | every 15 min |
-| `POST /mpesa-stk-query` | Fallback for lost STK callbacks | every 2 min, only once Daraja is verified |
-| `POST /media-cleanup` | Deletes orphaned product photos older than 24 h | daily |
-| `POST /verify-custom-domain` (scheduled mode) | Re-checks pending custom-domain DNS | hourly |
+| `rafu-release-stale-orders` | `cancel_stale_storefront_orders()`: cancels unpaid, unconfirmed storefront orders past the limit and releases their stock; skips orders with a pending M-Pesa prompt | every 10 min |
+| `rafu-prune-rate-limits` | `prune_rate_limits()`: deletes rate-limit windows older than 2 days | daily 03:17 |
+| `rafu-expire-tracking-links` | `expire_tracking_links()`: clears buyer tracking tokens N days after the order closed (per shop, default 90) | daily 03:23 |
+| `rafu-prune-webhook-payloads` | `prune_webhook_payloads()`: redacts processed or parked webhook payloads older than 30 days (event ids kept for idempotency) | daily 03:29 |
+| `rafu-whatsapp-retry` | `POST /whatsapp-webhook?retry=1` | every 5 min |
+| `rafu-mpesa-stk-query` | `POST /mpesa-stk-query` (each shop queried with its own keys) | every 3 min |
+| `rafu-media-cleanup` | `POST /media-cleanup` | daily 02:41 |
+| `rafu-domain-recheck` | `POST /verify-custom-domain` `{"scheduled": true}` | every 6 h |
 
-Example with `pg_cron` (illustrative, **not** applied by any migration):
+**The four SQL jobs run as soon as the migration is applied.** The four HTTP jobs call Edge Functions through
+`pg_net` with the service-role key and **do nothing until two Vault secrets exist**:
 
 ```sql
-select cron.schedule('rafu-stale-orders', '0 * * * *', $$select public.cancel_stale_storefront_orders(interval '24 hours')$$);
-select cron.schedule('rafu-prune-rate-limits', '30 3 * * *', $$select public.prune_rate_limits(interval '2 days')$$);
+select vault.create_secret('https://<ref>.supabase.co/functions/v1', 'rafu_functions_url');
+select vault.create_secret('<service role key>', 'rafu_service_role_key');
 ```
+
+`scripts/deploy.sh --apply` creates or updates both. Verified locally (2026-11-20): with both secrets set, the
+`whatsapp-webhook` retry and `mpesa-stk-query` jobs reached the locally served functions and got HTTP 200;
+without them `_invoke_edge_job` returns null and sends nothing. To pause a job:
+`select cron.alter_job((select jobid from cron.job where jobname = 'rafu-mpesa-stk-query'), active := false);`
 
 ## 6. Integration setup
 
@@ -125,7 +145,17 @@ is connected. To move one to "connected and verified":
 4. Payments: one real sandbox payment is recorded exactly once against the right order, and a replay is ignored.
 5. WhatsApp: an approved template reaches a real handset, and replying STOP withdraws consent.
 6. Only then set the `integration_connections` state for that organisation to `connected_verified`
-   (service role). No tenant path can set it.
+   (service role). The one tenant path is M-Pesa below, and it needs evidence.
+
+**M-Pesa payout model (built, migration 20261122000100).** Each shop saves its **own** Daraja keys in
+Payments → How you get paid (owner/admin only). The consumer key, consumer secret and passkey go into
+Supabase Vault (encrypted at rest); staff only ever see the shortcode, environment and the last 4 characters
+of the key, and only the service role can decrypt (`mpesa_credentials_for`). STK prompts and status queries
+use the shop's keys, so **money goes straight to the shop's own Till or Paybill**. Saving keys marks the
+connection `configured_unverified`; the owner can switch on prompts (`mark_mpesa_verified`) only after a real
+M-Pesa payment for that shop has reached Rafu. The platform-wide `DARAJA_*` env account is used only when
+`DARAJA_ALLOW_PLATFORM_SHORTCODE=true`. Still needed per shop: Daraja app approval for production and
+C2B URL registration for the shop's shortcode (not automated here).
 
 Provider-specific notes (Daraja STK and C2B, Paystack dedicated accounts, Stripe, WhatsApp, Resend, Twilio,
 custom domains) are in `supabase/functions/README.md`.
@@ -135,11 +165,17 @@ custom domains) are in `supabase/functions/README.md`.
 - **Backups:** Supabase takes daily backups on paid plans. Enable PITR for minute-level recovery of order
   and payment data. Storage objects (product photos, verification documents) are **not** part of database
   backups. Copy the buckets separately (for example a scheduled `supabase storage` sync to a private location).
-- **Logical export:** `npx supabase db dump --data-only -f backup.sql` (and `--role-only`, schema dump) for
-  an off-platform copy. Treat dumps as personal data: encrypt them and limit access.
-- **Restore drill (do this before launch, then quarterly):** restore the latest backup into a separate
-  project, run `npm run test:db` against it with `SUPABASE_DB_URL` pointing there, and spot-check one
-  organisation's orders, payments and stock movements against the live project. Record the time it took.
+- **Restore drill:** `scripts/backup-restore-drill.sh` dumps a database, restores it into a fresh scratch database
+  and compares row counts for every public table, migrations, RLS tables, functions and policies, and prints how
+  long dump and restore took. Default target is the local stack; for a hosted project set `SOURCE_DB_URL` and a
+  **non-production** `RESTORE_ADMIN_URL`. Run it before launch, then quarterly.
+  Last local run (2026-11-20): 40 tables, counts identical, 23 migrations, dump 1 s, restore 3 s, **PASS**.
+- **What a logical dump does not bring back** (the drill prints these as restore notes):
+  `pg_cron` jobs (re-run the job loop from migration 20261122000100) and **Vault secrets**: each
+  shop's saved M-Pesa keys and the two `rafu_*` scheduler secrets. After a logical restore, shops must re-enter
+  their M-Pesa keys. Supabase's own backups/PITR restore the whole database including Vault; prefer them for
+  disaster recovery.
+- Treat dumps as personal data: encrypt them and limit access.
 
 ## 8. Monitoring
 
@@ -153,9 +189,13 @@ Minimum before launch:
   stale-order job runs).
 - **Outbound messages:** `outbound_messages` with `status = 'failed'`, and rate-limit refusals.
 - **Auth:** sign-up and sign-in error spikes. Database CPU and connections, and storage size.
-- **Uptime check** on the app origin and on `/s/<a real shop>`.
+- **Uptime check** on the app origin, on `/s/<a real shop>`, and on `GET /functions/v1/health`
+  (200 `{ok, db}`; 503 when the database does not answer). With the service-role key as Bearer it also returns
+  which integrations have their secrets set (booleans and missing secret names, never values) and the scheduled
+  job status. Verified against the local stack (2026-11-20).
+- **Jobs:** `select * from public.rafu_job_status()` where `last_status` is `failed`.
 
-No monitoring is configured today.
+No external monitor or alerting is configured today; the endpoints above are ready for one.
 
 ## 9. Rollback
 
@@ -177,8 +217,9 @@ No monitoring is configured today.
   `anon`. Order creation is rate-limited per IP (the last `x-forwarded-for` hop), per phone and per shop,
   with at most 3 open unpaid orders per phone per shop. Prices, tax and delivery fees are always computed
   on the server. A buyer-supplied expected total is only compared, never used.
-- **Tokens:** order tracking tokens are 144-bit random values, stored in plain text and readable by staff;
-  they do not expire. Rider links are 192-bit, stored as SHA-256 hashes, expire (1–72 h) and are revoked when
+- **Tokens:** order tracking tokens are 144-bit random values, stored in plain text and readable by staff.
+  They are cleared a shop-chosen number of days (7–3650, default 90) after the order closes, after which every
+  token-based public function treats the link as unknown. Rider links are 192-bit, stored as SHA-256 hashes, expire (1–72 h) and are revoked when
   the order is delivered, cancelled or refunded. Staff invitations are 256-bit, hashed, single use, expire
   in 7 days, and email invitations need a confirmed email address.
 - **Payments:** only signed and verified callbacks create `provider_verified` payments. Manual payments are
@@ -187,11 +228,13 @@ No monitoring is configured today.
   allowlisting, replay protection and exact-amount matching. Keep the secret out of logs and rotate it if exposed.
 - **Personal data:** buyer name, phone, address and delivery pin are stored per business. All staff roles,
   including analysts, can read customer contact details today (see the open item in the README). Webhook
-  payloads (which include phone numbers) are kept with no retention limit; set one before launch.
+  payloads (which include phone numbers) are redacted 30 days after processing.
 - **Consent:** marketing needs an explicit opt-in. STOP replies withdraw it reliably. An anonymous checkout
   cannot undo an explicit opt-out.
-- **Legal:** a privacy notice, terms, and a data-protection review for each launch country (Kenya: the Data
-  Protection Act 2019 and ODPC registration) are required and not written.
+- **Legal:** draft privacy notice and terms are at `/legal/privacy` and `/legal/terms` (marked draft, with
+  placeholders for the contact email, governing law and liability wording). A lawyer must review them, and a
+  data-protection review for each launch country (Kenya: the Data Protection Act 2019 and ODPC registration)
+  is still required.
 
 ## 11. Production deployment checklist
 
@@ -202,10 +245,12 @@ No monitoring is configured today.
 - [ ] Frontend deployed with `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` (never the service key)
 - [ ] `ALLOWED_ORIGIN` set on browser-called functions
 - [ ] Edge Functions deployed; each refuses unauthenticated calls
-- [ ] Scheduled jobs from section 5 enabled for the parts that are live (at least stale orders and rate-limit pruning)
+- [ ] Vault secrets `rafu_functions_url` and `rafu_service_role_key` set so the HTTP jobs in section 5 run
+- [ ] `GET /health` returns 200 and an external uptime monitor watches it
 - [ ] Monitoring and alerts from section 8 in place
-- [ ] Backup restore drill done and timed
+- [ ] `scripts/backup-restore-drill.sh` run against a staging copy and timed
 - [ ] Each integration verified end to end before its label changes (section 6)
-- [ ] Privacy notice, terms, data-protection registration; tax invoices reviewed by an adviser
+- [ ] `/legal/privacy` and `/legal/terms` reviewed by a lawyer, placeholders filled; data-protection registration; tax invoices reviewed by an adviser
+- [ ] Each Kenyan shop: own Daraja keys saved, test payment received, prompts switched on (or the platform-account model chosen deliberately)
 - [ ] Decision on whether analysts may see customer contact details
 - [ ] Brand name and design approved by the owner

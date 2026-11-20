@@ -23,8 +23,9 @@ by a real provider (Meta, Safaricom, Stripe, Paystack, Resend, Twilio), and none
 | `mpesa-stk` | Storefront asks M-Pesa (Daraja STK push) to show a payment prompt for a tracked order. Never marks anything paid. | adapter_only |
 | `mpesa-callback` | Daraja STK result callback: shared-secret check, dedupe, then `reconcile_mpesa_stk` (auto-match, mismatch/late to review queue). | adapter_only |
 | `mpesa-c2b` | Daraja C2B confirmation (customer paid the Till/Paybill directly): shared-secret check, dedupe, then `reconcile_mpesa_c2b`. | adapter_only |
-| `mpesa-stk-query` | Scheduled fallback for lost STK callbacks: asks Daraja's STK Push Query API about prompts pending 2 min – 24 h, then `apply_mpesa_stk_query`. A "paid" answer never records money (no receipt/amount in the query). Service-role bearer only. | adapter_only, not scheduled |
-| `media-cleanup` | Deletes orphaned product photos (in `product-images`, referenced by no product or shop, older than 24 h) through the Storage API. For a scheduled run; see "Orphaned photo cleanup". | built, not deployed, not scheduled |
+| `mpesa-stk-query` | Scheduled fallback for lost STK callbacks: asks Daraja's STK Push Query API about prompts pending 2 min – 24 h (each shop with its own keys), then `apply_mpesa_stk_query`. A "paid" answer never records money (no receipt/amount in the query). Service-role bearer only. | adapter_only, scheduled by pg_cron (idle until the Vault secrets exist) |
+| `media-cleanup` | Deletes orphaned product photos (in `product-images`, referenced by no product or shop, older than 24 h) through the Storage API. Scheduled daily by pg_cron; see "Orphaned photo cleanup". | built, not deployed; scheduled (idle until the Vault secrets exist) |
+| `health` | `GET`: `{ ok, db, time }` for uptime monitors (503 if the database does not answer). With the service-role key as Bearer: which integrations have their secrets set (booleans and missing secret **names**, never values) and the scheduled job status. | built, not deployed; called against the local stack |
 | `verify-custom-domain` | Merchant "Check now" (rate-limited) or a scheduled run: resolves the CNAME/A and ownership TXT records over DNS-over-HTTPS and sets the domain status. DNS only, no certificate or hosting. See "Custom domain DNS check". | built, not deployed |
 
 ## Environment variables (placeholders only)
@@ -39,6 +40,7 @@ Set the rest with `supabase secrets set NAME=value` — never commit values.
   - Email: `RESEND_API_KEY=<re_...>`, `RESEND_FROM="Shop <orders@your-verified-domain>"`
   - SMS: `TWILIO_ACCOUNT_SID=<AC...>`, `TWILIO_AUTH_TOKEN=<token>`, `TWILIO_FROM=<+E164 or MG... service sid>`
   - Optional: `ALLOWED_ORIGIN=<https://your-app-origin>` (CORS; defaults to `*`)
+- `health`: nothing extra (it reads the other names only to report whether they are set).
 - `mpesa-stk` / `mpesa-callback` / `mpesa-c2b`: see the M-Pesa section below. Optional for the two callbacks:
   `MPESA_ALLOWED_IPS=<Safaricom IPv4 addresses or CIDR ranges>` together with
   `MPESA_CLIENT_IP_HEADER=<the header your hosting sets to the true caller IP>`. Both unset = no IP check
@@ -58,7 +60,11 @@ supabase functions deploy mpesa-c2b --no-verify-jwt          # Safaricom cannot 
 supabase functions deploy mpesa-stk-query                    # scheduler sends the service role key
 supabase functions deploy media-cleanup --no-verify-jwt      # x-cleanup-secret or service-role bearer
 supabase functions deploy verify-custom-domain               # see "Custom domain DNS check"
+supabase functions deploy health --no-verify-jwt             # uptime monitors send no key
 ```
+
+`scripts/deploy.sh` runs all of the above (plus `db push`, secrets and the scheduler's Vault secrets); it is a
+dry run unless given `--apply`.
 
 ## Webhook URLs to register (after deploy)
 
@@ -81,7 +87,8 @@ A customer who replies STOP must never stay subscribed because of a passing erro
    processed one is skipped, so there is no second side effect.
 4. After 8 failed attempts the event is parked (`dead_at`) for a person to review. It is never marked processed.
 5. Optional scheduled retry: `POST /whatsapp-webhook?retry=1` with `x-retry-secret: <WEBHOOK_RETRY_SECRET>`
-   re-runs pending events, oldest first, with back-off (`webhook_events_pending`). Not scheduled anywhere.
+   re-runs pending events, oldest first, with back-off (`webhook_events_pending`). Scheduled every 5 minutes by
+   the pg_cron job `rafu-whatsapp-retry` (service-role bearer; idle until the `rafu_*` Vault secrets exist).
 6. One WhatsApp business number can belong to only one organisation (unique index), so an opt-out always
    routes to exactly one business.
 
@@ -108,8 +115,9 @@ How it fits together:
 1. A shopper places a storefront order and gets a tracking link. On the tracking page they can ask
    for an M-Pesa prompt: the storefront calls `mpesa-stk` with `{ tracking_token, phone_e164 }`.
 2. `mpesa-stk` (service role) loads the order by tracking token. It returns `503 { status: 'not_configured' }`
-   unless **all** secrets below are set **and** the order's business has an `integration_connections`
-   row with `provider = 'mpesa'` and `state = 'connected_verified'`. It refuses non-KES, unpayable or
+   unless the shop has Daraja keys (its own, saved in the app, or the platform account when
+   `DARAJA_ALLOW_PLATFORM_SHORTCODE=true`), the callback secrets below are set, **and** the order's business has
+   an `integration_connections` row with `provider = 'mpesa'` and `state = 'connected_verified'`. It refuses non-KES, unpayable or
    fully paid orders, throttles to 5 prompts per order per hour, asks Daraja for an OAuth token,
    sends the STK push for the outstanding balance (whole shillings only), stores
    `checkout_request_id -> order` in `public.mpesa_requests` (migration `20261120000008`; RLS on, no
@@ -123,8 +131,18 @@ How it fits together:
    refuses unless the business's `mpesa` connection is `connected_verified`. Cancelled or failed prompts
    are marked processed; unknown requests and amount mismatches stay unprocessed for manual review.
 
+**Whose keys (payout model, migration `20261122000100`).** Each shop saves its own Daraja consumer key,
+consumer secret, passkey, shortcode and type in Payments → How you get paid. The secrets are stored in
+Supabase Vault; `public.mpesa_credentials_for(org)` (service role only) decrypts them for `mpesa-stk` and
+`mpesa-stk-query` (`chooseDarajaConfig` in `_shared/collections.ts`). The prompt therefore pays the shop's own
+Till/Paybill. The `DARAJA_*` env secrets below are a **platform-wide** account and are ignored unless
+`DARAJA_ALLOW_PLATFORM_SHORTCODE=true`. The owner switches on prompts with `mark_mpesa_verified`, which refuses
+until a real M-Pesa payment for that shop has reached Rafu; changing keys drops back to unverified.
+
 Secrets (placeholders only, set with `supabase secrets set`):
 
+- Always: `DARAJA_CALLBACK_URL` and `MPESA_CALLBACK_SECRET` (Rafu's endpoint, shared by every shop)
+- Platform account only (with `DARAJA_ALLOW_PLATFORM_SHORTCODE=true`):
 - `DARAJA_CONSUMER_KEY=<consumer-key>`, `DARAJA_CONSUMER_SECRET=<consumer-secret>`
 - `DARAJA_SHORTCODE=<business-shortcode>`, `DARAJA_PASSKEY=<lipa-na-mpesa-passkey>`
 - `DARAJA_ENV=sandbox` or `production`
@@ -192,31 +210,15 @@ The "still processing" error code is taken from commonly observed Daraja behavio
 run here; anything unexpected is treated as an error and the prompt simply stays pending.
 
 The function requires `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>` (constant-time compare) and the same
-Daraja secrets as `mpesa-stk`. It returns `503 not_configured` until they are set.
+callback secrets as `mpesa-stk`. Each prompt is queried with its shop's own keys (or the platform account when
+allowed); prompts of shops without keys are skipped and reported as `not_configured`.
 
-### Scheduling (not enabled anywhere — do this only once Daraja is verified)
+### Scheduling (built in)
 
-Option A, `pg_cron` + `pg_net` inside the project database (keep the key in Vault, never in a migration):
-
-```sql
--- Run once in the SQL editor of the real project, after storing the key:
---   select vault.create_secret('<service-role-key>', 'service_role_key');
-select cron.schedule(
-  'mpesa-stk-query', '*/3 * * * *',
-  $$ select net.http_post(
-       url := 'https://<project-ref>.supabase.co/functions/v1/mpesa-stk-query',
-       headers := jsonb_build_object(
-         'Content-Type', 'application/json',
-         'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'service_role_key')),
-       body := '{}'::jsonb) $$
-);
--- Stop it: select cron.unschedule('mpesa-stk-query');
-```
-
-Option B, Supabase Dashboard → Integrations → Cron → "Supabase Edge Function" job every 3 minutes, POST to
-`mpesa-stk-query` with the service-role Authorization header.
-
-Every 2–5 minutes is enough; Daraja rate-limits the query API, so do not run it more often.
+Migration `20261122000100` schedules `rafu-mpesa-stk-query` every 3 minutes with `pg_cron` + `pg_net`
+(service-role bearer read from Vault). It sends nothing until the Vault secrets `rafu_functions_url` and
+`rafu_service_role_key` exist; see docs/OPERATIONS.md §5. Prompts of shops without keys are counted as
+`not_configured` and skipped. Do not run it more often: Daraja rate-limits the query API.
 
 ## Nigeria bank transfer: Paystack Dedicated Virtual Accounts (migration `20261120000060`, adapter only)
 
@@ -272,18 +274,8 @@ Call it with `POST` and either `x-cleanup-secret: <MEDIA_CLEANUP_SECRET>` (at le
 supabase functions deploy media-cleanup --no-verify-jwt   # the function checks its own secret
 ```
 
-**Scheduling (not enabled).** On the hosted project, with the `pg_cron` and `pg_net` extensions enabled and the
-secret stored in Vault as `media_cleanup_secret`, a nightly run would be:
-
-```sql
-select cron.schedule('media-cleanup-nightly', '30 2 * * *', $$
-  select net.http_post(
-    url := 'https://<project-ref>.supabase.co/functions/v1/media-cleanup',
-    headers := jsonb_build_object('Content-Type', 'application/json',
-      'x-cleanup-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'media_cleanup_secret')),
-    body := '{}'::jsonb);
-$$);
-```
+**Scheduling (built in).** The pg_cron job `rafu-media-cleanup` (migration `20261122000100`) calls it nightly at
+02:41 UTC with the service-role bearer once the `rafu_*` Vault secrets exist (docs/OPERATIONS.md §5).
 
 Nothing above has been run against any project. Demo mode has nothing to clean: demo photos are data URLs that only
 reach browser storage when the product is saved, and saving replaces the product's image list.
@@ -303,7 +295,7 @@ its DNS records are right. No certificate is issued and nothing serves the domai
   that user: owners/admins only, 5 checks per 15 minutes per shop (HTTP 429 after that).
 - Scheduled run: `POST { "scheduled": true, "limit": 25 }` with `x-cron-secret: <DOMAIN_CHECK_CRON_SECRET>` or the
   service role key. It checks domains that are `pending_dns` or `failed` and were not checked in the last hour.
-  Scheduling works like the cleanup example above (not enabled).
+  Scheduled every 6 hours by the pg_cron job `rafu-domain-recheck` (service-role bearer).
 - The result is written with the existing service-role `mark_custom_domain_status`.
 
 ```sh
