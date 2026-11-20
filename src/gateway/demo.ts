@@ -29,6 +29,7 @@ import { ROLES, ROLE_LABEL, can, type Permission, type Role } from '@/domain/per
 import { isValidTimezone } from '@/domain/locale'
 import { integrationStatuses } from '@/integrations/registry'
 import { GatewayError, type CommerceGateway } from './gateway'
+import { createDemoDeliveryAdmin } from './delivery-demo'
 import {
   ORDER_CHANNELS,
   type Address,
@@ -1506,6 +1507,9 @@ export function createDemoGateway(): CommerceGateway {
     saveShopSettings: (orgId, settings) => tx((s) => ops.saveShopSettings(s, orgId, settings)),
     setProductMerchandising: (orgId, productId, m) => tx((s) => ops.setProductMerchandising(s, orgId, productId, m)),
     setVariantMerchandising: (orgId, variantId, m) => tx((s) => ops.setVariantMerchandising(s, orgId, variantId, m)),
+
+    // Deposits, failed deliveries and handoff (delivery-demo.ts).
+    ...createDemoDeliveryAdmin(),
   }
 }
 
@@ -1525,6 +1529,10 @@ export const demoInternals = {
   orderStock,
   createOrderCore,
   toSummary,
+  requireMember,
+  requirePermission,
+  getOrderRow,
+  writeAudit,
 }
 export type {
   DemoState,

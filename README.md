@@ -8,7 +8,8 @@
 | --- | --- |
 | `/` | Rafu landing page |
 | `/s/:slug` | Public shop: home, product pages, cart, wishlist, checkout (demo shops: `/s/mto-home`, `/s/atelier-lumen`) |
-| `/t/:token` | Buyer order tracking. No login: status timeline, map, payment instructions, verified reviews |
+| `/t/:token` | Buyer order tracking. No login: status timeline, deposit/balance, delivery updates, map on demand, payment instructions, verified reviews |
+| `/r/:token` | Rider job link for the shop's own rider. No account: pickup and drop-off, buyer phone masked until accepted, picked up / delivered / failed. Expires (1–72 h, default 12) |
 | `/app` | Merchant workspace (Today, orders, products, My shop, inventory, customers, payments, analytics, settings) |
 | `/classic` | Original storefront template, kept for reference |
 
@@ -149,7 +150,9 @@ Every integration carries exactly one of four labels: **connected and verified**
 | Stripe | Adapter only | Webhook signature verification and replay window. Akunga never creates charges. |
 | Paystack | Adapter only | Webhook signature verification |
 | M-Pesa Daraja, Flutterwave | Not implemented | |
-| Courier / delivery APIs | Not implemented | Manual assignee, tracking reference and proof of delivery are built in |
+| Courier / delivery APIs | Not implemented | Built in without any API: rider links, your own pick-up point list, manual carrier + tracking number |
+| Pick Up Mtaani | Not implemented | Agents can be listed by hand as your own pick-up points; nothing is synced |
+| Bolt Send | Not implemented | Book trips yourself and record the carrier and reference |
 | Xero, QuickBooks Online | Not implemented | |
 | CSV export (orders, payments, refunds) | Works locally | Exact decimal amounts with a currency column, protected against formula injection |
 
@@ -168,6 +171,9 @@ Setup and deploy instructions for the functions are in [`supabase/functions/READ
 9. **Pre-existing lint errors** (10) in the original storefront template files. They were not introduced by this work.
 
 ## Data rules worth knowing
+
+- **Deposits** (migration `20261120000030_deposits_handoff.sql`, rules in `src/domain/delivery-policy.ts`): a shop picks pay on delivery, deposit (percent or fixed, optional minimum order, optionally at least the delivery fee) or full prepayment. The server quote computes the deposit from the all-in total, rounded up to a whole major unit; the order stores `deposit_due_minor` and the policy the buyer agreed to. Deposit paid and balance due are always derived from payments minus refunds. The M-Pesa prompt charges the amount due now (`order_amount_due_now`).
+- **Failed deliveries** keep the order "out for delivery", count the attempt, add a same-status history row and, only for buyer-caused failures under a "buyer pays" policy, record the trip's delivery fee as kept from the paid deposit (never more than what is left). Staff-created orders have no agreed policy, so nothing is kept. After the last attempt, rider links are cancelled.
 
 - Base currency is fixed once products or orders exist.
 - Stock is reserved for orders that are awaiting confirmation, confirmed, preparing or ready. It is committed when an order is dispatched, or delivered for pickups. It is released on cancel. Stock can never go negative or drop below what is reserved.

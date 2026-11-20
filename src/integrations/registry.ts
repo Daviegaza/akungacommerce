@@ -79,7 +79,25 @@ const STATUSES: readonly IntegrationStatus[] = [
     kind: 'delivery',
     name: 'Courier / delivery APIs',
     label: 'not_implemented',
-    detail: 'No courier API is connected. Manual assignee and tracking reference are built in.',
+    detail:
+      'No courier API is connected. Built in without any API: a shareable rider link for your own rider, your own list of pick-up points, and a manual carrier name and tracking number.',
+    lastTestedAt: null,
+  },
+  {
+    provider: 'pickup_mtaani',
+    kind: 'delivery',
+    name: 'Pick Up Mtaani',
+    label: 'not_implemented',
+    detail:
+      'No connection to Pick Up Mtaani exists. Agents can be added by hand as your own pick-up points (name, area, hours, fee); parcels, labels and status are not synced.',
+    lastTestedAt: null,
+  },
+  {
+    provider: 'bolt_send',
+    kind: 'delivery',
+    name: 'Bolt Send',
+    label: 'not_implemented',
+    detail: 'No connection to Bolt exists and no delivery is booked automatically. Book the trip yourself and record the carrier and reference on the order.',
     lastTestedAt: null,
   },
   {

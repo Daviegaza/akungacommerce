@@ -25,6 +25,18 @@ import {
   type TrackedOrder,
 } from './storefront'
 import type { Address } from './types'
+import type { PickupPointSnapshot } from './delivery'
+import {
+  demoActivePickupPoints,
+  demoCheckoutOptions,
+  demoDepositFor,
+  demoPolicyFor,
+  demoRecordCheckout,
+  demoRiderAccept,
+  demoRiderAction,
+  demoRiderJob,
+  demoTrackedDelivery,
+} from './delivery-demo'
 
 const { tx, read, uuid, now, nowIso, level, getOrg, createOrderCore } = demoInternals
 
@@ -151,7 +163,14 @@ function quoteIn(s: DemoState, shop: StoredShopSettings, input: QuoteInput): Quo
   const method = input.method ?? 'pickup'
   let km: number | null = null
   let fee = 0
-  if (method === 'delivery') {
+  let pickupPoint: PickupPointSnapshot | null = null
+  if (method === 'pickup_point') {
+    // Delivered to one of the shop's pick-up points: the point's own fee, no pin needed.
+    if (!shop.deliveryEnabled) fail('This shop does not deliver', 'invalid')
+    const p = demoActivePickupPoints(s, org.id).find((x) => x.id === input.pickupPointId) ?? fail('Choose a pick-up point', 'invalid')
+    pickupPoint = { id: p.id, name: p.name, area: p.area, hours: p.hours, feeMinor: p.feeMinor }
+    fee = p.feeMinor
+  } else if (method === 'delivery') {
     if (!shop.deliveryEnabled) fail('This shop does not deliver', 'invalid')
     if (typeof input.lat !== 'number' || typeof input.lng !== 'number' || !Number.isFinite(input.lat) || !Number.isFinite(input.lng)) {
       fail('Drop a pin for your delivery address', 'invalid')
@@ -198,16 +217,26 @@ function quoteIn(s: DemoState, shop: StoredShopSettings, input: QuoteInput): Quo
     deliveryFeeMinor: fee,
     distanceKm: km === null ? null : Math.round(km * 10) / 10,
     totalMinor: totals.totalMinor,
+    ...depositFields(s, org.id, totals.totalMinor, fee, org.baseCurrency),
+    pickupPoint,
   }
 }
 
-function placed(order: DemoState['orders'][number]): PlacedOrder {
+/** Mirrors the deposit part of storefront_quote (public._deposit_due). */
+function depositFields(s: DemoState, orgId: string, totalMinor: number, feeMinor: number, currency: string) {
+  const policy = demoPolicyFor(s, orgId)
+  const d = demoDepositFor(policy, totalMinor, feeMinor, currency)
+  return { depositDueMinor: d.depositDueMinor, balanceOnDeliveryMinor: d.balanceOnDeliveryMinor, paymentMode: policy.paymentMode }
+}
+
+function placed(s: DemoState, order: DemoState['orders'][number]): PlacedOrder {
   return {
     orderId: order.id,
     number: order.number,
     trackingToken: order.trackingToken as string,
     totalMinor: order.totalMinor,
     currency: order.currency,
+    depositDueMinor: demoTrackedDelivery(s, order).depositDueMinor,
   }
 }
 
@@ -219,7 +248,7 @@ function placeOrderIn(s: DemoState, slug: string, input: PlaceOrderInput, idempo
   if (typeof idempotencyKey !== 'string' || idempotencyKey.length < 16) fail('Missing idempotency key', 'invalid')
   const key = `sf:${idempotencyKey}`
   const existing = s.orders.find((o) => o.orgId === shop.orgId && o.idempotencyKey === key)
-  if (existing) return placed(existing)
+  if (existing) return placed(s, existing)
 
   const phone = String(input?.phoneE164 ?? '')
   const name = String(input?.name ?? '').trim()
@@ -234,6 +263,15 @@ function placeOrderIn(s: DemoState, slug: string, input: PlaceOrderInput, idempo
 
   const quote = quoteIn(s, shop, input)
   const org = getOrg(s, shop.orgId)
+  // Payment policy (mirrors storefront_place_order): the deposit is due now, so it needs a way to pay now.
+  const policy = demoPolicyFor(s, org.id)
+  const depositDue = quote.depositDueMinor ?? 0
+  if (payment === 'cod' && policy.paymentMode === 'full_prepay') {
+    fail('This shop needs full payment before delivery, so cash on delivery is not available', 'invalid')
+  }
+  if (payment === 'cod' && depositDue > 0 && !shop.mpesaTill && !shop.mpesaPaybill) {
+    fail('This shop needs a deposit before delivery, so cash on delivery is not available', 'invalid')
+  }
   const optIn = input.marketingOptIn === true
 
   // Guest customer, matched by phone (oldest first). Consent is only ever switched on, never off, here.
@@ -261,7 +299,7 @@ function placeOrderIn(s: DemoState, slug: string, input: PlaceOrderInput, idempo
     customer.updatedAt = nowIso()
   }
 
-  const method = input.method
+  const method = input.method === 'pickup' ? 'pickup' : 'delivery'
   const channel = (CHANNELS as readonly string[]).includes(input.channel ?? '') ? (input.channel as (typeof CHANNELS)[number]) : 'storefront'
   const orderId = createOrderCore(
     s,
@@ -279,7 +317,18 @@ function placeOrderIn(s: DemoState, slug: string, input: PlaceOrderInput, idempo
   )
   const order = s.orders.find((o) => o.id === orderId) ?? fail('Order not found', 'not_found')
 
-  if (method === 'delivery') {
+  if (input.method === 'pickup_point' && quote.pickupPoint) {
+    const f = s.fulfilments.find((x) => x.orderId === orderId)
+    const p = quote.pickupPoint
+    if (f) {
+      f.address = {
+        line1: p.name,
+        landmark: [p.name, p.area].filter(Boolean).join(', '),
+        instructions: clip(input.instructions, 300),
+        pickupPointId: p.id,
+      } as Address
+    }
+  } else if (method === 'delivery') {
     const f = s.fulfilments.find((x) => x.orderId === orderId)
     if (f) {
       // Same keys as the SQL fulfilment address jsonb (lat/lng/landmark are read back by tracking).
@@ -296,7 +345,8 @@ function placeOrderIn(s: DemoState, slug: string, input: PlaceOrderInput, idempo
   }
   order.trackingToken = randomToken()
   order.paymentPreference = payment
-  return placed(order)
+  demoRecordCheckout(s, orderId, { depositDueMinor: depositDue, agreedPolicy: policy, pickupPoint: quote.pickupPoint ?? null })
+  return placed(s, order)
 }
 
 function orderByToken(s: DemoState, token: string) {
@@ -361,6 +411,7 @@ function trackIn(s: DemoState, token: string): TrackedOrder {
       timezone: org.timezone,
     },
     reviewedProductIds: s.reviews.filter((r) => r.orderId === o.id).map((r) => r.productId),
+    delivery: demoTrackedDelivery(s, o),
   }
 }
 
@@ -417,5 +468,10 @@ export function createDemoStorefront(): StorefrontGateway {
 
     // The demo never contacts M-Pesa and nothing is charged.
     requestMpesaPrompt: () => Promise.resolve({ status: 'not_configured' }),
+
+    getCheckoutOptions: (slug) => read((s) => demoCheckoutOptions(s, requireShop(s, slug).orgId)),
+    riderJob: (token) => read((s) => demoRiderJob(s, token)),
+    riderAccept: (token, name) => tx((s) => demoRiderAccept(s, token, name)),
+    riderAction: (token, action, reason) => tx((s) => demoRiderAction(s, token, action, reason)),
   }
 }

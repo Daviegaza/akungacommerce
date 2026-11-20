@@ -7,7 +7,7 @@ import { downloadCsv, ordersCsv, paymentsCsv, refundsCsv, toCsv } from './csv'
 describe('integration registry', () => {
   it('never claims anything is connected', () => {
     const all = integrationStatuses()
-    expect(all.length).toBe(10)
+    expect(all.length).toBe(12)
     for (const s of all) {
       expect(s.label).not.toBe('connected_verified')
       expect(s.label).not.toBe('configured_unverified')
@@ -26,6 +26,8 @@ describe('integration registry', () => {
       mpesa: 'adapter_only',
       flutterwave: 'not_implemented',
       courier: 'not_implemented',
+      pickup_mtaani: 'not_implemented',
+      bolt_send: 'not_implemented',
       xero: 'not_implemented',
       quickbooks_online: 'not_implemented',
     })

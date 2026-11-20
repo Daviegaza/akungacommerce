@@ -4,6 +4,9 @@
  * Supabase (anon RPCs) and demo (localStorage, same rules).
  */
 
+import type { CheckoutOptions, PickupPointSnapshot, RiderAction, RiderJob, TrackedDelivery } from './delivery'
+import type { PaymentMode } from '@/domain/delivery-policy'
+
 export interface DeliveryBand {
   maxKm: number
   feeMinor: number
@@ -109,9 +112,11 @@ export interface CartLineInput {
 
 export interface QuoteInput {
   lines: CartLineInput[]
-  method: 'pickup' | 'delivery'
+  /** pickup_point = delivered to one of the shop's pick-up points (pickupPointId required). */
+  method: 'pickup' | 'delivery' | 'pickup_point'
   lat?: number
   lng?: number
+  pickupPointId?: string
 }
 
 export interface Quote {
@@ -123,6 +128,11 @@ export interface Quote {
   deliveryFeeMinor: number
   distanceKm: number | null
   totalMinor: number
+  /** Server-computed from the shop's payment policy (absent from servers without the deposits migration). */
+  depositDueMinor?: number
+  balanceOnDeliveryMinor?: number
+  paymentMode?: PaymentMode
+  pickupPoint?: PickupPointSnapshot | null
 }
 
 export type PaymentChoice = 'mpesa' | 'cod' | 'card' | 'bank_transfer' | 'other'
@@ -146,6 +156,8 @@ export interface PlacedOrder {
   trackingToken: string
   totalMinor: number
   currency: string
+  /** Amount the payment step charges now (deposit or full amount). */
+  depositDueMinor?: number
 }
 
 export interface TrackedOrder {
@@ -186,6 +198,8 @@ export interface TrackedOrder {
     timezone: string
   }
   reviewedProductIds: string[]
+  /** Deposit, balance, failed attempts and handoff; absent on servers without the deposits migration. */
+  delivery?: TrackedDelivery
 }
 
 /** Result of asking the payment adapter to push an M-Pesa prompt. Never "paid" here. */
@@ -204,6 +218,12 @@ export interface StorefrontGateway {
   submitReview(token: string, productId: string, rating: number, body: string | null): Promise<void>
   /** Ask the configured provider to send an STK push. Returns not_configured until Daraja is set up. */
   requestMpesaPrompt(trackingToken: string, phoneE164: string): Promise<StkResult>
+  /** Payment policy (shown before paying) and active pick-up points. */
+  getCheckoutOptions(slug: string): Promise<CheckoutOptions>
+  /** Account-free rider link (/r/:token). */
+  riderJob(token: string): Promise<RiderJob>
+  riderAccept(token: string, name: string): Promise<RiderJob>
+  riderAction(token: string, action: RiderAction, reason?: string | null): Promise<RiderJob>
 }
 
 /** Merchant-side additions (implemented on CommerceGateway). */
