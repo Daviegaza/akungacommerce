@@ -13,8 +13,10 @@ const LandingPage = lazy(() => import('@/landing/LandingPage'))
 const StorefrontApp = lazy(() => import('@/storefront/StorefrontApp'))
 const TrackPage = lazy(() => import('@/storefront/pages/TrackPage'))
 const RiderPage = lazy(() => import('@/storefront/pages/RiderPage'))
-// The original storefront template (/classic, /products, /cart ...), kept for reference.
+// The original storefront template (/classic, /products, /cart ...), kept for reference in DEVELOPMENT
+// only: it uses mock products and invented testimonials, so production builds show a not-found page.
 const ClassicStorefront = lazy(() => import('@/ClassicStorefront'))
+const PublicNotFound = lazy(() => import('@/storefront/components/States').then((m) => ({ default: m.PublicNotFound })))
 
 /** Calm full-screen placeholder for the Rafu surfaces while their code loads. */
 function RafuLoader() {
@@ -76,7 +78,7 @@ export default function App() {
               path="*"
               element={
                 <Suspense fallback={<RafuLoader />}>
-                  <ClassicStorefront />
+                  {import.meta.env.DEV ? <ClassicStorefront /> : <PublicNotFound />}
                 </Suspense>
               }
             />

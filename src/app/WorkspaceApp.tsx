@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import { AppProviders, OrgProvider, useOrganisations, useSessionUser } from './context'
 import { AppShell } from './AppShell'
@@ -28,6 +28,32 @@ const SellingToolsPage = lazy(() => import('./pages/SellingToolsPage'))
 const InvoicePage = lazy(() => import('./pages/InvoicePage'))
 const JoinTeamPage = lazy(() => import('./pages/JoinTeamPage'))
 
+/**
+ * After the workspace has rendered, quietly fetch the code for the everyday pages so the first
+ * tap on Orders, Products, Payments, Inventory or Fulfilment does not wait on the network.
+ */
+function PrefetchEverydayPages() {
+  useEffect(() => {
+    const load = () => {
+      void import('./pages/OrdersPage')
+      void import('./pages/OrderDetailPage')
+      void import('./pages/ProductsPage')
+      void import('./pages/InventoryPage')
+      void import('./pages/PaymentsPage')
+      void import('./pages/FulfilmentPage')
+      void import('./pages/CustomersPage')
+    }
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number; cancelIdleCallback?: (id: number) => void }
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(load)
+      return () => w.cancelIdleCallback?.(id)
+    }
+    const t = window.setTimeout(load, 1500)
+    return () => window.clearTimeout(t)
+  }, [])
+  return null
+}
+
 function FullPageLoader() {
   return (
     <div className="ak-root flex min-h-dvh items-center justify-center">
@@ -53,6 +79,7 @@ function Gate() {
 
   return (
     <OrgProvider orgs={orgs.data}>
+      <PrefetchEverydayPages />
       <Routes>
         <Route element={<AppShell />}>
           <Route

@@ -12,6 +12,7 @@ import { Badge, Button, Select, Skeleton } from '../ui/primitives'
 import { cn } from '@/lib/utils'
 import { MpesaReconciliation } from '../components/MpesaReconciliation'
 import { WhereIsMyMoney } from '../components/WhereIsMyMoney'
+import { BRAND } from '@/brand/brand'
 
 const DAY_MS = 86_400_000
 
@@ -280,7 +281,7 @@ function RefundsPanel({ refunds }: { refunds: Refund[] }) {
   return (
     <>
       <p className="mb-4 max-w-2xl text-sm text-ink-3">
-        A refund here is a record. Akunga does not move money: pay the customer back through your usual channel, then record it.
+        A refund here is a record. {BRAND.name} does not move money: pay the customer back through your usual channel, then record it.
       </p>
       <div className="hidden sm:block">
         <Table>

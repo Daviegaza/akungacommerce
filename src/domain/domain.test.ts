@@ -199,6 +199,18 @@ describe('locale, phone and time', () => {
     expect(isValidTimezone('Mars/Olympus')).toBe(false)
   })
 
+  it('handles London and New York across daylight-saving changes', () => {
+    // London: GMT in winter, BST (UTC+1) from 29 Mar 2026 01:00 UTC.
+    expect(businessDate('2026-03-28T23:30:00Z', 'Europe/London')).toBe('2026-03-28')
+    expect(businessDate('2026-03-29T23:30:00Z', 'Europe/London')).toBe('2026-03-30')
+    expect(formatDateTime('2026-07-01T12:00:00Z', 'en-GB', 'Europe/London')).toMatch(/13:00/)
+    expect(formatDateTime('2026-12-01T12:00:00Z', 'en-GB', 'Europe/London')).toMatch(/12:00/)
+    // New York: EST (UTC-5) until 8 Mar 2026 07:00 UTC, then EDT (UTC-4).
+    expect(businessDate('2026-03-08T04:30:00Z', 'America/New_York')).toBe('2026-03-07')
+    expect(businessDate('2026-03-09T03:30:00Z', 'America/New_York')).toBe('2026-03-08')
+    expect(businessDate('2026-03-09T04:30:00Z', 'America/New_York')).toBe('2026-03-09')
+  })
+
   it('applies the role matrix', () => {
     expect(can('analyst', 'orders.create')).toBe(false)
     expect(can('sales', 'cost.read')).toBe(false)

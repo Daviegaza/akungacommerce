@@ -14,6 +14,7 @@ import { OrderDeliveryPanel } from '../components/OrderDeliveryPanel'
 import { DefinitionList, EmptyState, ErrorNotice, Notice, PageHeader, Section, Sheet, Table, Td, Th } from '../ui/layout'
 import { Money, OrderStatusBadge, PaymentStateBadge, Phone, VerificationBadge, When, useFormatMoney } from '../ui/format'
 import { Badge, Button, Field, Input, Select, Skeleton, Textarea } from '../ui/primitives'
+import { BRAND } from '@/brand/brand'
 
 const FORWARD_LABEL: Partial<Record<OrderStatus, string>> = {
   pending_confirmation: 'Send for confirmation',
@@ -445,7 +446,7 @@ function RecordPaymentSheet({ order, onClose }: { order: OrderDetail; onClose: (
     >
       <form id="record-payment" onSubmit={submit} className="flex flex-col gap-4" noValidate>
         <Notice tone="warn">
-          This records money you say you received. It is saved as <strong>manual · unverified</strong> — Akunga has not confirmed it with any bank or provider. Check your
+          This records money you say you received. It is saved as <strong>manual · unverified</strong> — {BRAND.name} has not confirmed it with any bank or provider. Check your
           statement before releasing goods on credit.
         </Notice>
         {record.error && <ErrorNotice error={record.error} />}
@@ -525,7 +526,7 @@ function RefundSheet({ order, payment, onClose }: { order: OrderDetail; payment:
       }
     >
       <div className="flex flex-col gap-4">
-        <Notice tone="warn">Akunga records the refund; it does not send money. Return the funds through the original method, then record it here.</Notice>
+        <Notice tone="warn">{BRAND.name} records the refund; it does not send money. Return the funds through the original method, then record it here.</Notice>
         {refund.error && <ErrorNotice error={refund.error} />}
         <Field label={`Amount (${payment.currency})`} error={touched ? amountError : null} hint={`Up to ${fmt(max, payment.currency)}`}>
           {(p) => <Input {...p} inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />}

@@ -134,3 +134,24 @@ export function ProductSkeleton() {
     </div>
   )
 }
+
+/** Unknown public URL (production). The old template is not served outside development. */
+export function PublicNotFound() {
+  return (
+    <div className="min-h-dvh bg-canvas">
+      <StateShell
+        icon={<SearchX className="size-7" aria-hidden />}
+        title="This page doesn't exist"
+        body="The link may be mistyped or out of date. If someone sent you a shop link, ask them for it again."
+        action={
+          <Link
+            to="/"
+            className="inline-flex h-12 items-center rounded-xl bg-brand px-5 text-[15px] font-semibold text-on-brand hover:bg-brand-strong"
+          >
+            Go to the home page
+          </Link>
+        }
+      />
+    </div>
+  )
+}

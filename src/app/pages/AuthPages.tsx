@@ -6,6 +6,7 @@ import { useGateway } from '../context'
 import { DemoBanner } from '../AppShell'
 import { Button, Field, Input, Select } from '../ui/primitives'
 import { ErrorNotice } from '../ui/layout'
+import { BRAND } from '@/brand/brand'
 
 function Frame({ title, lead, children }: { title: string; lead: string; children: React.ReactNode }) {
   return (
@@ -13,7 +14,7 @@ function Frame({ title, lead, children }: { title: string; lead: string; childre
       <DemoBanner />
       <div className="mx-auto grid min-h-[calc(100dvh-2rem)] max-w-5xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_420px] lg:items-center lg:py-16">
         <div className="max-w-md">
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-3 uppercase">Akunga Commerce</p>
+          <p className="text-[11px] font-semibold tracking-[0.18em] text-ink-3 uppercase">{BRAND.name}</p>
           <h1 className="mt-3 text-[34px] leading-[1.05] font-semibold tracking-[-0.03em] text-ink sm:text-[44px]">{title}</h1>
           <p className="mt-4 text-[15px] leading-relaxed text-ink-2">{lead}</p>
         </div>
@@ -149,7 +150,7 @@ export function OnboardingPage() {
   return (
     <Frame
       title="Set up your business."
-      lead="Your country sets sensible defaults. Currency, time zone and number format can be anything — Akunga is not tied to one market. Base currency is fixed once you add products."
+      lead={`Your country sets sensible defaults. Currency, time zone and number format can be anything — ${BRAND.name} is not tied to one market. Base currency is fixed once you add products.`}
     >
       <form onSubmit={submit} className="flex flex-col gap-4 rounded-2xl border border-line bg-panel p-6 sm:p-8">
         {error != null && <ErrorNotice error={error} />}

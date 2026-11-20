@@ -11,6 +11,7 @@ import { DefinitionList, EmptyState, ErrorNotice, PageHeader, Section, Sheet, Ta
 import { When } from '../ui/format'
 import { Badge, Button, Field, Input, Select, Skeleton, type Tone } from '../ui/primitives'
 import { TeamInvites } from '../components/TeamInvites'
+import { BRAND } from '@/brand/brand'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -317,7 +318,7 @@ function AddMemberSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (
       open={open}
       onOpenChange={onOpenChange}
       title="Add a team member"
-      description="They must already have an Akunga account. No invitation email is sent, so let them know yourself."
+      description={`They must already have a ${BRAND.name} account. No invitation email is sent, so let them know yourself.`}
       footer={
         <>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
@@ -444,7 +445,7 @@ function TeamSection() {
       ) : members.isError ? (
         <ErrorNotice error={members.error} onRetry={() => void members.refetch()} />
       ) : members.data.length === 0 ? (
-        <EmptyState title="No team members" body="Add the people who take orders or pack them. They need an Akunga account first." />
+        <EmptyState title="No team members" body={`Add the people who take orders or pack them. They need a ${BRAND.name} account first.`} />
       ) : (
         <>
           <div className="hidden sm:block">

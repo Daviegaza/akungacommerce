@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { OrderSummary } from '@/gateway/types'
 import { useGateway, useOrg } from '../context'
@@ -55,7 +55,19 @@ export function useMilestone(orders: OrderSummary[] | undefined, orgId: string):
   const count = orders ? countedOrders(orders) : 0
   const reached = [...MILESTONES].reverse().find((m) => m <= count) ?? 0
   const seen = Number(raw ?? 0) || 0
-  const milestone = orders && reached > seen ? reached : null
-  const dismiss = useCallback(() => setRaw(String(Math.max(reached, seen))), [reached, seen, setRaw])
-  return { milestone, dismiss }
+  const due = orders && reached > seen ? reached : null
+  // Recorded as seen as soon as it is shown, so a reload or another tab never shows it again.
+  // The toast stays for this visit until it times out or is dismissed.
+  const [showing, setShowing] = useState<number | null>(null)
+  const [lastDue, setLastDue] = useState<number | null>(null)
+  if (due !== lastDue) {
+    // Adjusting state while rendering: React's pattern for reacting to a changed value.
+    setLastDue(due)
+    if (due != null) setShowing(due)
+  }
+  useEffect(() => {
+    if (due != null) setRaw(String(due))
+  }, [due, setRaw])
+  const dismiss = useCallback(() => setShowing(null), [])
+  return { milestone: showing, dismiss }
 }
