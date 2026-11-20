@@ -36,6 +36,7 @@
   - milestone celebrations, KPI sparklines for each currency
   - order cards with status tabs and one-tap next actions
   - photo-grid products with storefront settings (images, compare-at price, swatches, drops)
+  - product photo upload from phone or computer (camera, picker, drag and drop): resized and re-encoded to WebP/JPEG in the browser, then stored in the public `product-images` bucket under the org's folder (Supabase) or as small data URLs in localStorage (demo, max 8 per product)
   - "My shop" settings with a delivery-zone map, QR code and WhatsApp share kit
 - **M-Pesa STK push:** Daraja adapter plus callback Edge Functions. It is **adapter only, not connected**, and payments are still confirmed by the merchant.
 

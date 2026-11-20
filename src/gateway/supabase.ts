@@ -22,6 +22,7 @@ import type {
 } from './types'
 import type { ShopSettings } from './storefront'
 import { mapBands, mapImages } from './storefront-supabase'
+import { UploadError, uploadProductImageToStorage } from '@/media/upload'
 
 /* Row shapes returned by PostgREST (snake_case). Only the columns we select. */
 type Row = Record<string, unknown>
@@ -624,6 +625,17 @@ export function createSupabaseGateway(url: string, anonKey: string): CommerceGat
           p_swatch: m.swatch,
         }),
       )
+    },
+    async uploadProductImage(orgId, image, opts) {
+      const { data } = await sb.auth.getSession()
+      const accessToken = data.session?.access_token
+      if (!accessToken) throw new GatewayError('Sign in again to upload photos', 'unauthenticated')
+      try {
+        return await uploadProductImageToStorage({ baseUrl: url, anonKey, accessToken, orgId, image, opts })
+      } catch (e) {
+        if (e instanceof UploadError) throw new GatewayError(e.message, e.status === 0 ? 'network' : 'upload_failed')
+        throw e
+      }
     },
   }
 }

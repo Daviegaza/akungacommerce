@@ -1,30 +1,11 @@
 /* eslint-disable react-refresh/only-export-components -- editor helpers live next to the fields that use them */
-import { useState, type KeyboardEvent } from 'react'
-import { ArrowDown, ArrowUp, CalendarClock, ImagePlus, Star, Trash2 } from 'lucide-react'
+import type { Dispatch, SetStateAction } from 'react'
+import { CalendarClock, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button, Field, Input, Switch, Thumb } from '../ui/primitives'
+import { Button, Field, Input, Switch } from '../ui/primitives'
+import { ProductPhotos, type ImageDraft } from './ProductPhotos'
 
-export const MAX_IMAGES = 10
-
-export interface ImageDraft {
-  key: string
-  url: string
-  alt: string
-}
-
-/** Only absolute https URLs are accepted for product photos. */
-export function imageUrlError(url: string): string | undefined {
-  const v = url.trim()
-  if (!v) return 'Paste an image link'
-  let u: URL
-  try {
-    u = new URL(v)
-  } catch {
-    return 'Not a valid link'
-  }
-  if (u.protocol !== 'https:') return 'Use a secure link that starts with https://'
-  return undefined
-}
+export { MAX_IMAGES, imageUrlError, type ImageDraft } from './ProductPhotos'
 
 /** ISO instant -> value for <input type="datetime-local"> in this device's time zone. */
 export function isoToLocalInput(iso: string | null): string {
@@ -115,7 +96,7 @@ export function SwatchPicker({
 }
 
 /**
- * Storefront section of the product editor: photos (https links), featured flag
+ * Storefront section of the product editor: photos (uploads or https links), featured flag
  * and an honest scheduled drop time. Controlled by ProductEditorSheet.
  */
 export function ProductMerchandising({
@@ -132,7 +113,7 @@ export function ProductMerchandising({
 }: {
   productName: string
   images: ImageDraft[]
-  onImagesChange: (next: ImageDraft[]) => void
+  onImagesChange: Dispatch<SetStateAction<ImageDraft[]>>
   featured: boolean
   onFeaturedChange: (v: boolean) => void
   /** datetime-local value in the device time zone, '' = no drop. */
@@ -142,40 +123,6 @@ export function ProductMerchandising({
   attempted: boolean
   nowMs: number
 }) {
-  const [pendingUrl, setPendingUrl] = useState('')
-  const [pendingError, setPendingError] = useState<string | undefined>()
-  const pendingValid = pendingUrl.trim() !== '' && !imageUrlError(pendingUrl)
-  const full = images.length >= MAX_IMAGES
-
-  const add = () => {
-    const err = imageUrlError(pendingUrl)
-    if (err) {
-      setPendingError(err)
-      return
-    }
-    if (images.some((i) => i.url === pendingUrl.trim())) {
-      setPendingError('This photo is already added')
-      return
-    }
-    onImagesChange([...images, { key: crypto.randomUUID(), url: pendingUrl.trim(), alt: '' }])
-    setPendingUrl('')
-    setPendingError(undefined)
-  }
-  const onKey = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      add()
-    }
-  }
-  const move = (from: number, to: number) => {
-    if (to < 0 || to >= images.length) return
-    const next = [...images]
-    const [item] = next.splice(from, 1)
-    next.splice(to, 0, item)
-    onImagesChange(next)
-  }
-  const patch = (key: string, p: Partial<ImageDraft>) => onImagesChange(images.map((i) => (i.key === key ? { ...i, ...p } : i)))
-
   const dropIso = localInputToIso(dropAt)
   const dropInPast = dropIso != null && Date.parse(dropIso) <= nowMs
   const dropInvalid = dropAt.trim() !== '' && dropIso == null
@@ -189,117 +136,7 @@ export function ProductMerchandising({
         <p className="text-xs text-ink-3">How this product looks in your online shop. The first photo is the cover.</p>
       </div>
 
-      {/* Photos */}
-      <div>
-        <p className="mb-2 text-[13px] font-semibold text-ink">
-          Photos <span className="tnum font-normal text-ink-3">{images.length}/{MAX_IMAGES}</span>
-        </p>
-        {images.length > 0 && (
-          <ol className="mb-3 flex flex-col gap-2">
-            {images.map((img, i) => {
-              const err = attempted ? imageUrlError(img.url) : undefined
-              return (
-                <li key={img.key} className="flex items-start gap-3 rounded-2xl bg-panel p-2.5 ring-1 ring-line/60">
-                  <span className="relative shrink-0">
-                    <Thumb src={img.url} alt={img.alt || productName || 'Product photo'} className="size-16" />
-                    {i === 0 && (
-                      <span className="absolute -top-1.5 -left-1.5 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold text-on-brand">Cover</span>
-                    )}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-mono text-[11px] text-ink-3" title={img.url}>
-                      {img.url}
-                    </p>
-                    {err && (
-                      <p role="alert" className="text-xs font-medium text-neg">
-                        {err}
-                      </p>
-                    )}
-                    <label className="mt-1.5 block">
-                      <span className="sr-only">Alt text for photo {i + 1}</span>
-                      <Input
-                        value={img.alt}
-                        maxLength={200}
-                        onChange={(e) => patch(img.key, { alt: e.target.value })}
-                        placeholder={`Describe the photo (default: ${productName || 'product name'})`}
-                        className="h-9 text-[13px]"
-                        disabled={readOnly}
-                      />
-                    </label>
-                  </div>
-                  {!readOnly && (
-                    <div className="flex shrink-0 flex-col gap-1 sm:flex-row">
-                      <button
-                        type="button"
-                        onClick={() => move(i, i - 1)}
-                        disabled={i === 0}
-                        aria-label={`Move photo ${i + 1} up`}
-                        className="flex size-9 items-center justify-center rounded-full text-ink-3 hover:bg-sunken hover:text-ink disabled:opacity-30"
-                      >
-                        <ArrowUp className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => move(i, i + 1)}
-                        disabled={i === images.length - 1}
-                        aria-label={`Move photo ${i + 1} down`}
-                        className="flex size-9 items-center justify-center rounded-full text-ink-3 hover:bg-sunken hover:text-ink disabled:opacity-30"
-                      >
-                        <ArrowDown className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onImagesChange(images.filter((x) => x.key !== img.key))}
-                        aria-label={`Remove photo ${i + 1}`}
-                        className="flex size-9 items-center justify-center rounded-full text-ink-3 hover:bg-neg-soft hover:text-neg"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
-                    </div>
-                  )}
-                </li>
-              )
-            })}
-          </ol>
-        )}
-        {!readOnly && (
-          <Field
-            label="Add a photo link"
-            error={pendingError}
-            hint={full ? `You can add up to ${MAX_IMAGES} photos.` : 'Paste a public https:// image link, e.g. from your website or cloud storage. Square photos look best.'}
-          >
-            {(p) => (
-              <div className="flex items-start gap-2">
-                <span className="shrink-0">
-                  {pendingValid ? (
-                    <Thumb src={pendingUrl.trim()} alt="Preview of the photo link" className="size-11" />
-                  ) : (
-                    <span className="flex size-11 items-center justify-center rounded-xl bg-panel text-ink-3 ring-1 ring-line" aria-hidden>
-                      <ImagePlus className="size-5" />
-                    </span>
-                  )}
-                </span>
-                <Input
-                  {...p}
-                  type="url"
-                  inputMode="url"
-                  value={pendingUrl}
-                  disabled={full}
-                  onChange={(e) => {
-                    setPendingUrl(e.target.value)
-                    setPendingError(undefined)
-                  }}
-                  onKeyDown={onKey}
-                  placeholder="https://…"
-                />
-                <Button onClick={add} disabled={full || !pendingUrl.trim()} className="shrink-0">
-                  Add
-                </Button>
-              </div>
-            )}
-          </Field>
-        )}
-      </div>
+      <ProductPhotos productName={productName} images={images} onImagesChange={onImagesChange} readOnly={readOnly} attempted={attempted} />
 
       <div className="border-t border-line pt-4">
         <Switch
