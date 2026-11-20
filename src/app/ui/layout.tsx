@@ -20,12 +20,12 @@ export function PageHeader({
   eyebrow?: ReactNode
 }) {
   return (
-    <header className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+    <header className="mb-8 flex flex-col gap-5 border-b border-line/80 pb-6 sm:mb-9 sm:flex-row sm:items-end sm:justify-between sm:pb-7">
       <div className="min-w-0">
         {back && <div className="mb-2">{back}</div>}
-        {eyebrow && <p className="mb-1 text-[13px] text-ink-3">{eyebrow}</p>}
-        <h1 className="font-display text-[24px] leading-[1.15] font-semibold tracking-tight text-ink sm:text-[28px]">{title}</h1>
-        {description && <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-2">{description}</p>}
+        {eyebrow && <p className="mb-2 text-[11px] font-semibold tracking-[0.13em] text-ink-3 uppercase">{eyebrow}</p>}
+        <h1 className="font-display text-[30px] leading-[1.08] font-semibold tracking-[-0.045em] text-ink sm:text-[34px]">{title}</h1>
+        {description && <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-ink-2 sm:text-[15px]">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </header>
@@ -63,12 +63,12 @@ export function Section({
       )}
     >
       {(title || actions) && (
-        <div className={cn('mb-3 flex items-center justify-between gap-3', !card && 'pb-1')}>
+        <div className={cn('mb-4 flex items-center justify-between gap-3', !card && 'pb-2')}>
           <div className="flex min-w-0 items-center gap-2.5">
             {icon && <span className="flex shrink-0 items-center text-ink-3">{icon}</span>}
             <div className="min-w-0">
-              {title && <h2 className="font-display text-[15px] font-semibold tracking-tight text-ink">{title}</h2>}
-              {description && <p className="text-xs text-ink-3">{description}</p>}
+              {title && <h2 className="font-display text-[16px] font-semibold tracking-[-0.02em] text-ink">{title}</h2>}
+              {description && <p className="mt-0.5 text-[12px] text-ink-3">{description}</p>}
             </div>
           </div>
           {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
