@@ -26,6 +26,7 @@ import {
 } from './storefront'
 import type { Address } from './types'
 import { demoPaymentOptions, demoPromptStatus, demoRequestPrompt, settleDemoPrompts } from './collections-demo'
+import { createDemoStorefrontExtras } from './expansion-demo'
 
 const { tx, read, uuid, now, nowIso, level, getOrg, createOrderCore } = demoInternals
 
@@ -424,5 +425,7 @@ export function createDemoStorefront(): StorefrontGateway {
     requestMpesaPrompt: (token, phoneE164, opts) => tx((s) => demoRequestPrompt(demoInternals, s, orderByToken(s, token), phoneE164, opts?.simulate)),
     getPaymentOptions: (slug) => read((s) => demoPaymentOptions(s, requireShop(s, slug).orgId)),
     getMpesaPromptStatus: (token, checkoutRequestId) => tx((s) => demoPromptStatus(demoInternals, s, orderByToken(s, token), checkoutRequestId)),
+
+    ...createDemoStorefrontExtras(demoInternals),
   }
 }
