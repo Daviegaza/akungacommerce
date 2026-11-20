@@ -1,24 +1,21 @@
 import { BRAND } from './brand'
 
-/*
- * Fungua identity. This geometry is the source of truth for every logo file in public/brand
- * (see docs/BRAND_GUIDELINES.md). Never redraw, recolour or stretch it.
- *
- * Mark: an F set inside an open frame. The frame is broken at two corners, so the shape reads as
- * an opening and as two connected pathways. Built on a 64-unit grid with an 8-unit stroke.
+/**
+ * Fungua identity: an open frame with a forward-moving aperture.
+ * The F-shaped structure anchors the mark; the cobalt exit path signals
+ * opening a new route to commerce. Keep this geometry consistent across
+ * every supplied logo lockup and app icon.
  */
-export const MARK_F = 'M10 10H40V18H18V26H34V34H18V44H10Z'
-export const MARK_FRAME = 'M46 24H54V54H24V46H46Z'
-/** "fungua" set in Geist SemiBold, -3.5% tracking, outlined (no font needed). viewBox -2 -73 331 92. */
+export const MARK_F = 'M8 9H43V17H17V27H35V35H17V55H8Z'
+export const MARK_FRAME = 'M31 23H47V16L60 29L47 42V35H31Z'
 const WORDMARK = 'M12.60-55.50Q12.60-62.90 16.70-66.95Q20.80-71 29.10-71L29.10-71L39.50-71L39.50-61.10L31.50-61.10Q25.50-61.10 25.50-54.80L25.50-54.80L25.50-52L38.80-52L38.80-42.10L25.50-42.10L25.50 0L12.60 0L12.60-42.10L5-42.10L5-52L12.60-52L12.60-55.50Z M64.30 1.20Q56.10 1.20 51.40-4.15Q46.70-9.50 46.70-19L46.70-19L46.70-53.40L59.50-53.40L59.50-22.20Q59.50-15.50 61.70-12.35Q63.90-9.20 68.60-9.20L68.60-9.20Q73.80-9.20 76.65-12.65Q79.50-16.10 79.50-22.70L79.50-22.70L79.50-53.40L92.30-53.40L92.30 0L80.60 0L80.40-8.90Q76.30 1.20 64.30 1.20L64.30 1.20Z M102.90 0L102.90-53.40L114.50-53.40L114.80-44.20Q116.80-49.50 121-52.05Q125.20-54.60 130.80-54.60L130.80-54.60Q139.50-54.60 144.25-49.05Q149-43.50 149-34.30L149-34.30L149 0L136.20 0L136.20-30.20Q136.20-37.20 134.05-40.70Q131.90-44.20 126.90-44.20L126.90-44.20Q121.70-44.20 118.70-40.55Q115.70-36.90 115.70-30.20L115.70-30.20L115.70 0L102.90 0Z M181.20 16.20Q171.00 16.20 164.90 12.15Q158.80 8.10 156.90 1L156.90 1L170.10 0.10Q171.10 3.30 173.65 4.90Q176.20 6.50 181.20 6.50L181.20 6.50Q193.50 6.50 193.50-4.40L193.50-4.40L193.50-11.20Q191.60-7.30 187.40-4.95Q183.20-2.60 178.00-2.60L178.00-2.60Q171.40-2.60 166.25-5.85Q161.10-9.10 158.20-15Q155.30-20.90 155.30-28.50L155.30-28.50Q155.30-36.10 158.15-42Q161.00-47.90 166.15-51.25Q171.30-54.60 177.80-54.60L177.80-54.60Q183.50-54.60 187.70-52.05Q191.90-49.50 193.90-45.10L193.90-45.10L193.90-53.40L206.40-53.40L206.40-4.70Q206.40 5.40 199.60 10.80Q192.80 16.20 181.20 16.20L181.20 16.20ZM181.00-12.60Q186.90-12.60 190.25-16.95Q193.60-21.30 193.60-28.90L193.60-28.90Q193.60-36.20 190.20-40.40Q186.80-44.60 181.00-44.60L181.00-44.60Q175.20-44.60 171.90-40.30Q168.60-36 168.60-28.60L168.60-28.60Q168.60-21.20 171.95-16.90Q175.30-12.60 181.00-12.60L181.00-12.60Z M234.60 1.20Q226.40 1.20 221.70-4.15Q217.00-9.50 217.00-19L217.00-19L217.00-53.40L229.80-53.40L229.80-22.20Q229.80-15.50 232.00-12.35Q234.20-9.20 238.90-9.20L238.90-9.20Q244.10-9.20 246.95-12.65Q249.80-16.10 249.80-22.70L249.80-22.70L249.80-53.40L262.60-53.40L262.60 0L250.90 0L250.70-8.90Q246.60 1.20 234.60 1.20L234.60 1.20Z M288.90 1.20Q280.40 1.20 275.35-2.65Q270.30-6.50 270.30-13.40L270.30-13.40Q270.30-20.20 274.55-24.15Q278.80-28.10 287.70-29.80L287.70-29.80L305.40-33.30Q305.40-38.90 302.80-41.80Q300.20-44.70 295.20-44.70L295.20-44.70Q286.10-44.70 284.30-36.40L284.30-36.40L271.20-37Q272.80-45.40 279.00-50Q285.20-54.60 295.20-54.60L295.20-54.60Q306.50-54.60 312.35-48.85Q318.20-43.10 318.20-32.40L318.20-32.40L318.20-13Q318.20-10.90 318.90-10.10Q319.60-9.30 321.20-9.30L321.20-9.30L322.90-9.30L322.90 0Q321.30 0.40 318.30 0.40L318.30 0.40Q313.60 0.40 310.75-1.60Q307.90-3.60 307.10-8.30L307.10-8.30Q305.10-4 300.25-1.40Q295.40 1.20 288.90 1.20L288.90 1.20ZM291.50-8.10Q297.80-8.10 301.60-11.80Q305.40-15.50 305.40-21.60L305.40-21.60L305.40-24.60L291.60-21.80Q287.40-21 285.50-19.20Q283.60-17.40 283.60-14.60L283.60-14.60Q283.60-11.50 285.65-9.80Q287.70-8.10 291.50-8.10L291.50-8.10Z'
 
 export type LogoTone = 'brand' | 'mono' | 'reversed'
 
 const TONES: Record<LogoTone, { ink: string; accent: string }> = {
-  // brand: theme-aware through CSS variables set in src/index.css (light and dark).
   brand: { ink: 'var(--ak-logo-ink, #0E1420)', accent: 'var(--ak-logo-accent, #2F5BEA)' },
   mono: { ink: 'currentColor', accent: 'currentColor' },
-  reversed: { ink: '#FFFFFF', accent: '#7B9BFF' },
+  reversed: { ink: '#FFFFFF', accent: '#9DB5FF' },
 }
 
 interface MarkProps {
@@ -27,7 +24,6 @@ interface MarkProps {
   className?: string
 }
 
-/** The symbol alone. Minimum 16 px on screen. */
 export function FunguaMark({ size = 32, tone = 'brand', className }: MarkProps) {
   const t = TONES[tone]
   return (
@@ -38,20 +34,18 @@ export function FunguaMark({ size = 32, tone = 'brand', className }: MarkProps) 
   )
 }
 
-/** App-icon form: the mark on a graphite tile. Use where the bare mark would sit on photos or busy colour. */
 export function FunguaAppIcon({ size = 32, className }: { size?: number; className?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" className={className} aria-hidden="true" focusable="false">
       <rect width="64" height="64" rx="14" fill="#0E1420" />
-      <g transform="translate(6.4 6.4) scale(0.8)">
+      <g transform="translate(2 2) scale(0.94)">
         <path fill="#FFFFFF" d={MARK_F} />
-        <path fill="#7B9BFF" d={MARK_FRAME} />
+        <path fill="#9DB5FF" d={MARK_FRAME} />
       </g>
     </svg>
   )
 }
 
-/** The outlined wordmark alone. `height` is the full glyph box (ascender to descender). */
 export function FunguaWordmark({ height = 24, tone = 'brand', className }: { height?: number; tone?: LogoTone; className?: string }) {
   return (
     <svg height={height} viewBox="-2 -73 331 92" className={className} aria-hidden="true" focusable="false">
@@ -60,10 +54,6 @@ export function FunguaWordmark({ height = 24, tone = 'brand', className }: { hei
   )
 }
 
-/**
- * Combined logo (mark + wordmark), the default sign-off. `size` is the mark's box in px; the wordmark
- * scales with it, matching the lockup in public/brand/fungua-logo.svg.
- */
 export function FunguaLogo({
   size = 28,
   tone = 'brand',
