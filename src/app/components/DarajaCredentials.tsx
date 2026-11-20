@@ -75,7 +75,7 @@ function CredentialsForm({ current, onDone }: { current: Configured | null; onDo
           {(p) => <Input {...p} type="password" value={draft.passkey} onChange={(e) => set('passkey', e.target.value)} placeholder={current ? 'Saved' : ''} autoComplete="new-password" />}
         </Field>
       </div>
-      <p className="text-xs leading-relaxed text-ink-3">
+      <p className="border-l-2 border-line-strong pl-3 text-xs leading-relaxed text-ink-3">
         Stored encrypted on the server. Nobody on your team, including you, can read them back. Saving marks the connection
         unverified until a real test payment arrives.
       </p>
@@ -110,9 +110,9 @@ export function DarajaCredentials({ verified }: { verified: boolean }) {
   const c = creds.data.configured ? creds.data : null
 
   return (
-    <div className="flex flex-col gap-3 border-t border-line pt-4">
+    <div className="mt-2 flex max-w-2xl flex-col gap-4 border-t border-line pt-5">
       <div>
-        <h3 className="text-sm font-semibold text-ink">Your M-Pesa keys</h3>
+        <h3 className="font-display text-[15px] font-semibold tracking-[-0.015em] text-ink">Your M-Pesa keys</h3>
         <p className="mt-0.5 max-w-xl text-xs leading-relaxed text-ink-3">
           Customers pay straight into your own Till or Paybill. Fungua never holds the money.
           {gateway.mode === 'demo' && ' Demo: only the summary is kept in this browser; nothing is sent anywhere.'}
@@ -127,7 +127,7 @@ export function DarajaCredentials({ verified }: { verified: boolean }) {
         <CredentialsForm current={c} onDone={() => setEditing(false)} />
       ) : (
         <div className="flex flex-col gap-3">
-          <dl className="grid max-w-xl grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
+          <dl className="tnum grid max-w-xl grid-cols-[auto_1fr] gap-x-6 gap-y-2 border-y border-line py-3 text-sm">
             <dt className="text-ink-3">Account</dt>
             <dd className="text-ink">
               {TYPE_TEXT[c.transactionType]} {c.shortcode}

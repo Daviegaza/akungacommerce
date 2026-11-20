@@ -73,7 +73,7 @@ export const IconButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTM
       ref={ref}
       type={type}
       className={cn(
-        'relative inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink-2 transition-colors hover:bg-sunken hover:text-ink active:scale-95 disabled:opacity-50',
+        'relative inline-flex size-10 shrink-0 items-center justify-center rounded-lg text-ink-2 transition-colors hover:bg-sunken hover:text-ink active:scale-95 disabled:opacity-50',
         className,
       )}
       {...rest}
@@ -207,7 +207,7 @@ export function Switch({
 /* ───────────── Badges ───────────── */
 export type Tone = 'neutral' | 'pos' | 'warn' | 'neg' | 'info' | 'accent'
 const TONE: Record<Tone | 'brand' | 'mango', string> = {
-  brand: 'bg-brand text-on-brand',
+  brand: 'bg-brand-soft text-brand',
   mango: 'bg-mango text-on-mango',
   neutral: 'bg-sunken text-ink-2',
   pos: 'bg-pos-soft text-pos',
@@ -219,7 +219,7 @@ const TONE: Record<Tone | 'brand' | 'mango', string> = {
 
 export function Badge({ tone = 'neutral', children, className, dot }: { tone?: Tone | 'brand' | 'mango'; children: ReactNode; className?: string; dot?: boolean }) {
   return (
-    <span className={cn('inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium whitespace-nowrap', TONE[tone], className)}>
+    <span className={cn('inline-flex h-[22px] items-center gap-1.5 rounded-md px-1.5 text-xs font-medium whitespace-nowrap', TONE[tone], className)}>
       {dot && <span className="size-1.5 rounded-full bg-current" aria-hidden />}
       {children}
     </span>
@@ -241,7 +241,7 @@ export function Skeleton({ className }: { className?: string }) {
 
 /* ───────────── Surfaces ───────────── */
 
-/** Soft rounded surface. `interactive` adds a hover lift for clickable cards. */
+/** Hairline surface. `interactive` adds a quiet hover state for clickable cards. */
 export function Card({
   className,
   interactive,
@@ -252,8 +252,8 @@ export function Card({
   return (
     <As
       className={cn(
-        'rounded-[var(--radius-card)] bg-panel shadow-[var(--shadow-card)] ring-1 ring-line/60',
-        interactive && 'transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)]',
+        'rounded-[var(--radius-card)] border border-line bg-panel',
+        interactive && 'transition-colors duration-150 hover:border-line-strong hover:bg-sunken/40',
         className,
       )}
       {...rest}
@@ -264,13 +264,7 @@ export function Card({
 }
 
 /* ───────────── Avatar ───────────── */
-const AVATAR_TONES = [
-  'bg-brand-soft text-brand-strong',
-  'bg-mango-soft text-warn',
-  'bg-info-soft text-info',
-  'bg-pos-soft text-pos',
-  'bg-sunken text-ink-2',
-] as const
+const AVATAR_TONES = ['bg-sunken text-ink-2', 'bg-brand-soft text-brand-strong'] as const
 
 export function initialsOf(name: string | null | undefined): string {
   const parts = (name ?? '').trim().split(/\s+/).filter(Boolean)
@@ -292,7 +286,7 @@ export function Avatar({ name, size = 40, className }: { name: string | null | u
   return (
     <span
       aria-hidden
-      className={cn('inline-flex shrink-0 items-center justify-center rounded-full font-display font-bold', tone, className)}
+      className={cn('inline-flex shrink-0 items-center justify-center rounded-full font-display font-semibold ring-1 ring-line', tone, className)}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.36) }}
     >
       {initialsOf(name)}
@@ -387,7 +381,7 @@ export function Sparkline({
   )
 }
 
-/* ───────────── Segmented tabs (pill style) ───────────── */
+/* ───────────── Tabs (underlined strip) ───────────── */
 
 export interface PillTab<T extends string> {
   id: T
@@ -396,7 +390,7 @@ export interface PillTab<T extends string> {
   icon?: ReactNode
 }
 
-/** Horizontally scrolling pill tabs with counts. Acts as a tablist that filters the content below. */
+/** Horizontally scrolling underlined tabs with counts. Acts as a tablist that filters the content below. */
 export function PillTabs<T extends string>({
   tabs,
   value,
@@ -411,7 +405,7 @@ export function PillTabs<T extends string>({
   className?: string
 }) {
   return (
-    <div role="tablist" aria-label={label} className={cn('no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 py-1 lg:mx-0 lg:px-0', className)}>
+    <div role="tablist" aria-label={label} className={cn('no-scrollbar -mx-4 flex gap-5 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0', className)}>
       {tabs.map((t) => {
         const active = t.id === value
         return (
@@ -422,8 +416,8 @@ export function PillTabs<T extends string>({
             aria-selected={active}
             onClick={() => onChange(t.id)}
             className={cn(
-              'flex h-10 shrink-0 items-center gap-2 rounded-full px-4 text-[13px] font-semibold transition-[background-color,color,box-shadow] duration-200',
-              active ? 'bg-primary text-on-primary shadow-[0_6px_16px_-8px_rgb(14_20_32/0.5)]' : 'bg-panel text-ink-2 ring-1 ring-line hover:text-ink hover:ring-line-strong',
+              'relative -mb-px flex h-10 shrink-0 items-center gap-1.5 border-b-2 text-[13.5px] font-medium transition-colors duration-150',
+              active ? 'border-ink text-ink' : 'border-transparent text-ink-3 hover:border-line-strong hover:text-ink',
             )}
           >
             {t.icon}
@@ -431,8 +425,8 @@ export function PillTabs<T extends string>({
             {t.count != null && (
               <span
                 className={cn(
-                  'tnum inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold',
-                  active ? 'bg-on-primary/15 text-on-primary' : t.count > 0 ? 'bg-sunken text-ink' : 'text-ink-3',
+                  'tnum inline-flex h-5 min-w-5 items-center justify-center rounded-md px-1.5 text-[11px] font-medium',
+                  active ? 'bg-ink text-canvas' : t.count > 0 ? 'bg-sunken text-ink-2' : 'text-ink-3',
                 )}
               >
                 {t.count}

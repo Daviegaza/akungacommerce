@@ -22,7 +22,13 @@ export function MarketingConsentPanel({ customer }: { customer: Customer }) {
   return (
     <div className="flex flex-col gap-3 text-sm">
       <div className="flex flex-wrap items-center gap-2">
-        {customer.marketingConsent ? <Badge tone="pos">Agreed to offers</Badge> : <Badge>No offers</Badge>}
+        {customer.marketingConsent ? (
+          <Badge tone="pos" dot>
+            Agreed to offers
+          </Badge>
+        ) : (
+          <Badge>No offers</Badge>
+        )}
         {customer.consentUpdatedAt && (
           <span className="text-xs text-ink-3">
             since <When iso={customer.consentUpdatedAt} />
@@ -44,7 +50,7 @@ export function MarketingConsentPanel({ customer }: { customer: Customer }) {
         </Button>
       )}
       {customer.marketingConsent && canWrite && confirming && (
-        <div className="flex flex-col gap-2 rounded-xl bg-sunken p-3" role="group" aria-label="Record opt-out">
+        <div className="flex flex-col gap-2.5 rounded-lg border border-line bg-sunken/50 p-3" role="group" aria-label="Record opt-out">
           <p className="text-[13px] font-semibold text-ink">How did {customer.name.split(/\s+/)[0]} opt out?</p>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" loading={optOut.isPending} onClick={() => optOut.mutate('stop_reply', { onSuccess: () => setConfirming(false) })}>

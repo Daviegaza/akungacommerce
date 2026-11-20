@@ -13,7 +13,7 @@ export function ShopAvatar({ shop, size = 36, className }: { shop: Pick<PublicSh
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
   return (
     <span
-      className={cn('grid shrink-0 place-items-center overflow-hidden rounded-full bg-brand text-on-brand', className)}
+      className={cn('grid shrink-0 place-items-center overflow-hidden rounded-full bg-sunken text-ink ring-1 ring-line', className)}
       style={{ width: size, height: size }}
     >
       {shop.logoUrl && failedUrl !== shop.logoUrl ? (
@@ -32,7 +32,7 @@ function CountBadge({ count }: { count: number }) {
   return (
     <span
       key={count}
-      className="ak-pop absolute -top-0.5 -right-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[11px] font-bold text-on-brand ring-2 ring-canvas tnum"
+      className="ak-pop absolute top-0.5 right-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-ink px-1 text-[11px] font-medium text-canvas ring-2 ring-canvas tnum"
       aria-hidden
     >
       {count > 99 ? '99+' : count}
@@ -40,7 +40,7 @@ function CountBadge({ count }: { count: number }) {
   )
 }
 
-const ICON_BTN = 'relative grid size-11 shrink-0 place-items-center rounded-full text-ink transition-colors hover:bg-sunken'
+const ICON_BTN = 'relative grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 transition-colors hover:bg-sunken hover:text-ink'
 
 /** Sticky top bar: back/shop identity, instant search, saved items and cart. */
 export function ShopHeader({
@@ -63,8 +63,8 @@ export function ShopHeader({
   const qKey = params.get('q') ?? ''
 
   return (
-    <header className="sticky top-0 z-30 border-b border-line/70 bg-canvas/85 backdrop-blur-xl supports-[backdrop-filter]:bg-canvas/75">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-2 sm:gap-3 sm:px-4">
+    <header className="sticky top-0 z-30 border-b border-line bg-canvas/95 backdrop-blur supports-[backdrop-filter]:bg-canvas/85">
+      <div className="mx-auto flex h-14 max-w-7xl items-center gap-1.5 px-2 sm:h-16 sm:gap-3 sm:px-4">
         {showBack ? (
           <button
             type="button"
@@ -78,9 +78,9 @@ export function ShopHeader({
             <ArrowLeft className="size-5" aria-hidden />
           </button>
         ) : null}
-        <Link to={shopPath(slug)} className="flex min-w-0 items-center gap-2.5 rounded-full py-1 pr-2 pl-1" aria-label={`${shop.name} home`}>
-          <ShopAvatar shop={shop} size={34} />
-          <span className="truncate font-display text-[17px] font-semibold tracking-tight text-ink sm:max-w-[14rem]">{shop.name}</span>
+        <Link to={shopPath(slug)} className="flex min-w-0 items-center gap-2.5 rounded-lg py-1 pr-2 pl-1" aria-label={`${shop.name} home`}>
+          <ShopAvatar shop={shop} size={32} />
+          <span className="truncate font-display text-base font-semibold tracking-tight text-ink sm:max-w-[14rem]">{shop.name}</span>
         </Link>
 
         <div className="mx-auto hidden max-w-xl flex-1 sm:block">
@@ -118,7 +118,7 @@ export function ShopHeader({
             animate={{ opacity: 1, y: 0 }}
             exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8 }}
             transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
-            className="absolute inset-x-0 top-0 z-40 flex h-16 items-center gap-2 bg-canvas px-2 sm:hidden"
+            className="absolute inset-x-0 top-0 z-40 flex h-14 items-center gap-2 border-b border-line bg-canvas px-2 sm:hidden"
           >
             <SearchBar slug={slug} shop={shop} products={products} autoFocus onDone={() => setSearching(false)} className="flex-1" />
             <button type="button" className={ICON_BTN} aria-label="Close search" onClick={() => setSearching(false)}>

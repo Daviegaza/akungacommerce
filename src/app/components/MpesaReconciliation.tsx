@@ -69,33 +69,35 @@ function ProviderPanel({ settings, integrations, demo }: { settings: Collections
         </p>
       )}
 
-      <fieldset disabled={!allowed || save.isPending} className="flex flex-col gap-2">
-        <legend className="mb-1 text-xs font-medium text-ink-3">How do you get paid by M-Pesa?</legend>
-        {(['daraja', 'aggregator', 'manual'] as const).map((p) => (
-          <label
-            key={p}
-            className={cn(
-              'flex min-h-11 cursor-pointer items-start gap-3 rounded-xl px-3 py-2.5 ring-1 transition-colors',
-              draft.provider === p ? 'bg-brand-soft/60 ring-brand/40' : 'ring-line hover:bg-sunken',
-            )}
-          >
-            <input
-              type="radio"
-              name={groupId}
-              value={p}
-              checked={draft.provider === p}
-              onChange={() => setDraft({ provider: p, aggregator: p === 'aggregator' ? (draft.aggregator ?? aggregators[0]?.provider ?? null) : null })}
-              className="mt-1 size-4 accent-[var(--ak-brand)]"
-            />
-            <span className="min-w-0">
-              <span className="block text-sm font-semibold text-ink">{PROVIDER_TEXT[p].name}</span>
-              <span className="block text-xs text-ink-3">{PROVIDER_TEXT[p].who}</span>
-            </span>
-          </label>
-        ))}
+      <fieldset disabled={!allowed || save.isPending} className="flex max-w-2xl flex-col">
+        <legend className="mb-2 text-[13px] font-medium text-ink-2">How do you get paid by M-Pesa?</legend>
+        <div className="divide-y divide-line border-y border-line">
+          {(['daraja', 'aggregator', 'manual'] as const).map((p) => (
+            <label
+              key={p}
+              className={cn(
+                'flex min-h-11 cursor-pointer items-start gap-3 py-3 transition-colors',
+                draft.provider === p ? 'text-ink' : 'hover:bg-sunken/40',
+              )}
+            >
+              <input
+                type="radio"
+                name={groupId}
+                value={p}
+                checked={draft.provider === p}
+                onChange={() => setDraft({ provider: p, aggregator: p === 'aggregator' ? (draft.aggregator ?? aggregators[0]?.provider ?? null) : null })}
+                className="mt-0.5 size-4 shrink-0 accent-[var(--ak-brand)]"
+              />
+              <span className="min-w-0">
+                <span className={cn('block text-sm text-ink', draft.provider === p ? 'font-semibold' : 'font-medium')}>{PROVIDER_TEXT[p].name}</span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-ink-3">{PROVIDER_TEXT[p].who}</span>
+              </span>
+            </label>
+          ))}
+        </div>
         {draft.provider === 'aggregator' && (
-          <div className="ml-10 flex flex-col gap-1">
-            <label htmlFor={`${groupId}-agg`} className="text-xs font-medium text-ink-3">
+          <div className="mt-3 ml-7 flex flex-col gap-1.5">
+            <label htmlFor={`${groupId}-agg`} className="text-[13px] font-medium text-ink-2">
               Aggregator
             </label>
             <Select
@@ -160,7 +162,7 @@ function VerifyCode() {
     <div className="flex flex-col gap-3">
       <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-2">
         <div className="flex min-w-[200px] flex-1 flex-col gap-1 sm:max-w-xs">
-          <label htmlFor={inputId} className="text-xs font-medium text-ink-3">
+          <label htmlFor={inputId} className="text-[13px] font-medium text-ink-2">
             M-Pesa code from the SMS or screenshot
           </label>
           <Input
@@ -171,7 +173,7 @@ function VerifyCode() {
             autoCapitalize="characters"
             autoComplete="off"
             spellCheck={false}
-            className="h-10 font-mono uppercase tracking-wide"
+            className="font-mono uppercase tracking-wide"
           />
         </div>
         <Button type="submit" size="md" loading={busy} disabled={!code.trim()} icon={<ScanSearch className="size-4" aria-hidden />}>
@@ -196,10 +198,10 @@ function VerifyResult({ result }: { result: ReceiptVerification }) {
   }
   if (result.state === 'not_verifiable') {
     return (
-      <div className="flex items-start gap-2.5 rounded-xl bg-warn-soft px-3 py-2.5 text-sm text-warn" role="status">
-        <ShieldQuestion className="mt-0.5 size-4 shrink-0" aria-hidden />
+      <div className="flex max-w-2xl items-start gap-2.5 rounded-lg border border-warn/25 bg-warn-soft px-4 py-3 text-sm leading-relaxed text-ink-2" role="status">
+        <ShieldQuestion className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />
         <div>
-          <p className="font-semibold">Not verifiable automatically</p>
+          <p className="font-semibold text-ink">Not verifiable automatically</p>
           <p>
             Your shop is on manual M-Pesa, so Safaricom does not report payments to Fungua. Check the code in your own M-Pesa statement or the M-Pesa app
             before releasing goods. A forwarded SMS or screenshot is not proof.
@@ -211,10 +213,10 @@ function VerifyResult({ result }: { result: ReceiptVerification }) {
   }
   if (result.state === 'not_found') {
     return (
-      <div className="flex items-start gap-2.5 rounded-xl bg-neg-soft px-3 py-2.5 text-sm text-neg" role="status">
-        <XCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+      <div className="flex max-w-2xl items-start gap-2.5 rounded-lg border border-neg/25 bg-neg-soft px-4 py-3 text-sm leading-relaxed text-ink-2" role="status">
+        <XCircle className="mt-0.5 size-4 shrink-0 text-neg" aria-hidden />
         <div>
-          <p className="font-semibold">No confirmation from M-Pesa with this code</p>
+          <p className="font-semibold text-ink">No confirmation from M-Pesa with this code</p>
           <p>
             Safaricom has not reported this payment to your shop. It may be fake, sent to another business, or still on its way. Don't release goods
             until it shows up here or in your M-Pesa statement.
@@ -226,7 +228,7 @@ function VerifyResult({ result }: { result: ReceiptVerification }) {
   }
   const r = result.receipt
   return (
-    <div className="flex items-start gap-2.5 rounded-xl bg-pos-soft px-3 py-2.5 text-sm text-ink" role="status">
+    <div className="flex max-w-2xl items-start gap-2.5 rounded-lg border border-pos/25 bg-pos-soft px-4 py-3 text-sm leading-relaxed text-ink" role="status">
       <ShieldCheck className="mt-0.5 size-4 shrink-0 text-pos" aria-hidden />
       <div>
         <p className="font-semibold">Real payment, confirmed by M-Pesa</p>
@@ -317,10 +319,10 @@ function QueueItem({ r, orders }: { r: MpesaReceipt; orders: OrderSummary[] }) {
       {allowed && !dismissing && (
         <div className="flex flex-wrap items-end gap-2">
           <div className="flex min-w-[220px] flex-1 flex-col gap-1 sm:max-w-sm">
-            <label htmlFor={selectId} className="text-xs font-medium text-ink-3">
+            <label htmlFor={selectId} className="text-[13px] font-medium text-ink-2">
               Attach to order
             </label>
-            <Select id={selectId} value={orderId} onChange={(e) => setOrderId(e.target.value)} className="h-10" disabled={candidates.length === 0}>
+            <Select id={selectId} value={orderId} onChange={(e) => setOrderId(e.target.value)} disabled={candidates.length === 0}>
               {candidates.length === 0 && <option value="">No open order with enough balance</option>}
               {candidates.map((o) => (
                 <option key={o.id} value={o.id}>
@@ -351,7 +353,7 @@ function QueueItem({ r, orders }: { r: MpesaReceipt; orders: OrderSummary[] }) {
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="e.g. Personal transfer, refunded to customer"
-            className="h-10 min-w-[220px] flex-1 sm:max-w-sm"
+            className="min-w-[220px] flex-1 sm:max-w-sm"
             maxLength={300}
           />
           <Button type="submit" size="md" disabled={!reason.trim()} loading={dismiss.isPending}>
@@ -464,15 +466,20 @@ function SimulateIncoming() {
   const amountMinor = Math.round(Number(amount) * 100)
   return (
     <form
-      className="flex flex-wrap items-end gap-2 rounded-xl bg-info-soft p-3"
+      className="flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-line-strong p-3"
       onSubmit={(e) => {
         e.preventDefault()
         sim.mutate({ amountMinor, accountRef: ref.trim() || null })
       }}
     >
-      <p className="w-full text-xs font-medium text-info">Demo: pretend a customer paid your Till/Paybill directly (simulated, nothing is charged)</p>
-      <Input aria-label="Amount in KES" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10 w-28 tnum" />
-      <Input aria-label="Account reference (order number), optional" value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Account ref, e.g. 1003" className="h-10 w-48" />
+      <p className="w-full text-xs text-ink-2">
+        <Badge tone="info" className="mr-1.5">
+          Demo
+        </Badge>
+        Pretend a customer paid your Till/Paybill directly (simulated, nothing is charged)
+      </p>
+      <Input aria-label="Amount in KES" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-28 tnum" />
+      <Input aria-label="Account reference (order number), optional" value={ref} onChange={(e) => setRef(e.target.value)} placeholder="Account ref, e.g. 1003" className="w-48 max-w-full" />
       <Button type="submit" size="md" loading={sim.isPending} disabled={!(amountMinor > 0)}>
         Simulate payment
       </Button>
@@ -521,7 +528,12 @@ export function MpesaReconciliation() {
       {/* M-Pesa route and code checks are Kenya-only; NGN shops get bank-transfer accounts below. */}
       {!ngn && (
         <>
-      <Section title="How you get paid" description="Which M-Pesa route your shop uses, and whether it is really connected." icon={<Radio className="size-4" aria-hidden />}>
+      <Section
+        title="M-Pesa route"
+        description="Which M-Pesa route your shop uses, and whether it is really connected."
+        icon={<Radio className="size-[18px]" aria-hidden />}
+        className="border-t border-line pt-6"
+      >
         {settings.isPending || integrations.isPending ? (
           <Skeleton className="h-24 w-full max-w-xl" />
         ) : settings.isError ? (
@@ -534,7 +546,8 @@ export function MpesaReconciliation() {
       <Section
         title="Verify an M-Pesa code"
         description="Customer sent an SMS or screenshot? Check the code against what M-Pesa actually reported."
-        icon={<ShieldCheck className="size-4" aria-hidden />}
+        icon={<ShieldCheck className="size-[18px]" aria-hidden />}
+        className="border-t border-line pt-6"
       >
         <VerifyCode />
       </Section>
@@ -550,7 +563,8 @@ export function MpesaReconciliation() {
             ? 'Payments are marked paid only from verified provider confirmations (M-Pesa or bank transfer). Anything that does not match exactly waits here for you.'
             : "Payments are marked paid only from verified M-Pesa confirmations. Anything that doesn't match exactly waits here for you."
         }
-        icon={<Smartphone className="size-4" aria-hidden />}
+        icon={<Smartphone className="size-[18px]" aria-hidden />}
+        className="border-t border-line pt-6"
       >
         {receipts.isPending || prompts.isPending ? (
           <div className="flex flex-col gap-2">
@@ -567,7 +581,7 @@ export function MpesaReconciliation() {
           />
         ) : (
           <div className="flex flex-col gap-4">
-            <dl className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
+            <dl className="tnum flex flex-wrap gap-x-8 gap-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="size-4 text-pos" aria-hidden />
                 <dt className="text-ink-2">Matched</dt>
@@ -610,7 +624,7 @@ export function MpesaReconciliation() {
             />
 
             {view === 'review' && awaiting.length > 0 && (
-              <ul className="divide-y divide-line rounded-xl bg-info-soft/50 px-3" aria-label="M-Pesa says paid, waiting for receipt">
+              <ul className="divide-y divide-line border-y border-line" aria-label="M-Pesa says paid, waiting for receipt">
                 {awaiting.map((p) => (
                   <AwaitingReceiptRow key={p.checkoutRequestId} p={p} />
                 ))}

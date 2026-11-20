@@ -428,7 +428,7 @@ function DeliveriesSection({ orders }: { orders: OrderSummary[] | undefined }) {
             {drops.length > 0 ? `${drops.length} drop-off ${drops.length === 1 ? 'pin' : 'pins'}` : 'No drop-off pins yet'}
             {noPin > 0 && ` · ${noPin} without a map pin`}
             {open.length > capped.length && ` · showing the first ${capped.length}`}
-            {!shopPin && ' · set your shop location in My shop to see it here'}
+            {!shopPin && ' · set your shop location in Storefront settings to see it here'}
           </p>
         </>
       ) : (

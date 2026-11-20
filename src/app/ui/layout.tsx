@@ -95,13 +95,13 @@ export function EmptyState({ title, body, action, icon }: { title: string; body?
 export function ErrorNotice({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const message = error instanceof Error ? error.message : 'Something went wrong.'
   return (
-    <div role="alert" className="flex items-start gap-3 rounded-lg bg-neg-soft px-4 py-3 text-sm text-neg">
-      <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+    <div role="alert" className="flex items-start gap-3 rounded-lg border border-neg/25 bg-neg-soft px-4 py-3 text-sm text-ink">
+      <AlertTriangle className="mt-0.5 size-4 shrink-0 text-neg" aria-hidden />
       <div className="min-w-0 flex-1">
-        <p className="font-semibold">{message}</p>
+        <p className="font-medium">{message}</p>
       </div>
       {onRetry && (
-        <button type="button" onClick={onRetry} className="shrink-0 font-semibold underline underline-offset-2">
+        <button type="button" onClick={onRetry} className="shrink-0 font-medium text-ink underline underline-offset-2">
           Try again
         </button>
       )}
@@ -111,8 +111,8 @@ export function ErrorNotice({ error, onRetry }: { error: unknown; onRetry?: () =
 
 export function Notice({ tone = 'info', children }: { tone?: 'info' | 'warn'; children: ReactNode }) {
   return (
-    <div className={cn('flex items-start gap-2.5 rounded-lg px-4 py-3 text-sm leading-relaxed', tone === 'info' ? 'bg-info-soft text-info' : 'bg-warn-soft text-warn')}>
-      {tone === 'info' ? <Info className="mt-0.5 size-4 shrink-0" aria-hidden /> : <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />}
+    <div className={cn('flex items-start gap-2.5 rounded-lg border px-4 py-3 text-sm leading-relaxed text-ink-2', tone === 'info' ? 'border-line bg-sunken/60' : 'border-warn/25 bg-warn-soft')}>
+      {tone === 'info' ? <Info className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden /> : <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />}
       <div className="min-w-0">{children}</div>
     </div>
   )
@@ -136,7 +136,7 @@ export function DefinitionList({ items }: { items: { label: string; value: React
 export function Stat({ label, value, foot }: { label: string; value: ReactNode; foot?: ReactNode }) {
   return (
     <div className="min-w-0">
-      <p className="text-[13px] font-semibold text-ink-3">{label}</p>
+      <p className="text-[13px] font-medium text-ink-3">{label}</p>
       <p className="tnum mt-1 truncate font-display text-[26px] leading-tight font-semibold tracking-tight text-ink">{value}</p>
       {foot && <p className="mt-0.5 text-xs text-ink-3">{foot}</p>}
     </div>
@@ -176,7 +176,7 @@ export function KpiTile({
   return (
     <div className="flex min-w-0 flex-col rounded-[var(--radius-card)] border border-line bg-panel p-4 sm:p-5">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[13px] font-semibold text-ink-3">{label}</p>
+        <p className="text-[13px] font-medium text-ink-3">{label}</p>
         {change != null && Number.isFinite(change) && (
           <span
             className={cn(
@@ -229,16 +229,16 @@ export function Sheet({
         <Dialog.Overlay className="fixed inset-0 z-40 bg-[#0b0f17]/50 data-[state=open]:animate-[fade-in_150ms_ease-out]" />
         <Dialog.Content
           className={cn(
-            'ak-root fixed z-50 flex flex-col bg-panel text-ink shadow-[0_-12px_48px_rgb(14_20_32/0.25)] focus:outline-none',
-            'inset-x-0 bottom-0 max-h-[92dvh] rounded-t-[28px] data-[state=open]:animate-[fade-in-up_280ms_cubic-bezier(.2,.8,.2,1)]',
-            'sm:inset-y-2 sm:right-2 sm:left-auto sm:max-h-none sm:rounded-[24px] sm:data-[state=open]:animate-[slide-in-right_280ms_cubic-bezier(.2,.8,.2,1)]',
+            'ak-root fixed z-50 flex flex-col bg-panel text-ink shadow-[var(--shadow-lift)] focus:outline-none',
+            'inset-x-0 bottom-0 max-h-[92dvh] rounded-t-2xl border-t border-line data-[state=open]:animate-[fade-in-up_240ms_cubic-bezier(.2,.8,.2,1)]',
+            'sm:inset-y-0 sm:right-0 sm:left-auto sm:max-h-none sm:rounded-none sm:border-t-0 sm:border-l sm:data-[state=open]:animate-[slide-in-right_240ms_cubic-bezier(.2,.8,.2,1)]',
             wide ? 'sm:w-[640px]' : 'sm:w-[480px]',
           )}
         >
           <div className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-line-strong sm:hidden" aria-hidden />
-          <div className="flex items-start justify-between gap-4 px-5 pt-3 pb-3 sm:pt-5">
+          <div className="flex items-start justify-between gap-4 border-b border-line px-5 pt-3 pb-3 sm:pt-4">
             <div className="min-w-0">
-              <Dialog.Title className="font-display text-xl font-bold tracking-tight">{title}</Dialog.Title>
+              <Dialog.Title className="font-display text-lg font-semibold tracking-tight">{title}</Dialog.Title>
               {description ? (
                 <Dialog.Description className="mt-0.5 text-xs text-ink-3">{description}</Dialog.Description>
               ) : (
@@ -246,12 +246,12 @@ export function Sheet({
               )}
             </div>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" aria-label="Close" className="-mr-2 size-10 rounded-full px-0">
+              <Button variant="ghost" size="sm" aria-label="Close" className="-mr-2 size-9 px-0">
                 <X className="size-5" />
               </Button>
             </Dialog.Close>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-1 pb-5">{children}</div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-5">{children}</div>
           {footer && (
             <div className="flex justify-end gap-2 border-t border-line px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">{footer}</div>
           )}
@@ -261,21 +261,21 @@ export function Sheet({
   )
 }
 
-/** Semantic table on a soft card; scrolls horizontally on small screens. */
+/** Semantic table in a hairline panel; scrolls horizontally on small screens. */
 export function Table({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:rounded-[var(--radius-card)] sm:bg-panel sm:px-5 sm:py-1 sm:shadow-[var(--shadow-card)] sm:ring-1 sm:ring-line/60">
+    <div className="-mx-4 overflow-x-auto border-y border-line bg-panel px-4 sm:mx-0 sm:rounded-[var(--radius-card)] sm:border sm:px-0 sm:[&_td:first-child]:pl-4 sm:[&_td:last-child]:pr-4 sm:[&_th:first-child]:pl-4 sm:[&_th:last-child]:pr-4">
       <table className={cn('w-full border-collapse text-sm', className)}>{children}</table>
     </div>
   )
 }
 export function Th({ children, className, align = 'left' }: { children?: ReactNode; className?: string; align?: 'left' | 'right' }) {
   return (
-    <th scope="col" className={cn('border-b border-line py-3 pr-4 text-xs font-semibold whitespace-nowrap text-ink-3 last:pr-0', align === 'right' ? 'text-right' : 'text-left', className)}>
+    <th scope="col" className={cn('border-b border-line bg-sunken/50 py-2.5 pr-4 text-xs font-medium whitespace-nowrap text-ink-3 last:pr-0', align === 'right' ? 'text-right' : 'text-left', className)}>
       {children}
     </th>
   )
 }
 export function Td({ children, className, align = 'left' }: { children?: ReactNode; className?: string; align?: 'left' | 'right' }) {
-  return <td className={cn('border-b border-line py-3.5 pr-4 align-middle last:pr-0 [tr:last-child_&]:border-b-0', align === 'right' && 'tnum text-right', className)}>{children}</td>
+  return <td className={cn('border-b border-line py-3 pr-4 align-middle last:pr-0 [tr:last-child_&]:border-b-0', align === 'right' && 'tnum text-right', className)}>{children}</td>
 }

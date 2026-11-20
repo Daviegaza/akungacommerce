@@ -1,7 +1,7 @@
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
-import { ArrowUpDown, Banknote, BadgeCheck, CalendarClock, Flame, MapPin, Smartphone, Sparkles, Star, Truck, X } from 'lucide-react'
+import { ArrowUpDown, Banknote, CalendarClock, MapPin, Smartphone, Truck, X } from 'lucide-react'
 import type { StorefrontData } from '@/gateway/storefront'
 import { isE164, whatsappChatLink } from '@/integrations/whatsapp-link'
 import { cn } from '@/lib/utils'
@@ -35,11 +35,12 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: 'price-desc', label: 'Price: high to low' },
 ]
 
-function InfoChip({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+/** One quiet fact in the merchant header (delivery, pickup, payment). */
+function Fact({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
-    <li className="inline-flex h-8 max-w-full items-center gap-1.5 rounded-full border border-line bg-panel px-3 text-[13px] font-medium text-ink-2">
+    <li className="flex min-w-0 items-center gap-1.5">
       <span className="shrink-0 text-ink-3">{icon}</span>
-      <span className="truncate">{children}</span>
+      <span className="min-w-0 break-words">{children}</span>
     </li>
   )
 }
@@ -51,12 +52,12 @@ function FilterChip({ on, onClick, children }: { on: boolean; onClick: () => voi
       aria-pressed={on}
       onClick={onClick}
       className={cn(
-        'inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition-colors',
-        on ? 'border-ink bg-ink text-canvas' : 'border-line bg-panel text-ink hover:border-line-strong',
+        'inline-flex h-10 max-w-[16rem] shrink-0 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium transition-colors',
+        on ? 'border-ink bg-ink text-canvas' : 'border-line-strong bg-panel text-ink-2 hover:border-ink-3 hover:text-ink',
       )}
     >
-      {children}
-      {on && <X className="size-3.5" aria-hidden />}
+      <span className="truncate">{children}</span>
+      {on && <X className="size-3.5 shrink-0" aria-hidden />}
     </button>
   )
 }
@@ -121,40 +122,33 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
   const wa = shop.whatsappE164 && isE164(shop.whatsappE164) ? shop.whatsappE164 : null
   const gridTitle = q ? `Results for “${q}”` : cat ?? 'All products'
   const gridKey = `${q}|${cat}|${inStock}|${onSale}|${sort}`
+  const mpesaNumber = shop.mpesaTill ? `Till ${shop.mpesaTill}` : shop.mpesaPaybill ? `Paybill ${shop.mpesaPaybill}` : null
+  const hasCover = Boolean(shop.coverUrl)
 
   return (
     <>
       <ShopHeader slug={slug} shop={shop} products={products} />
 
       <main className="mx-auto max-w-7xl pb-4">
-        {/* ───────── Hero ───────── */}
-        <section aria-label={shop.name} className="sm:px-6 sm:pt-4">
-          <div className="relative h-44 overflow-hidden bg-brand-soft sm:h-72 sm:rounded-[var(--radius-card)]">
-            {shop.coverUrl ? (
-              <img src={shop.coverUrl} alt="" decoding="async" className="ak-rise size-full object-cover" />
-            ) : (
-              <div className="absolute inset-0 overflow-hidden" aria-hidden>
-                <span className="absolute -right-6 -bottom-16 font-display text-[16rem] leading-none font-semibold text-brand/10 sm:text-[22rem]">
-                  {shop.name.trim()[0]?.toUpperCase()}
-                </span>
-                <span className="absolute top-10 left-8 h-3 w-40 rounded-full bg-brand/15" />
-                <span className="absolute top-20 left-8 h-3 w-56 rounded-full bg-brand/10" />
-                <span className="absolute top-[3.6rem] left-52 size-5 rounded-full bg-mango/70" />
-              </div>
-            )}
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/35 via-transparent to-transparent" aria-hidden />
-          </div>
+        {/* ───────── Merchant header ───────── */}
+        <section aria-label={shop.name} className="sm:px-6 sm:pt-5">
+          {hasCover && (
+            <div className="relative h-36 overflow-hidden bg-sunken sm:h-52 sm:rounded-[var(--radius-card)] lg:h-60">
+              <img src={shop.coverUrl ?? undefined} alt="" decoding="async" className="size-full object-cover" />
+            </div>
+          )}
 
-          <div className="relative px-4 sm:px-8">
-            <div className="-mt-10 flex items-end justify-between gap-3 sm:-mt-12">
-              <ShopAvatar shop={shop} size={84} className="shadow-[var(--shadow-lift)] ring-4 ring-canvas sm:size-24" />
-              <div className="flex items-center gap-2 pb-1">
+          <div className={cn('px-4 sm:px-0', hasCover ? 'sm:px-2' : 'pt-6 sm:pt-4')}>
+            <div className={cn('flex items-end justify-between gap-3', hasCover && '-mt-8 sm:-mt-10')}>
+              <ShopAvatar shop={shop} size={76} className={cn(hasCover && 'ring-4 ring-canvas')} />
+              <div className="flex items-center gap-2">
                 {wa && (
                   <a
                     href={whatsappChatLink(wa, `Hi ${shop.name}, I found your shop: ${absoluteUrl(shopPath(slug))}`)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-11 items-center gap-2 rounded-full border border-line bg-panel px-4 text-sm font-semibold text-ink transition-colors hover:bg-sunken"
+                    aria-label={`Chat with ${shop.name} on WhatsApp`}
+                    className="inline-flex h-11 items-center gap-2 rounded-lg border border-line-strong bg-panel px-3.5 text-sm font-medium text-ink transition-colors hover:bg-sunken"
                   >
                     <WhatsAppGlyph className="size-[18px] text-[#25D366]" />
                     <span className="hidden min-[380px]:inline">Chat</span>
@@ -164,10 +158,10 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
               </div>
             </div>
 
-            <h1 className="ak-rise mt-3 font-display text-[2.1rem] leading-[1.05] font-semibold tracking-tight text-ink sm:text-5xl">
+            <h1 className="mt-4 font-display text-[1.75rem] leading-tight font-semibold tracking-tight break-words text-ink sm:text-4xl">
               {shop.name}
             </h1>
-            {shop.tagline && <p className="mt-1.5 max-w-2xl text-[15px] text-ink-2 sm:text-base">{shop.tagline}</p>}
+            {shop.tagline && <p className="mt-1 max-w-2xl text-[15px] text-ink-2">{shop.tagline}</p>}
             {shop.rating && shop.rating.count > 0 && (
               <div className="mt-2 flex items-center gap-2">
                 <RatingStars rating={shop.rating.average} count={shop.rating.count} size="md" />
@@ -175,30 +169,28 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
               </div>
             )}
 
-            <ul className="mt-4 flex flex-wrap gap-2" aria-label="Shop details">
-              {shop.registeredName && (
-                <InfoChip icon={<BadgeCheck className="size-4 text-pos" aria-hidden />}>M-Pesa: {shop.registeredName}</InfoChip>
-              )}
+            <ul className="mt-4 flex flex-col gap-1.5 text-[13px] text-ink-2 sm:flex-row sm:flex-wrap sm:gap-x-5" aria-label="Shop details">
               {shop.deliveryEnabled && shop.deliveryPromise && (
-                <InfoChip icon={<Truck className="size-4" aria-hidden />}>{shop.deliveryPromise}</InfoChip>
+                <Fact icon={<Truck className="size-4" aria-hidden />}>{shop.deliveryPromise}</Fact>
               )}
               {shop.pickupEnabled && shop.locationLabel && (
-                <InfoChip icon={<MapPin className="size-4" aria-hidden />}>Pickup · {shop.locationLabel}</InfoChip>
+                <Fact icon={<MapPin className="size-4" aria-hidden />}>Pickup · {shop.locationLabel}</Fact>
               )}
-              {(shop.mpesaTill || shop.mpesaPaybill) && (
-                <InfoChip icon={<Smartphone className="size-4" aria-hidden />}>
-                  M-Pesa {shop.mpesaTill ? `Till ${shop.mpesaTill}` : `Paybill ${shop.mpesaPaybill}`}
-                </InfoChip>
+              {(mpesaNumber || shop.registeredName) && (
+                <Fact icon={<Smartphone className="size-4" aria-hidden />}>
+                  {mpesaNumber ? `M-Pesa ${mpesaNumber}` : 'M-Pesa'}
+                  {shop.registeredName && <span className="text-ink-3">{mpesaNumber ? ' · ' : ': '}{shop.registeredName}</span>}
+                </Fact>
               )}
-              {shop.codEnabled && <InfoChip icon={<Banknote className="size-4" aria-hidden />}>Pay on delivery</InfoChip>}
+              {shop.codEnabled && <Fact icon={<Banknote className="size-4" aria-hidden />}>Pay on delivery</Fact>}
             </ul>
             {shop.about && <p className="mt-4 line-clamp-3 max-w-2xl text-sm leading-relaxed text-ink-2">{shop.about}</p>}
           </div>
         </section>
 
         {products.length === 0 ? (
-          <div className="ak-rise mx-4 mt-10 rounded-[var(--radius-card)] border border-dashed border-line-strong px-6 py-14 text-center sm:mx-6">
-            <p className="font-display text-xl font-semibold text-ink">New products are on the way</p>
+          <div className="mx-4 mt-10 border-t border-line pt-10 pb-6 text-center sm:mx-6">
+            <p className="text-base font-semibold text-ink">New products are on the way</p>
             <p className="mx-auto mt-1 max-w-sm text-sm text-ink-3">
               {shop.name} hasn't added products yet. {wa ? 'Say hi on WhatsApp to ask what is coming.' : 'Check back soon.'}
             </p>
@@ -206,7 +198,7 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
         ) : (
           <>
             <CategoryChips
-              className="mt-7"
+              className="mx-4 mt-8 sm:mx-6"
               categories={categories}
               active={cat}
               onSelect={(name) =>
@@ -220,33 +212,25 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
             {!filtering && (
               <div className="mt-8 flex flex-col gap-10">
                 <ProductRail
-                  title="Coming soon"
-                  icon={<CalendarClock className="size-5 text-warn" aria-hidden />}
-                  subtitle="Scheduled drops. You can order once they land."
-                  products={rails.drops}
-                  shop={shop}
-                  slug={slug}
-                />
-                <ProductRail
                   title="Featured"
-                  icon={<Star className="size-5 fill-mango text-mango" aria-hidden />}
                   products={rails.featured.length >= 2 ? rails.featured : []}
                   shop={shop}
                   slug={slug}
                 />
+                <ProductRail title="New this week" subtitle="Added in the last 14 days" products={rails.fresh} shop={shop} slug={slug} />
                 <ProductRail
-                  title="New this week"
-                  icon={<Sparkles className="size-5 text-brand" aria-hidden />}
-                  subtitle="Added in the last 14 days"
-                  products={rails.fresh}
+                  title="Deals"
+                  subtitle="Real price drops from the seller's usual price"
+                  products={rails.deals}
                   shop={shop}
                   slug={slug}
                 />
                 <ProductRail
-                  title="Deals"
-                  icon={<Flame className="size-5 text-warn" aria-hidden />}
-                  subtitle="Real price drops from the seller's usual price"
-                  products={rails.deals}
+                  quiet
+                  title="Coming soon"
+                  icon={<CalendarClock className="size-4 text-ink-3" aria-hidden />}
+                  subtitle="Scheduled drops. You can order once they land."
+                  products={rails.drops}
                   shop={shop}
                   slug={slug}
                 />
@@ -254,17 +238,17 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
             )}
 
             {/* ───────── Grid ───────── */}
-            <section aria-labelledby="fungua-grid-title" className="mt-10 px-4 sm:px-6">
+            <section aria-labelledby="fungua-grid-title" className="mx-4 mt-10 border-t border-line pt-6 sm:mx-6">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div className="min-w-0">
-                  <h2 id="fungua-grid-title" className="truncate text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+                  <h2 id="fungua-grid-title" className="truncate text-base font-semibold tracking-tight text-ink sm:text-lg">
                     {gridTitle}
                   </h2>
-                  <p className="text-sm text-ink-3 tnum" aria-live="polite">
+                  <p className="text-xs text-ink-3 tnum" aria-live="polite">
                     {results.length} {results.length === 1 ? 'item' : 'items'}
                   </p>
                 </div>
-                <label className="relative inline-flex h-10 items-center rounded-full border border-line bg-panel pr-3 pl-3.5 text-sm font-semibold text-ink hover:border-line-strong">
+                <label className="relative inline-flex h-10 items-center rounded-lg border border-line-strong bg-panel pr-3 pl-3 text-[13px] font-medium text-ink transition-colors hover:border-ink-3">
                   <ArrowUpDown className="mr-1.5 size-4 text-ink-3" aria-hidden />
                   <span className="sr-only">Sort by</span>
                   <select
@@ -286,7 +270,7 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
                 </label>
               </div>
 
-              <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+              <div className="no-scrollbar -mx-4 mt-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
                 <FilterChip on={inStock} onClick={() => toggle('stock', !inStock)}>
                   In stock
                 </FilterChip>
@@ -309,7 +293,7 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
                   <button
                     type="button"
                     onClick={() => update((p) => ['q', 'cat', 'stock', 'sale'].forEach((k) => p.delete(k)))}
-                    className="h-10 shrink-0 px-3 text-sm font-semibold text-brand hover:underline"
+                    className="h-10 shrink-0 px-2 text-[13px] font-medium text-ink underline underline-offset-4 decoration-line-strong hover:decoration-ink"
                   >
                     Clear all
                   </button>
@@ -317,14 +301,14 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
               </div>
 
               {results.length === 0 ? (
-                <div className="ak-rise mt-6 rounded-[var(--radius-card)] border border-dashed border-line-strong px-6 py-12 text-center">
-                  <p className="font-display text-lg font-semibold text-ink">Nothing matches that</p>
+                <div className="mt-6 border-t border-line py-12 text-center">
+                  <p className="text-base font-semibold text-ink">Nothing matches that</p>
                   <p className="mx-auto mt-1 max-w-sm text-sm text-ink-3">Try fewer filters or a different word.</p>
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  <div className="mt-5 flex flex-wrap justify-center gap-2">
                     <button
                       type="button"
                       onClick={() => update((p) => ['q', 'cat', 'stock', 'sale'].forEach((k) => p.delete(k)))}
-                      className="inline-flex h-11 items-center rounded-xl bg-brand px-4 text-sm font-semibold text-on-brand hover:bg-brand-strong"
+                      className="inline-flex h-11 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-on-primary hover:opacity-90"
                     >
                       Show everything
                     </button>
@@ -333,7 +317,7 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
                         href={whatsappChatLink(wa, q ? `Hi ${shop.name}, do you have “${q}”?` : `Hi ${shop.name}, I'm looking for something.`)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex h-11 items-center gap-2 rounded-xl border border-line-strong bg-panel px-4 text-sm font-semibold text-ink hover:bg-sunken"
+                        className="inline-flex h-11 items-center gap-2 rounded-lg border border-line-strong bg-panel px-4 text-sm font-medium text-ink hover:bg-sunken"
                       >
                         <WhatsAppGlyph className="size-4 text-[#25D366]" />
                         Ask on WhatsApp
@@ -344,7 +328,7 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
               ) : (
                 <motion.ul
                   key={gridKey}
-                  className="mt-5 grid grid-cols-2 gap-x-3 gap-y-7 sm:gap-x-4 md:grid-cols-3 xl:grid-cols-4"
+                  className="mt-5 grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-4 md:grid-cols-3 lg:grid-cols-4 lg:gap-x-5"
                   initial="hidden"
                   animate="show"
                 >
@@ -353,11 +337,11 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
                       key={p.id}
                       className="min-w-0"
                       variants={{
-                        hidden: reduce ? { opacity: 1 } : { opacity: 0, y: 14 },
+                        hidden: reduce ? { opacity: 1 } : { opacity: 0, y: 8 },
                         show: {
                           opacity: 1,
                           y: 0,
-                          transition: { duration: 0.32, ease: [0.2, 0.8, 0.2, 1], delay: reduce ? 0 : Math.min(i, 11) * 0.04 },
+                          transition: { duration: 0.28, ease: [0.2, 0.8, 0.2, 1], delay: reduce ? 0 : Math.min(i, 11) * 0.03 },
                         },
                       }}
                     >
@@ -369,7 +353,7 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
             </section>
           </>
         )}
-        <TrustBlock shop={shop} className="mx-4 mt-12 max-w-2xl sm:mx-6" />
+        <TrustBlock shop={shop} className="mx-4 mt-14 max-w-2xl sm:mx-6" />
       </main>
       <PoweredBy />
     </>

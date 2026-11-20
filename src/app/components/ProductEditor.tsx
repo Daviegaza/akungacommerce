@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
@@ -16,7 +16,7 @@ import {
 } from './ProductMerchandising'
 import { imageDraftError, photosBusy, unsavedUploads, type ImageDraft } from './ProductPhotos'
 import { ErrorNotice, Notice, Sheet } from '../ui/layout'
-import { Button, Field, Input, Select, Switch, Textarea } from '../ui/primitives'
+import { Badge, Button, Field, Input, Select, Switch, Textarea } from '../ui/primitives'
 import { cn } from '@/lib/utils'
 
 const STATUS_OPTIONS: { value: ProductStatus; label: string }[] = [
@@ -175,6 +175,37 @@ function MoneyInput({
       />
       <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs font-medium text-ink-3">{currency}</span>
     </div>
+  )
+}
+
+/** Open form group: hairline above, 15px title, optional action on the right. */
+function FormSection({
+  title,
+  description,
+  action,
+  first,
+  children,
+}: {
+  title: string
+  description?: string
+  action?: ReactNode
+  first?: boolean
+  children: ReactNode
+}) {
+  const headingId = useId()
+  return (
+    <section aria-labelledby={headingId} className={cn('flex min-w-0 flex-col gap-4', !first && 'border-t border-line pt-6')}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 id={headingId} className="font-display text-[15px] font-semibold tracking-[-0.01em] text-ink">
+            {title}
+          </h3>
+          {description && <p className="mt-0.5 text-xs text-ink-3">{description}</p>}
+        </div>
+        {action && <div className="shrink-0">{action}</div>}
+      </div>
+      {children}
+    </section>
   )
 }
 
@@ -420,36 +451,42 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
       footer={footer}
     >
       <form id={formId} onSubmit={submit} noValidate>
-        <fieldset disabled={readOnly} className="flex min-w-0 flex-col gap-5">
-          {save.isError && <ErrorNotice error={save.error} />}
-          {attempted && hasErrors && (
-            <p role="alert" className="text-sm font-medium text-neg">
-              Check the highlighted fields.
-            </p>
+        <fieldset disabled={readOnly} className="flex min-w-0 flex-col gap-7">
+          {(save.isError || (attempted && hasErrors)) && (
+            <div className="flex flex-col gap-3">
+              {save.isError && <ErrorNotice error={save.error} />}
+              {attempted && hasErrors && (
+                <p role="alert" className="text-sm font-medium text-neg">
+                  Check the highlighted fields.
+                </p>
+              )}
+            </div>
           )}
 
-          <Field label="Name" error={shown(formErrors.name)}>
-            {(p) => <Input {...p} value={name} maxLength={160} onChange={(e) => setName(e.target.value)} />}
-          </Field>
-          <Field label="Description" optional>
-            {(p) => <Textarea {...p} value={description} maxLength={4000} onChange={(e) => setDescription(e.target.value)} />}
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Category" optional>
-              {(p) => <Input {...p} value={category} maxLength={80} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. Dresses" />}
+          <FormSection title="Details" first>
+            <Field label="Name" error={shown(formErrors.name)}>
+              {(p) => <Input {...p} value={name} maxLength={160} onChange={(e) => setName(e.target.value)} />}
             </Field>
-            <Field label="Status">
-              {(p) => (
-                <Select {...p} value={status} onChange={(e) => setStatus(e.target.value as ProductStatus)}>
-                  {STATUS_OPTIONS.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.label}
-                    </option>
-                  ))}
-                </Select>
-              )}
+            <Field label="Description" optional>
+              {(p) => <Textarea {...p} value={description} maxLength={4000} onChange={(e) => setDescription(e.target.value)} />}
             </Field>
-          </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Category" optional>
+                {(p) => <Input {...p} value={category} maxLength={80} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. Dresses" />}
+              </Field>
+              <Field label="Status">
+                {(p) => (
+                  <Select {...p} value={status} onChange={(e) => setStatus(e.target.value as ProductStatus)}>
+                    {STATUS_OPTIONS.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </Field>
+            </div>
+          </FormSection>
 
           <ProductMerchandising
             productName={name.trim()}
@@ -464,21 +501,23 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
             nowMs={nowMs}
           />
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Tax rate (metadata)" error={shown(formErrors.taxRate)} hint="Applied to new orders using your business's tax setting. Treat it as configuration, not tax advice; confirm rates with an adviser.">
-              {(p) => (
-                <div className="relative">
-                  <Input {...p} inputMode="decimal" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} className="tnum pr-9" />
-                  <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs font-medium text-ink-3">%</span>
-                </div>
-              )}
-            </Field>
-            <Field label="Tax code" optional>
-              {(p) => <Input {...p} value={taxCode} maxLength={40} onChange={(e) => setTaxCode(e.target.value)} />}
-            </Field>
-          </div>
+          <FormSection title="Tax">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Tax rate (metadata)" error={shown(formErrors.taxRate)} hint="Applied to new orders using your business's tax setting. Treat it as configuration, not tax advice; confirm rates with an adviser.">
+                {(p) => (
+                  <div className="relative">
+                    <Input {...p} inputMode="decimal" value={taxRate} onChange={(e) => setTaxRate(e.target.value)} className="tnum pr-9" />
+                    <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs font-medium text-ink-3">%</span>
+                  </div>
+                )}
+              </Field>
+              <Field label="Tax code" optional>
+                {(p) => <Input {...p} value={taxCode} maxLength={40} onChange={(e) => setTaxCode(e.target.value)} />}
+              </Field>
+            </div>
+          </FormSection>
 
-          <div className="border-y border-line py-4">
+          <FormSection title="Stock">
             <Switch
               checked={trackStock}
               onChange={setTrackStock}
@@ -486,40 +525,40 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
               description="Count units on hand and reserve them when orders are placed. Turn off for services or made-to-order items."
               disabled={readOnly}
             />
-          </div>
+          </FormSection>
 
-          <div>
-            <div className="mb-1 flex items-end justify-between gap-3">
-              <div>
-                <h3 className="text-[15px] font-semibold text-ink">Variants</h3>
-                <p className="text-xs text-ink-3">Sizes, colours or packs. Each has its own price and stock.</p>
-              </div>
-              {!readOnly && (
-                <Button size="sm" icon={<Plus className="size-4" aria-hidden />} onClick={addVariant}>
+          <FormSection
+            title="Variants"
+            description="Sizes, colours or packs. Each has its own price and stock."
+            action={
+              !readOnly && (
+                <Button size="sm" icon={<Plus className="size-4 text-ink-3" aria-hidden />} onClick={addVariant}>
                   Add variant
                 </Button>
-              )}
-            </div>
+              )
+            }
+          >
             {shown(formErrors.variants) && (
-              <p role="alert" className="mt-2 text-xs font-medium text-neg">
+              <p role="alert" className="text-xs font-medium text-neg">
                 {formErrors.variants}
               </p>
             )}
 
-            <div className="divide-y divide-line">
+            <div className="divide-y divide-line overflow-hidden rounded-[var(--radius-card)] border border-line">
               {variants.map((v, i) => {
                 const e: RowErrors = (attempted && rowErrors.get(v.key)) || {}
                 const saved = Boolean(v.id)
                 return (
-                  <fieldset key={v.key} className={cn('min-w-0 py-5', !v.isActive && 'opacity-70')}>
+                  <fieldset key={v.key} className="min-w-0">
                     <legend className="sr-only">Variant {i + 1}</legend>
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <p className="text-[13px] font-medium text-ink-2">
-                        Variant {i + 1}
-                        {!saved && <span className="ml-2 font-normal text-ink-3">new</span>}
+                    <div className="flex min-h-11 items-center justify-between gap-3 bg-sunken/50 px-4 py-1.5">
+                      <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px]">
+                        <span className="truncate font-semibold text-ink">{v.name.trim() || `Variant ${i + 1}`}</span>
+                        {!saved && <Badge tone="info">New</Badge>}
+                        {!v.isActive && <Badge>Not for sale</Badge>}
                         {saved && trackStock && (
-                          <span className="tnum ml-2 font-normal text-ink-3">
-                            · {v.onHand} on hand{v.reserved > 0 ? `, ${v.reserved} reserved` : ''}
+                          <span className="tnum text-xs text-ink-3">
+                            {v.onHand} on hand{v.reserved > 0 ? `, ${v.reserved} reserved` : ''}
                           </span>
                         )}
                       </p>
@@ -536,7 +575,7 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
                         </Button>
                       )}
                     </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className={cn('grid gap-4 px-4 pt-4 sm:grid-cols-2', !v.isActive && 'opacity-70')}>
                       <Field label="Variant name" error={e.name}>
                         {(p) => <Input {...p} value={v.name} maxLength={80} onChange={(ev) => update(v.key, { name: ev.target.value })} />}
                       </Field>
@@ -600,7 +639,7 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
                         )}
                       </div>
                     </div>
-                    <div className="mt-4">
+                    <div className="mx-4 mt-4 border-t border-line py-4">
                       <Switch
                         checked={v.isActive}
                         onChange={(val) => update(v.key, { isActive: val })}
@@ -623,7 +662,7 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
                 page.
               </Notice>
             )}
-          </div>
+          </FormSection>
         </fieldset>
       </form>
     </Sheet>

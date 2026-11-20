@@ -6,7 +6,7 @@ import { DEMO_PROFILE, ImageCompressionError, STORAGE_PROFILE, compressImage, fo
 import { DEMO_MAX_UPLOADED_IMAGES, isUploadedImageUrl } from '@/media/upload'
 import { useGateway, useOrg } from '../context'
 import { Notice } from '../ui/layout'
-import { Button, Field, Input, Thumb } from '../ui/primitives'
+import { Badge, Button, Field, Input, Thumb, buttonClass } from '../ui/primitives'
 
 export const MAX_IMAGES = 10
 
@@ -84,7 +84,7 @@ function errorMessage(e: unknown): string {
 }
 
 const ROUND_BTN =
-  'flex size-9 items-center justify-center rounded-full text-ink-3 transition-colors hover:bg-sunken hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent'
+  'flex size-10 items-center justify-center rounded-lg text-ink-3 transition-colors hover:bg-sunken hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent'
 
 /**
  * Product photo manager: add from the device (file picker, camera, drag and
@@ -249,36 +249,37 @@ export function ProductPhotos({
 
   return (
     <div>
-      <p className="mb-2 text-[13px] font-semibold text-ink">
-        Photos <span className="tnum font-normal text-ink-3">{images.length}/{MAX_IMAGES}</span>
+      <p className="mb-2 flex items-baseline justify-between gap-3 text-[13px] font-semibold text-ink">
+        Photos <span className="tnum text-xs font-normal text-ink-3">{images.length} of {MAX_IMAGES}</span>
       </p>
 
       {images.length > 0 && (
-        <ol className="mb-3 flex flex-col gap-2" aria-label="Product photos, first is the cover">
+        <ol className="mb-3 divide-y divide-line overflow-hidden rounded-[var(--radius-card)] border border-line" aria-label="Product photos, first is the cover">
           {images.map((img, i) => {
             const err = img.upload?.status === 'error' ? img.upload.error : attempted ? imageDraftError(img) : undefined
             const src = img.preview ?? (img.url || null)
             const uploading = img.upload && img.upload.status !== 'error'
             const label = img.alt || productName || 'Product photo'
             return (
-              <li key={img.key} className="flex items-start gap-3 rounded-2xl bg-panel p-2.5 ring-1 ring-line/60">
+              <li key={img.key} className="flex items-start gap-3 bg-panel p-3">
                 <span className="relative shrink-0">
-                  <Thumb src={src} alt={label} className={cn('size-16', uploading && 'opacity-60')} />
+                  <Thumb src={src} alt={label} rounded="rounded-lg" className={cn('size-16 border border-line', uploading && 'opacity-60')} />
                   {uploading && (
                     <span className="absolute inset-0 flex items-center justify-center" aria-hidden>
                       <Loader2 className="size-5 animate-spin text-ink" />
                     </span>
                   )}
                   {img.upload?.status === 'error' && (
-                    <span className="absolute inset-0 flex items-center justify-center rounded-xl bg-neg-soft/80 text-neg" aria-hidden>
+                    <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-neg-soft/80 text-neg" aria-hidden>
                       <AlertCircle className="size-5" />
                     </span>
                   )}
-                  {i === 0 && (
-                    <span className="absolute -top-1.5 -left-1.5 rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold text-on-brand">Cover</span>
-                  )}
                 </span>
                 <div className="min-w-0 flex-1">
+                  <p className="mb-1 flex items-center gap-2 text-xs text-ink-3">
+                    <span className="tnum">Photo {i + 1}</span>
+                    {i === 0 && <Badge>Cover</Badge>}
+                  </p>
                   <div aria-live="polite" className="min-h-[18px]">
                     {img.upload?.status === 'compressing' && <p className="text-xs font-medium text-ink-2">Preparing photo…</p>}
                     {img.upload?.status === 'uploading' && (
@@ -308,7 +309,7 @@ export function ProductPhotos({
                           <button
                             type="button"
                             onClick={() => retry(img)}
-                            className="inline-flex items-center gap-1 rounded-full px-1.5 text-xs font-semibold text-ink underline underline-offset-2 hover:text-brand"
+                            className="inline-flex items-center gap-1 rounded-md px-1.5 text-xs font-medium text-ink underline underline-offset-2 hover:text-brand"
                           >
                             <RotateCcw className="size-3" aria-hidden /> Retry
                           </button>
@@ -373,16 +374,14 @@ export function ProductPhotos({
             }}
             onDrop={onDrop}
             className={cn(
-              'flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed px-4 py-5 text-center transition-colors',
-              dragging ? 'border-brand bg-brand-soft/60' : 'border-line-strong bg-panel/60',
+              'flex flex-col items-center gap-3 rounded-[var(--radius-card)] border border-dashed px-4 py-6 text-center transition-colors',
+              dragging ? 'border-brand bg-brand-soft/40' : 'border-line-strong',
               full && 'opacity-60',
             )}
           >
-            <span className="flex size-11 items-center justify-center rounded-full bg-brand-soft text-brand" aria-hidden>
-              <ImagePlus className="size-5" />
-            </span>
+            <ImagePlus className="size-5 text-ink-3" aria-hidden />
             <div>
-              <p className="text-sm font-semibold text-ink">{dragging ? 'Drop photos to add them' : 'Add photos from your phone or computer'}</p>
+              <p className="text-sm font-medium text-ink">{dragging ? 'Drop photos to add them' : 'Add photos from your phone or computer'}</p>
               <p id={`${ids}-hint`} className="mt-0.5 text-xs text-ink-3">
                 {full
                   ? capacity.reason
@@ -393,7 +392,7 @@ export function ProductPhotos({
             <div className="flex flex-wrap justify-center gap-2">
               <label
                 className={cn(
-                  'inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-on-primary transition-opacity hover:opacity-90',
+                  buttonClass('secondary', 'md', 'cursor-pointer'),
                   'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand has-[:focus-visible]:outline-solid',
                   full && 'pointer-events-none opacity-50',
                 )}
@@ -416,7 +415,7 @@ export function ProductPhotos({
               {/* Camera shortcut on touch devices; "Choose photos" also offers the camera on most phones. */}
               <label
                 className={cn(
-                  'hidden h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-line-strong bg-panel px-4 text-sm font-semibold text-ink pointer-coarse:inline-flex hover:bg-sunken',
+                  buttonClass('secondary', 'md', 'hidden cursor-pointer pointer-coarse:inline-flex'),
                   'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand has-[:focus-visible]:outline-solid',
                   full && 'pointer-events-none opacity-50',
                 )}
@@ -439,7 +438,7 @@ export function ProductPhotos({
           </div>
 
           {rejected.length > 0 && (
-            <div role="alert" className="flex items-start justify-between gap-3 rounded-2xl bg-neg-soft px-4 py-3 text-sm text-neg">
+            <div role="alert" className="flex items-start justify-between gap-3 rounded-lg border border-neg/25 bg-neg-soft px-4 py-3 text-sm text-neg">
               <ul className="flex flex-col gap-1">
                 {rejected.map((r) => (
                   <li key={r}>{r}</li>
@@ -460,8 +459,8 @@ export function ProductPhotos({
             </Notice>
           )}
 
-          <details className="group rounded-2xl">
-            <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-lg text-[13px] font-semibold text-ink-2 hover:text-ink [&::-webkit-details-marker]:hidden">
+          <details className="group">
+            <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-lg text-[13px] font-medium text-ink-2 hover:text-ink [&::-webkit-details-marker]:hidden">
               <Link2 className="size-4" aria-hidden />
               Paste a photo link instead
             </summary>
@@ -475,9 +474,9 @@ export function ProductPhotos({
                   <div className="flex items-start gap-2">
                     <span className="shrink-0">
                       {pendingValid ? (
-                        <Thumb src={pendingUrl.trim()} alt="Preview of the photo link" className="size-11" />
+                        <Thumb src={pendingUrl.trim()} alt="Preview of the photo link" rounded="rounded-lg" className="size-11 border border-line" />
                       ) : (
-                        <span className="flex size-11 items-center justify-center rounded-xl bg-panel text-ink-3 ring-1 ring-line" aria-hidden>
+                        <span className="flex size-11 items-center justify-center rounded-lg border border-line text-ink-3" aria-hidden>
                           <Link2 className="size-5" />
                         </span>
                       )}

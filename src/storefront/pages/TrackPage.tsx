@@ -156,27 +156,103 @@ function TrackScreen() {
 
 function TrackSkeleton() {
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 py-6" aria-busy="true" aria-label="Loading your order">
-      <Skeleton className="h-6 w-32" />
-      <Skeleton className="h-28 w-full rounded-[var(--radius-card)]" />
-      <Skeleton className="h-44 w-full rounded-[var(--radius-card)]" />
-      <Skeleton className="h-72 w-full rounded-[var(--radius-card)]" />
-      <Skeleton className="h-52 w-full rounded-[var(--radius-card)]" />
+    <main className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6 sm:px-6" aria-busy="true" aria-label="Loading your order">
+      <div className="flex items-center gap-3">
+        <Skeleton className="size-10 rounded-lg" />
+        <Skeleton className="h-4 w-36" />
+      </div>
+      <Skeleton className="h-6 w-40" />
+      <div className="flex flex-col gap-3 border-t border-line pt-5">
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-4 w-48" />
+        <Skeleton className="h-1.5 w-full" />
+      </div>
+      <div className="flex flex-col gap-3 border-t border-line pt-5">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-10 w-44" />
+        <Skeleton className="h-12 w-full rounded-lg" />
+      </div>
+      <div className="flex flex-col gap-3 border-t border-line pt-5">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-2/3" />
+      </div>
     </main>
   )
 }
 
-function Card({ title, children, className, action }: { title?: string; children: ReactNode; className?: string; action?: ReactNode }) {
+/** Open section: a hairline and space, never a boxed card. */
+function Section({ title, children, className, action }: { title?: string; children: ReactNode; className?: string; action?: ReactNode }) {
   return (
-    <section className={cn('rounded-[var(--radius-card)] bg-panel p-4 shadow-[var(--shadow-card)] sm:p-5 ak-rise', className)}>
+    <section className={cn('border-t border-line pt-5', className)}>
       {(title || action) && (
         <div className="mb-3 flex items-center justify-between gap-3">
-          {title && <h2 className="text-lg font-semibold tracking-tight">{title}</h2>}
+          {title && <h2 className="text-base font-semibold tracking-tight text-ink">{title}</h2>}
           {action}
         </div>
       )}
       {children}
     </section>
+  )
+}
+
+/** Neutral monogram for the merchant; the shop leads this page, not the platform. */
+function ShopMark({ name }: { name: string }) {
+  const initials =
+    name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((w) => w.charAt(0).toUpperCase())
+      .join('') || '·'
+  return (
+    <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-lg border border-line bg-sunken text-sm font-semibold text-ink">
+      {initials}
+    </span>
+  )
+}
+
+/** Big, plain current status plus a step bar, driven only by the order's status. */
+function StatusSummary({ order }: { order: TrackedOrder }) {
+  const method = order.fulfilment.method
+  const status = order.status === 'draft' ? 'pending_confirmation' : order.status
+  const flow = FLOW[method]
+  const idx = flow.indexOf(status)
+  const stopped = idx === -1
+  const finished = status === 'delivered'
+  const label = statusLabel(status, method, Boolean(order.delivery?.returnedAt))
+  const hint = CURRENT_HINT[status]
+  const next = !stopped && idx < flow.length - 1 ? statusLabel(flow[idx + 1], method) : null
+  return (
+    <div className="border-t border-line pt-5">
+      <p className="text-[13px] text-ink-3">Status</p>
+      <p
+        className={cn(
+          'mt-1 flex items-center gap-2 text-[28px] font-semibold leading-tight tracking-tight',
+          stopped ? 'text-neg' : 'text-ink',
+        )}
+      >
+        {finished && <CheckCircle2 className="size-7 shrink-0 text-pos" aria-hidden />}
+        {stopped && <XCircle className="size-7 shrink-0" aria-hidden />}
+        <span className="min-w-0 break-words">{label}</span>
+      </p>
+      {hint && <p className="mt-1 text-[15px] text-ink-2">{hint}</p>}
+      {!stopped && (
+        <div className="mt-4">
+          <div className="flex gap-1" role="img" aria-label={`Step ${idx + 1} of ${flow.length}: ${label}`}>
+            {flow.map((k, i) => (
+              <span key={k} className={cn('h-1.5 flex-1 rounded-full', i <= idx ? 'bg-primary' : 'bg-line-strong')} />
+            ))}
+          </div>
+          <p className="mt-2 flex justify-between gap-3 text-xs text-ink-3 tnum" aria-hidden>
+            <span>
+              Step {idx + 1} of {flow.length}
+            </span>
+            {next && <span className="min-w-0 truncate">Next: {next}</span>}
+          </p>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -223,48 +299,64 @@ function OrderView({
   }
 
   return (
-    <main className="mx-auto flex max-w-2xl flex-col gap-4 px-4 pb-16 pt-4">
-      <nav className="flex items-center justify-between gap-2">
+    <main className="mx-auto flex w-full min-w-0 max-w-2xl flex-col gap-7 overflow-x-clip px-4 pb-16 pt-3 sm:px-6">
+      <nav className="-mb-3 flex items-center justify-between gap-2">
         {shop.slug ? (
-          <Link to={`/s/${shop.slug}`} className="-ml-2 inline-flex h-11 items-center gap-1.5 rounded-xl px-2 text-sm font-medium text-ink-2 hover:bg-sunken hover:text-ink">
+          <Link to={`/s/${shop.slug}`} className="-ml-2 inline-flex h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-ink-2 hover:bg-sunken hover:text-ink">
             <ArrowLeft className="size-4" aria-hidden /> Back to shop
           </Link>
         ) : (
-          <span className="text-sm font-semibold text-ink">{shop.name}</span>
+          <span aria-hidden />
         )}
         {!terminal && <UpdatedLabel updatedAt={updatedAt} fetching={fetching} onRefresh={onRefresh} />}
       </nav>
 
-      {isNew ? (
-        <PlacedHeader order={order} money={money} />
-      ) : (
-        <header className="ak-rise">
-          <p className="text-sm text-ink-3">{shop.name}</p>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Order <span className="tnum">#{order.number}</span>
-          </h1>
-          <p className="mt-1 text-sm text-ink-2">Placed {formatDateTime(order.createdAt, locale, shop.timezone)}</p>
-        </header>
-      )}
-
-      {!cancelled && !paid && delivery && depositCovered && (
-        <DepositPaidNotice delivery={delivery} money={money} pickup={fulfilment.method === 'pickup'} />
-      )}
-      {!cancelled && !paid && !depositCovered && <PaymentPanel token={token} order={order} money={money} />}
-      {!cancelled && paid && (
-        <div className="flex items-center gap-2 rounded-2xl bg-pos-soft px-4 py-3 text-sm font-medium text-pos ak-rise">
-          <CheckCircle2 className="size-5" aria-hidden /> Paid {money(order.paidMinor)}. Received by {shop.name}.
+      <header className="flex flex-col gap-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <ShopMark name={shop.name} />
+          <p className="min-w-0 truncate text-[15px] font-semibold text-ink">{shop.name}</p>
         </div>
+        {isNew ? (
+          <PlacedHeader order={order} money={money} />
+        ) : (
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-ink">
+              Order <span className="tnum">#{order.number}</span>
+            </h1>
+            <p className="mt-0.5 text-[13px] text-ink-3 tnum">Placed {formatDateTime(order.createdAt, locale, shop.timezone)}</p>
+          </div>
+        )}
+        <StatusSummary order={order} />
+      </header>
+
+      {!cancelled && (
+        <section aria-labelledby="track-payment" className="border-t border-line pt-5">
+          <h2 id="track-payment" className="mb-3 text-base font-semibold tracking-tight text-ink">
+            Payment
+          </h2>
+          {!paid && delivery && depositCovered && (
+            <DepositPaidNotice delivery={delivery} money={money} pickup={fulfilment.method === 'pickup'} />
+          )}
+          {!paid && !depositCovered && <PaymentPanel token={token} order={order} money={money} />}
+          {paid && (
+            <p className="flex items-start gap-2 text-[15px] font-medium text-ink">
+              <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-pos" aria-hidden />
+              <span>
+                Paid <span className="tnum">{money(order.paidMinor)}</span>. Received by {shop.name}.
+              </span>
+            </p>
+          )}
+        </section>
       )}
 
-      <Card title="Status">
+      <Section title="Progress">
         <Timeline order={order} />
-      </Card>
+      </Section>
 
       <DeliveryUpdates order={order} money={money} />
 
       {fulfilment.method === 'delivery' ? (
-        <Card title="Delivery">
+        <Section title="Delivery">
           <LocationPreview
             shopLoc={shopLoc}
             dropLoc={dropLoc}
@@ -301,42 +393,31 @@ function OrderView({
               Live rider location is not available. We'll update you at each step.
             </p>
           )}
-        </Card>
+        </Section>
       ) : (
-        <Card title="Pickup">
+        <Section title="Pickup">
           <LocationPreview shopLoc={shopLoc} dropLoc={null} shopLabel={shop.locationLabel ?? shop.name} dropLabel={null} height={200} />
           <p className="mt-3 flex items-start gap-2 text-sm text-ink-2">
-            <Store className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
+            <Store className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
             {shop.locationLabel ? `Collect from ${shop.name}, ${shop.locationLabel}.` : `Collect from ${shop.name}. They'll share the spot when your order is ready.`}
           </p>
-        </Card>
+        </Section>
       )}
 
-      {waLink && (
-        <a
-          href={waLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={buttonClass('secondary', 'lg', 'w-full rounded-2xl')}
-        >
-          <WhatsAppGlyph className="size-5 text-[#25D366]" /> Message the shop on WhatsApp
-        </a>
-      )}
-
-      <Card title="Your order">
-        <ul className="flex flex-col gap-2.5">
+      <Section title="Your order">
+        <ul className="flex flex-col divide-y divide-line">
           {order.lines.map((l, i) => (
-            <li key={`${l.productId ?? 'x'}-${i}`} className="flex items-start justify-between gap-3 text-sm">
-              <span className="min-w-0">
+            <li key={`${l.productId ?? 'x'}-${i}`} className="flex items-start justify-between gap-3 py-2.5 text-[15px] first:pt-0">
+              <span className="min-w-0 break-words">
                 <span className="tnum text-ink-3">{l.quantity} × </span>
                 <span className="font-medium text-ink">{l.name}</span>
-                {l.variant && l.variant !== 'Default' && <span className="block text-xs text-ink-3">{l.variant}</span>}
+                {l.variant && l.variant !== 'Default' && <span className="block text-[13px] text-ink-3">{l.variant}</span>}
               </span>
-              <span className="font-semibold text-ink tnum">{money(l.totalMinor)}</span>
+              <span className="shrink-0 font-medium text-ink tnum">{money(l.totalMinor)}</span>
             </li>
           ))}
         </ul>
-        <dl className="mt-4 flex flex-col gap-1.5 border-t border-line pt-3 text-sm">
+        <dl className="mt-3 flex flex-col gap-1.5 border-t border-line pt-3 text-sm">
           <TotalRow label="Subtotal" value={money(order.subtotalMinor)} />
           {order.taxMinor > 0 && <TotalRow label="Tax" value={money(order.taxMinor)} />}
           <TotalRow
@@ -344,8 +425,8 @@ function OrderView({
             value={order.deliveryFeeMinor === 0 ? 'Free' : money(order.deliveryFeeMinor)}
           />
         </dl>
-        <div className="mt-3 flex items-baseline justify-between">
-          <span className="text-sm font-semibold">Total</span>
+        <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-line pt-3">
+          <span className="text-[15px] font-semibold text-ink">Total</span>
           <span className="font-display text-2xl font-semibold tracking-tight tnum">{money(order.totalMinor)}</span>
         </div>
         {order.paidMinor > 0 && (
@@ -356,7 +437,23 @@ function OrderView({
             )}
           </dl>
         )}
-      </Card>
+      </Section>
+
+      {waLink && (
+        <Section title={`Contact ${shop.name}`}>
+          <a
+            href={waLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonClass('secondary', 'lg', 'w-full')}
+          >
+            <WhatsAppGlyph className="size-5 text-[#25D366]" /> Message the shop on WhatsApp
+          </a>
+          <p className="mt-2 text-xs text-ink-3">
+            Opens your own WhatsApp with a message about order #{order.number}. Nothing is sent automatically.
+          </p>
+        </Section>
+      )}
 
       <TrackTrust token={token} paidMinor={order.paidMinor} shopName={shop.name} locale={locale} timezone={shop.timezone} />
 
@@ -381,7 +478,7 @@ function UpdatedLabel({ updatedAt, fetching, onRefresh }: { updatedAt: number; f
       type="button"
       onClick={onRefresh}
       aria-label={`${text}. Refresh now`}
-      className="inline-flex h-11 items-center gap-1.5 rounded-xl px-2 text-xs text-ink-3 hover:bg-sunken hover:text-ink"
+      className="-mr-2 inline-flex h-11 items-center gap-1.5 rounded-lg px-2 text-xs text-ink-3 hover:bg-sunken hover:text-ink"
     >
       {fetching ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <RefreshCw className="size-3.5" aria-hidden />}
       <span aria-live="polite">{text}</span>
@@ -393,42 +490,42 @@ function PlacedHeader({ order, money }: { order: TrackedOrder; money(minor: numb
   const reduce = useReducedMotion()
   const { copied, copy } = useCopy()
   return (
-    <header className="flex flex-col items-center gap-3 rounded-[var(--radius-card)] bg-panel px-4 py-7 text-center shadow-[var(--shadow-card)]">
-      <motion.span
-        initial={reduce ? false : { scale: 0.6, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.35, ease: EASE }}
-        className="grid size-16 place-items-center rounded-full bg-brand-soft"
-        aria-hidden
-      >
-        <svg viewBox="0 0 24 24" className="size-9 text-brand" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-          <motion.path
-            d="M5 12.5l4.5 4.5L19 7.5"
-            initial={reduce ? false : { pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 0.45, delay: 0.2, ease: EASE }}
-          />
-        </svg>
-      </motion.span>
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">
+    <div className="flex flex-col items-start gap-2">
+      <h1 className="flex items-center gap-2.5 text-xl font-semibold tracking-tight text-ink">
+        <motion.span
+          initial={reduce ? false : { scale: 0.6, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.35, ease: EASE }}
+          className="grid size-7 shrink-0 place-items-center rounded-full bg-pos-soft"
+          aria-hidden
+        >
+          <svg viewBox="0 0 24 24" className="size-4 text-pos" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <motion.path
+              d="M5 12.5l4.5 4.5L19 7.5"
+              initial={reduce ? false : { pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 0.45, delay: 0.2, ease: EASE }}
+            />
+          </svg>
+        </motion.span>
+        <span>
           Order <span className="tnum">#{order.number}</span> placed
-        </h1>
-        <p className="mt-1 text-sm text-ink-2">
-          Thanks{order.customerFirstName ? `, ${order.customerFirstName}` : ''}. {order.shop.name} has your order for{' '}
-          <span className="font-semibold text-ink tnum">{money(order.totalMinor)}</span>. This page updates as it moves.
-        </p>
-      </div>
+        </span>
+      </h1>
+      <p className="text-[15px] text-ink-2">
+        Thanks{order.customerFirstName ? `, ${order.customerFirstName}` : ''}. {order.shop.name} has your order for{' '}
+        <span className="font-semibold text-ink tnum">{money(order.totalMinor)}</span>. This page updates as it moves.
+      </p>
       <Button
         variant="ghost"
         size="sm"
         onClick={() => void copy('link', window.location.href.replace(/[?#].*$/, ''))}
         icon={copied === 'link' ? <Check className="size-4 text-pos" aria-hidden /> : <Copy className="size-4" aria-hidden />}
-        className="h-11"
+        className="-ml-3.5 h-11"
       >
         {copied === 'link' ? 'Link copied' : 'Copy link to this page'}
       </Button>
-    </header>
+    </div>
   )
 }
 
@@ -442,21 +539,17 @@ function PaymentPanel({ token, order, money }: { token: string; order: TrackedOr
   // A deposit is due now even when the balance is paid in cash on delivery.
   if (order.paymentPreference === 'cod' && !(depositOutstanding > 0 && (shop.mpesaTill || shop.mpesaPaybill))) {
     return (
-      <Card className="border border-line">
-        <div className="flex items-center gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-mango-soft text-on-mango">
-            <Banknote className="size-5" aria-hidden />
-          </span>
-          <div>
-            <p className="font-display text-xl font-semibold tracking-tight tnum">
-              Pay {money(due)} on {order.fulfilment.method === 'pickup' ? 'pickup' : 'delivery'}
-            </p>
-            <p className="text-sm text-ink-2">
-              {order.paidMinor > 0 ? `${money(order.paidMinor)} already received. ` : ''}Have the amount ready in cash or M-Pesa.
-            </p>
-          </div>
+      <div className="flex items-start gap-3">
+        <Banknote className="mt-1 size-5 shrink-0 text-ink-3" aria-hidden />
+        <div className="min-w-0">
+          <p className="font-display text-xl font-semibold tracking-tight tnum">
+            Pay {money(due)} on {order.fulfilment.method === 'pickup' ? 'pickup' : 'delivery'}
+          </p>
+          <p className="text-sm text-ink-2">
+            {order.paidMinor > 0 ? `${money(order.paidMinor)} already received. ` : ''}Have the amount ready in cash or M-Pesa.
+          </p>
         </div>
-      </Card>
+      </div>
     )
   }
 
@@ -465,10 +558,10 @@ function PaymentPanel({ token, order, money }: { token: string; order: TrackedOr
 
   if (order.paymentPreference !== 'mpesa' && !(depositOutstanding > 0 && (shop.mpesaTill || shop.mpesaPaybill))) {
     return (
-      <Card className="border border-line">
+      <div>
         <p className="font-display text-xl font-semibold tracking-tight tnum">{money(due)} to pay</p>
         <p className="text-sm text-ink-2">{shop.name} will contact you with how to pay.</p>
-      </Card>
+      </div>
     )
   }
 
@@ -527,10 +620,10 @@ function MpesaPanel({
     showManual || phase.kind === 'not_configured' || phase.kind === 'error' || (options.isSuccess && !stkOffered)
 
   return (
-    <Card className="border border-brand/25">
+    <div>
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm text-ink-2">Amount to pay</p>
+        <div className="min-w-0">
+          <p className="text-[13px] text-ink-3">Amount to pay</p>
           <p className="font-display text-4xl font-semibold leading-tight tracking-tight tnum">{money(due)}</p>
           {order.paidMinor > 0 && <p className="text-xs text-ink-3 tnum">{money(order.paidMinor)} of {money(order.totalMinor)} received</p>}
         </div>
@@ -560,7 +653,7 @@ function MpesaPanel({
               (phase.status === 'paid' || phase.status === 'mismatch' || phase.status === 'late' || phase.status === 'awaiting_receipt')
             ) && (
               <div className="flex flex-wrap gap-2">
-                <Button variant="brand" onClick={reset} icon={<RefreshCw className="size-4" aria-hidden />}>
+                <Button variant="primary" onClick={reset} icon={<RefreshCw className="size-4" aria-hidden />}>
                   Send a new prompt
                 </Button>
                 {hasManual && (
@@ -582,18 +675,18 @@ function MpesaPanel({
                   autoComplete="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="h-11 rounded-xl tnum"
+                  className="h-12 text-base tnum"
                   placeholder="0712 345 678"
                 />
               )}
             </Field>
             {simulated && (
-              <label className="flex flex-col gap-1 rounded-xl bg-info-soft p-3 text-sm">
+              <label className="flex flex-col gap-1 rounded-lg border border-dashed border-line-strong p-3 text-sm">
                 <span className="font-medium text-ink">Demo: choose what the simulated M-Pesa does</span>
                 <select
                   value={simulate}
                   onChange={(e) => setSimulate(e.target.value as SimulatedOutcome)}
-                  className="h-11 rounded-xl border border-line-strong bg-panel px-3 text-ink"
+                  className="h-11 rounded-lg border border-line-strong bg-panel px-3 text-ink"
                 >
                   <option value="success">Customer pays</option>
                   <option value="cancelled">Customer cancels the prompt</option>
@@ -613,11 +706,11 @@ function MpesaPanel({
               </p>
             )}
             <Button
-              variant="brand"
+              variant="primary"
               size="lg"
               onClick={submit}
               loading={phase.kind === 'sending'}
-              className="w-full rounded-2xl"
+              className="w-full"
               icon={<Smartphone className="size-4" aria-hidden />}
             >
               Send M-Pesa prompt to my phone
@@ -631,7 +724,7 @@ function MpesaPanel({
         ) : (
           <motion.div key="manual" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4 flex flex-col gap-3">
             {phase.kind === 'error' && (
-              <p role="alert" className="flex items-start gap-2 rounded-xl bg-neg-soft p-3 text-sm text-neg">
+              <p role="alert" className="flex items-start gap-2 rounded-lg bg-neg-soft p-3 text-sm text-neg">
                 <XCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
                 <span>{phase.message}. You can pay with the steps below instead.</span>
               </p>
@@ -642,7 +735,7 @@ function MpesaPanel({
             {hasManual ? (
               <>
                 {shop.registeredName && (
-                  <p className="flex items-start gap-2 rounded-xl bg-pos-soft p-3 text-sm text-ink">
+                  <p className="flex items-start gap-2 border-l-2 border-pos py-0.5 pl-3 text-sm text-ink">
                     <ShieldCheck className="mt-0.5 size-4 shrink-0 text-pos" aria-hidden />
                     <span>
                       Before you enter your PIN, M-Pesa must show <strong className="font-semibold">{shop.registeredName}</strong>. If it shows a
@@ -650,7 +743,7 @@ function MpesaPanel({
                     </span>
                   </p>
                 )}
-                <ol className="flex flex-col gap-2 rounded-xl bg-sunken p-3 text-sm">
+                <ol className="flex flex-col gap-2.5 rounded-lg bg-sunken p-3 text-[15px]">
                   <Step n={1}>Open M-Pesa and choose <strong>Lipa na M-Pesa</strong></Step>
                   {shop.mpesaTill ? (
                     <>
@@ -679,7 +772,7 @@ function MpesaPanel({
                 </ol>
               </>
             ) : (
-              <p className="rounded-xl bg-sunken p-3 text-sm text-ink-2">{shop.name} will send you payment details shortly.</p>
+              <p className="text-sm text-ink-2">{shop.name} will send you payment details shortly.</p>
             )}
             <p className="flex items-start gap-2 text-xs text-ink-3">
               <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
@@ -702,7 +795,7 @@ function MpesaPanel({
           </motion.div>
         )}
       </AnimatePresence>
-    </Card>
+    </div>
   )
 }
 
@@ -734,7 +827,7 @@ function PromptWaiting({
   const pct = Math.min(100, (elapsed / WAIT_SECONDS) * 100)
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-start gap-3 rounded-xl bg-info-soft p-3 text-sm" role="status" aria-live="polite">
+      <div className="flex items-start gap-3 rounded-lg bg-info-soft p-3 text-sm" role="status" aria-live="polite">
         <Loader2 className="mt-0.5 size-5 shrink-0 animate-spin text-info motion-reduce:animate-none" aria-hidden />
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-ink">{simulated ? 'Simulated prompt sent' : 'Check your phone'}</p>
@@ -765,7 +858,7 @@ function PromptWaiting({
 function PromptOutcome({ phase }: { phase: Extract<PromptPhase, { kind: 'done' | 'stopped' }> }) {
   if (phase.kind === 'stopped') {
     return (
-      <div className="flex items-start gap-3 rounded-xl bg-warn-soft p-3 text-sm" role="status">
+      <div className="flex items-start gap-3 rounded-lg bg-warn-soft p-3 text-sm" role="status">
         <Info className="mt-0.5 size-5 shrink-0 text-warn" aria-hidden />
         <div>
           <p className="font-semibold text-ink">{phase.reason === 'cancelled_by_buyer' ? 'Stopped waiting' : "We haven't heard back from M-Pesa yet"}</p>
@@ -782,7 +875,7 @@ function PromptOutcome({ phase }: { phase: Extract<PromptPhase, { kind: 'done' |
   const review = phase.status === 'mismatch' || phase.status === 'late' || phase.status === 'awaiting_receipt'
   return (
     <div
-      className={cn('flex items-start gap-3 rounded-xl p-3 text-sm', good ? 'bg-pos-soft' : review ? 'bg-info-soft' : 'bg-neg-soft')}
+      className={cn('flex items-start gap-3 rounded-lg p-3 text-sm', good ? 'bg-pos-soft' : review ? 'bg-info-soft' : 'bg-neg-soft')}
       role={good || review ? 'status' : 'alert'}
     >
       {good ? (
@@ -811,7 +904,7 @@ function majorString(minor: number, currency: string): string {
 function Step({ n, children }: { n: number; children: ReactNode }) {
   return (
     <li className="flex items-start gap-2.5">
-      <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-panel text-[11px] font-bold text-ink-2 tnum" aria-hidden>
+      <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border border-line bg-panel text-[11px] font-semibold text-ink-2 tnum" aria-hidden>
         {n}
       </span>
       <span className="min-w-0 flex-1 text-ink">{children}</span>
@@ -836,8 +929,8 @@ function CopyLine({
 }) {
   return (
     <span className="flex items-center justify-between gap-2">
-      <span>
-        {label}: <strong className="font-display text-base tracking-tight tnum">{value}</strong>
+      <span className="min-w-0 break-words">
+        {label}: <strong className="font-display text-base font-semibold tracking-tight tnum">{value}</strong>
       </span>
       <CopyButton id={id} text={copyValue ?? value} copied={copied} copy={copy} label={`Copy ${label.toLowerCase()}`} />
     </span>
@@ -863,7 +956,7 @@ function CopyButton({
       type="button"
       onClick={() => void copy(id, text)}
       aria-label={done ? 'Copied' : label}
-      className="-my-2 grid size-11 shrink-0 place-items-center rounded-xl text-ink-2 hover:bg-panel hover:text-ink"
+      className="-my-2 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-panel hover:text-ink"
     >
       {done ? <Check className="size-4 text-pos" aria-hidden /> : <Copy className="size-4" aria-hidden />}
     </button>
@@ -949,18 +1042,18 @@ function Timeline({ order }: { order: TrackedOrder }) {
             {!last && (
               <span
                 aria-hidden
-                className={cn('absolute left-[11px] top-6 h-[calc(100%-1.5rem)] w-0.5', s.state === 'done' ? 'bg-brand' : 'bg-line')}
+                className={cn('absolute left-[11px] top-6 h-[calc(100%-1.5rem)] w-0.5', s.state === 'done' ? 'bg-primary' : 'bg-line')}
               />
             )}
             <span aria-hidden className="relative z-10 mt-0.5 grid size-6 shrink-0 place-items-center">
               {s.state === 'done' && (
-                <span className="grid size-6 place-items-center rounded-full bg-brand text-on-brand">
+                <span className="grid size-6 place-items-center rounded-full bg-primary text-on-primary">
                   <Check className="size-3.5" strokeWidth={3} />
                 </span>
               )}
               {s.state === 'current' && (
-                <span className="grid size-6 place-items-center rounded-full bg-brand-soft">
-                  <span className="ak-live-dot size-2.5 rounded-full bg-brand" />
+                <span className="grid size-6 place-items-center rounded-full border-2 border-primary bg-panel">
+                  <span className="size-2.5 rounded-full bg-primary" />
                 </span>
               )}
               {s.state === 'upcoming' && <span className="size-3 rounded-full border-2 border-line-strong bg-panel" />}
@@ -1037,14 +1130,14 @@ function ReviewSection({ token, order }: { token: string; order: TrackedOrder })
   }
   if (products.length === 0) return null
   return (
-    <Card title="How was it?">
+    <Section title="How was it?">
       <p className="-mt-2 mb-4 text-sm text-ink-2">Your review is marked as a verified purchase.</p>
       <div className="flex flex-col divide-y divide-line">
         {products.map((p) => (
           <ReviewForm key={p.id} token={token} productId={p.id} name={p.name} />
         ))}
       </div>
-    </Card>
+    </Section>
   )
 }
 
@@ -1080,7 +1173,7 @@ function ReviewForm({ token, productId, name }: { token: string; productId: stri
           {[1, 2, 3, 4, 5].map((n) => (
             <label
               key={n}
-              className="grid size-11 cursor-pointer place-items-center rounded-xl hover:bg-sunken has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand"
+              className="grid size-11 cursor-pointer place-items-center rounded-lg hover:bg-sunken has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand"
             >
               <input type="radio" name={groupName} value={n} checked={rating === n} onChange={() => setRating(n)} className="sr-only" />
               <Star className={cn('size-6 transition-colors', n <= rating ? 'fill-mango text-mango' : 'text-line-strong')} aria-hidden />
@@ -1094,7 +1187,7 @@ function ReviewForm({ token, productId, name }: { token: string; productId: stri
       {rating > 0 && (
         <Field label="Add a few words" optional>
           {(p) => (
-            <Textarea {...p} value={body} onChange={(e) => setBody(e.target.value)} rows={2} maxLength={1000} className="rounded-xl" placeholder="What did you like?" />
+            <Textarea {...p} value={body} onChange={(e) => setBody(e.target.value)} rows={2} maxLength={1000} placeholder="What did you like?" />
           )}
         </Field>
       )}
@@ -1103,7 +1196,7 @@ function ReviewForm({ token, productId, name }: { token: string; productId: stri
           {errorMessage(submit.error)}
         </p>
       )}
-      <Button type="submit" variant="brand" disabled={rating < 1} loading={submit.isPending} className="self-start">
+      <Button type="submit" variant="primary" disabled={rating < 1} loading={submit.isPending} className="self-start">
         Submit review
       </Button>
     </form>

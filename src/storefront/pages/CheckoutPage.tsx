@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   Banknote,
   Bike,
+  ChevronDown,
   Loader2,
   Lock,
   Map as MapIcon,
@@ -98,7 +99,7 @@ export default function CheckoutPage() {
     return (
       <PageFrame slug={slug}>
         <div className="flex flex-col items-center gap-3 py-24 text-center" role="status">
-          <Loader2 className="size-6 animate-spin text-brand" aria-hidden />
+          <Loader2 className="size-6 animate-spin text-ink-3" aria-hidden />
           <p className="text-sm text-ink-2">Opening your order…</p>
         </div>
       </PageFrame>
@@ -110,13 +111,13 @@ export default function CheckoutPage() {
   if (storefront.isError) {
     return (
       <PageFrame slug={slug}>
-        <div className="mx-auto flex max-w-md flex-col items-center gap-3 py-20 text-center">
-          <AlertCircle className="size-8 text-neg" aria-hidden />
-          <h1 className="text-2xl font-semibold tracking-tight">
+        <div className="mx-auto flex max-w-md flex-col items-center gap-2 py-20 text-center">
+          <AlertCircle className="mb-1 size-7 text-neg" aria-hidden />
+          <h1 className="text-xl font-semibold tracking-tight">
             {isNotFoundError(storefront.error) ? 'This shop is not available' : 'We could not load checkout'}
           </h1>
           <p className="text-sm text-ink-2">{errorMessage(storefront.error)}</p>
-          <Button variant="secondary" onClick={() => void storefront.refetch()}>
+          <Button variant="secondary" className="mt-3" onClick={() => void storefront.refetch()}>
             Try again
           </Button>
         </div>
@@ -129,13 +130,11 @@ export default function CheckoutPage() {
   if (cart.lines.length === 0) {
     return (
       <PageFrame slug={slug} shopName={shop.name}>
-        <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-20 text-center ak-rise">
-          <span className="grid size-16 place-items-center rounded-full bg-brand-soft text-brand">
-            <ShoppingBag className="size-7" aria-hidden />
-          </span>
-          <h1 className="text-2xl font-semibold tracking-tight">Your cart is empty</h1>
+        <div className="mx-auto flex max-w-md flex-col items-center gap-2 py-20 text-center">
+          <ShoppingBag className="mb-1 size-7 text-ink-3" aria-hidden />
+          <h1 className="text-xl font-semibold tracking-tight">Your cart is empty</h1>
           <p className="text-sm text-ink-2">Add something you love from {shop.name}, then come back here to order.</p>
-          <Link to={`/s/${slug}`} className={buttonClass('brand', 'lg', 'min-h-11')}>
+          <Link to={`/s/${slug}`} className={buttonClass('primary', 'lg', 'mt-4 min-h-11')}>
             Browse the shop
           </Link>
         </div>
@@ -153,25 +152,25 @@ export default function CheckoutPage() {
 function PageFrame({ slug, shopName, children }: { slug: string; shopName?: string; children: ReactNode }) {
   return (
     <div className="min-h-dvh bg-canvas pb-16">
-      <header className="sticky top-0 z-20 border-b border-line bg-canvas/90 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-line bg-canvas/95 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-5xl items-center gap-2 px-4">
           <Link
             to={`/s/${slug}`}
             aria-label={shopName ? `Back to ${shopName}` : 'Back to shop'}
-            className="-ml-2 grid size-11 place-items-center rounded-xl text-ink-2 hover:bg-sunken hover:text-ink"
+            className="-ml-2 grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-sunken hover:text-ink"
           >
             <ArrowLeft className="size-5" aria-hidden />
           </Link>
           <div className="min-w-0">
-            <p className="font-display text-lg font-semibold leading-tight tracking-tight">Checkout</p>
+            <p className="font-display text-base leading-tight font-semibold tracking-tight">Checkout</p>
             {shopName && <p className="truncate text-xs text-ink-3">{shopName}</p>}
           </div>
-          <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-ink-3">
+          <span className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-xs text-ink-3">
             <Lock className="size-3.5" aria-hidden /> Secure order
           </span>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-4 pt-5">{children}</main>
+      <main className="mx-auto max-w-5xl px-4 pt-4 sm:pt-6">{children}</main>
     </div>
   )
 }
@@ -179,13 +178,24 @@ function PageFrame({ slug, shopName, children }: { slug: string; shopName?: stri
 function CheckoutSkeleton({ slug }: { slug: string }) {
   return (
     <PageFrame slug={slug}>
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]" aria-busy="true" aria-label="Loading checkout">
-        <div className="flex flex-col gap-4">
-          <Skeleton className="h-40 w-full rounded-[var(--radius-card)]" />
-          <Skeleton className="h-96 w-full rounded-[var(--radius-card)]" />
-          <Skeleton className="h-36 w-full rounded-[var(--radius-card)]" />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-12" aria-busy="true" aria-label="Loading checkout">
+        <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-11 w-full" />
+            <Skeleton className="h-11 w-full" />
+          </div>
+          <div className="flex flex-col gap-3 border-t border-line pt-6">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-14 w-full" />
+            <Skeleton className="h-14 w-full" />
+          </div>
+          <div className="flex flex-col gap-3 border-t border-line pt-6">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-14 w-full" />
+          </div>
         </div>
-        <Skeleton className="h-96 w-full rounded-[var(--radius-card)]" />
+        <Skeleton className="order-first h-14 w-full lg:order-none lg:h-80" />
       </div>
     </PageFrame>
   )
@@ -228,6 +238,8 @@ function CheckoutForm({
   const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey)
   const [pickupPointId, setPickupPointId] = useState<string | null>(null)
   const [pickupMapOpen, setPickupMapOpen] = useState(false)
+  // Phones: the order summary is a collapsible panel above the steps (always open from lg).
+  const [summaryOpen, setSummaryOpen] = useState(false)
 
   /* Payment policy and pick-up points (server-side; the quote enforces them). */
   const optionsQuery = useQuery({
@@ -385,8 +397,8 @@ function CheckoutForm({
       }
 
   return (
-    <form onSubmit={submit} noValidate className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
-      <div className="flex min-w-0 flex-col gap-4">
+    <form onSubmit={submit} noValidate className="grid gap-6 pb-24 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-12 lg:pb-0">
+      <div className="flex min-w-0 flex-col gap-8">
         {/* 1 · Contact */}
         <Section step={1} title="Your details" subtitle="The shop uses this to confirm and deliver your order.">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -398,7 +410,6 @@ function CheckoutForm({
                   onChange={(e) => setName(e.target.value)}
                   autoComplete="name"
                   placeholder="e.g. Wanjiru Kamau"
-                  className="h-11 rounded-xl"
                   maxLength={80}
                 />
               )}
@@ -417,7 +428,7 @@ function CheckoutForm({
                   inputMode="tel"
                   autoComplete="tel"
                   placeholder={shop.countryCode === 'KE' ? '0712 345 678' : '+1 555 123 4567'}
-                  className="h-11 rounded-xl tnum"
+                  className="tnum"
                   maxLength={24}
                 />
               )}
@@ -428,8 +439,9 @@ function CheckoutForm({
         {/* 2 · Delivery or pickup */}
         <Section step={2} title="Delivery or pickup">
           {methods.length === 0 ? (
-            <p role="alert" className="rounded-xl bg-warn-soft p-3 text-sm text-warn">
-              {errors.method}
+            <p role="alert" className="flex items-start gap-2 rounded-lg bg-warn-soft p-3 text-sm text-ink">
+              <AlertCircle className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />
+              <span>{errors.method}</span>
             </p>
           ) : (
             <Segmented
@@ -476,7 +488,6 @@ function CheckoutForm({
                         value={landmark}
                         onChange={(e) => setLandmark(e.target.value)}
                         placeholder="Near Total petrol station"
-                        className="h-11 rounded-xl"
                         maxLength={120}
                       />
                     )}
@@ -489,7 +500,6 @@ function CheckoutForm({
                         onChange={(e) => setAddressLine(e.target.value)}
                         autoComplete="street-address"
                         placeholder="e.g. Ngong Road, Kilimani"
-                        className="h-11 rounded-xl"
                         maxLength={160}
                       />
                     )}
@@ -501,7 +511,6 @@ function CheckoutForm({
                         value={building}
                         onChange={(e) => setBuilding(e.target.value)}
                         placeholder="e.g. Amani Court, 3rd floor, B12"
-                        className="h-11 rounded-xl"
                         maxLength={120}
                       />
                     )}
@@ -514,7 +523,6 @@ function CheckoutForm({
                         onChange={(e) => setInstructions(e.target.value)}
                         rows={2}
                         placeholder="e.g. Call when at the gate"
-                        className="rounded-xl"
                         maxLength={300}
                       />
                     )}
@@ -534,8 +542,9 @@ function CheckoutForm({
                   error={fieldError(errors.point)}
                 />
                 {quoteQuery.isError && settled && (
-                  <p role="alert" className="rounded-xl bg-neg-soft p-3 text-sm text-neg">
-                    {errorMessage(quoteQuery.error)}
+                  <p role="alert" className="flex items-start gap-2 rounded-lg bg-neg-soft p-3 text-sm text-ink">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0 text-neg" aria-hidden />
+                    <span>{errorMessage(quoteQuery.error)}</span>
                   </p>
                 )}
               </motion.div>
@@ -553,16 +562,16 @@ function CheckoutForm({
                       variant="ghost"
                       size="sm"
                       onClick={() => setPickupMapOpen(true)}
-                      icon={<MapIcon className="size-4" aria-hidden />}
-                      className="min-h-11 self-start"
+                      icon={<MapIcon className="size-4 text-ink-3" aria-hidden />}
+                      className="-ml-2 min-h-11 self-start"
                     >
                       Show the shop on a map
                     </Button>
                   ))}
-                <div className="flex items-start gap-3 rounded-xl bg-sunken p-3">
-                  <MapPin className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
-                  <div className="text-sm">
-                    <p className="font-semibold text-ink">Collect from {shop.name}</p>
+                <div className="flex items-start gap-3 rounded-lg border border-line bg-panel p-3.5">
+                  <MapPin className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
+                  <div className="min-w-0 text-sm">
+                    <p className="font-medium break-words text-ink">Collect from {shop.name}</p>
                     <p className="text-ink-2">
                       {shop.locationLabel ?? 'The shop will share the pickup spot when it confirms your order.'}
                     </p>
@@ -576,7 +585,7 @@ function CheckoutForm({
         {/* 3 · Payment */}
         <Section step={3} title="Payment">
           {payments.length === 0 ? (
-            <p className="rounded-xl bg-sunken p-3 text-sm text-ink-2">
+            <p className="rounded-lg border border-line bg-panel p-3.5 text-sm text-ink-2">
               {shop.name} will contact you on your phone with how to pay once they confirm the order.
             </p>
           ) : (
@@ -607,72 +616,78 @@ function CheckoutForm({
             />
           )}
           {payment === 'mpesa' && shop.registeredName && (
-            <p className="mt-3 flex items-start gap-2 rounded-xl bg-pos-soft p-3 text-sm text-ink">
-              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-pos" aria-hidden />
-              <span>
-                {stk ? 'The M-Pesa prompt will show' : 'M-Pesa will show'} <strong className="font-semibold">{shop.registeredName}</strong>. Check
+            <p className="mt-3 flex items-start gap-2.5 rounded-lg border border-line bg-panel p-3.5 text-sm text-ink-2">
+              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
+              <span className="min-w-0">
+                {stk ? 'The M-Pesa prompt will show' : 'M-Pesa will show'} <strong className="font-semibold text-ink">{shop.registeredName}</strong>. Check
                 the name before you enter your PIN.
               </span>
             </p>
           )}
         </Section>
-      </div>
 
-      {/* 4 · Summary */}
-      <div className="lg:sticky lg:top-20">
-        <Section step={4} title="Summary">
-          <OrderSummary cart={cart} quote={freshQuote} busy={quoteBusy} locale={locale} method={method} taxMode={shop.taxMode} />
+        {/* Review and place */}
+        <section aria-labelledby="checkout-place" className="border-t border-line pt-6">
+          <h2 id="checkout-place" className="text-base leading-6 font-semibold tracking-tight">
+            Review and place your order
+          </h2>
           {options && (
             <PolicyNote policy={options.policy} currency={shop.currency} locale={locale} delivers={shop.deliveryEnabled && method !== 'pickup'} />
           )}
 
-          <label className="mt-4 flex min-h-11 cursor-pointer items-start gap-3 rounded-xl p-2 -mx-2 hover:bg-sunken">
+          <label className="-mx-2 mt-4 flex min-h-11 cursor-pointer items-start gap-3 rounded-lg p-2 hover:bg-sunken">
             <input
               type="checkbox"
               checked={marketingOptIn}
               onChange={(e) => setMarketingOptIn(e.target.checked)}
-              className="mt-0.5 size-5 shrink-0 accent-[var(--ak-brand)]"
+              className="mt-0.5 size-5 shrink-0 accent-[var(--ak-ink)]"
             />
             <span className="text-sm text-ink-2">Send me offers from {shop.name} on WhatsApp. Optional. Reply STOP anytime to stop.</span>
           </label>
 
-          <AnimatePresence initial={false}>
-            {placeOrder.isError && (
-              <motion.p key="err" {...fade} role="alert" className="mt-3 flex items-start gap-2 rounded-xl bg-neg-soft p-3 text-sm text-neg">
-                <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
-                <span>{errorMessage(placeOrder.error)}</span>
-              </motion.p>
-            )}
-            {showErrors && firstError && !placeOrder.isError && (
-              <motion.p key="form-err" {...fade} role="alert" className="mt-3 rounded-xl bg-warn-soft p-3 text-sm text-warn">
-                {firstError}
-              </motion.p>
-            )}
-          </AnimatePresence>
+          {/* Phones: pinned above the safe area. From lg: in the page flow. */}
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-canvas px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:static lg:z-auto lg:mt-5 lg:border-t-0 lg:bg-transparent lg:p-0">
+            <div className="mx-auto max-w-5xl lg:max-w-none">
+              <AnimatePresence initial={false}>
+                {placeOrder.isError && (
+                  <motion.p key="err" {...fade} role="alert" className="mb-3 flex items-start gap-2 rounded-lg bg-neg-soft p-3 text-sm text-ink">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0 text-neg" aria-hidden />
+                    <span>{errorMessage(placeOrder.error)}</span>
+                  </motion.p>
+                )}
+                {showErrors && firstError && !placeOrder.isError && (
+                  <motion.p key="form-err" {...fade} role="alert" className="mb-3 flex items-start gap-2 rounded-lg bg-warn-soft p-3 text-sm text-ink">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />
+                    <span>{firstError}</span>
+                  </motion.p>
+                )}
+              </AnimatePresence>
 
-          <Button
-            type="submit"
-            variant="brand"
-            size="lg"
-            loading={placeOrder.isPending}
-            disabled={!freshQuote || placeOrder.isPending || methods.length === 0}
-            className="mt-4 h-13 w-full rounded-2xl text-base"
-          >
-            {placeOrder.isPending
-              ? 'Placing your order…'
-              : freshQuote
-                ? `Place order · ${fmtMoney(freshQuote.totalMinor, freshQuote.currency, locale)}`
-                : quoteBusy
-                  ? 'Checking total…'
-                  : method === 'delivery' && !pin
-                    ? 'Set your location to see your total'
-                    : method === 'pickup_point' && !chosenPoint
-                      ? 'Choose a pick-up point'
-                    : outOfArea
-                      ? 'Address is outside the delivery area'
-                      : 'Place order'}
-          </Button>
-          <p className="mt-2 text-center text-xs text-ink-3">
+              <Button
+                type="submit"
+                variant="primary"
+                size="lg"
+                loading={placeOrder.isPending}
+                disabled={!freshQuote || placeOrder.isPending || methods.length === 0}
+                className="h-auto min-h-12 w-full min-w-0 py-2.5 text-center whitespace-normal tnum"
+              >
+                {placeOrder.isPending
+                  ? 'Placing your order…'
+                  : freshQuote
+                    ? `Place order · ${fmtMoney(freshQuote.totalMinor, freshQuote.currency, locale)}`
+                    : quoteBusy
+                      ? 'Checking total…'
+                      : method === 'delivery' && !pin
+                        ? 'Set your location to see your total'
+                        : method === 'pickup_point' && !chosenPoint
+                          ? 'Choose a pick-up point'
+                        : outOfArea
+                          ? 'Address is outside the delivery area'
+                          : 'Place order'}
+              </Button>
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-ink-3 lg:mt-2 lg:text-center">
             {freshQuote?.depositDueMinor && freshQuote.depositDueMinor > 0 && freshQuote.depositDueMinor < freshQuote.totalMinor
               ? `Nothing is charged yet. You pay the ${fmtMoney(freshQuote.depositDueMinor, freshQuote.currency, locale)} deposit on the next screen.`
               : payment === 'mpesa'
@@ -683,8 +698,45 @@ function CheckoutForm({
           </p>
 
           <TrustBlock shop={shop} />
-        </Section>
+        </section>
       </div>
+
+      {/* Order summary: side column from lg, collapsible panel above the steps on phones */}
+      <aside aria-label="Order summary" className="order-first min-w-0 lg:sticky lg:top-20 lg:order-none">
+        <div className="rounded-[var(--radius-card)] border border-line bg-panel">
+          <button
+            type="button"
+            onClick={() => setSummaryOpen((v) => !v)}
+            aria-expanded={summaryOpen}
+            aria-controls="checkout-summary"
+            className="flex min-h-14 w-full items-center gap-3 rounded-[var(--radius-card)] px-4 py-2 text-left lg:hidden"
+          >
+            <ShoppingBag className="size-[18px] shrink-0 text-ink-3" aria-hidden />
+            <span className="min-w-0 flex-1 text-sm text-ink">
+              <span className="font-medium">{summaryOpen ? 'Hide order summary' : 'Show order summary'}</span>
+              <span className="block text-xs text-ink-3 tnum">
+                {cart.count} {cart.count === 1 ? 'item' : 'items'}
+              </span>
+            </span>
+            <span className="shrink-0 text-right">
+              <span className="block text-[11px] text-ink-3">{freshQuote ? 'Total' : 'Subtotal'}</span>
+              <span className="block text-[15px] font-semibold text-ink tnum">
+                {freshQuote
+                  ? fmtMoney(freshQuote.totalMinor, freshQuote.currency, locale)
+                  : fmtMoney(cart.subtotalMinor, cart.currency ?? shop.currency, locale)}
+              </span>
+            </span>
+            <ChevronDown
+              className={cn('size-4 shrink-0 text-ink-3 transition-transform', summaryOpen && 'rotate-180')}
+              aria-hidden
+            />
+          </button>
+          <div id="checkout-summary" className={cn('border-t border-line p-4 lg:block lg:border-t-0 lg:p-5', summaryOpen ? 'block' : 'hidden')}>
+            <h2 className="mb-4 hidden text-base font-semibold tracking-tight lg:block">Order summary</h2>
+            <OrderSummary cart={cart} quote={freshQuote} busy={quoteBusy} locale={locale} method={method} taxMode={shop.taxMode} />
+          </div>
+        </div>
+      </aside>
     </form>
   )
 }
@@ -693,16 +745,16 @@ function CheckoutForm({
 function Section({ step, title, subtitle, children }: { step: number; title: string; subtitle?: string; children: ReactNode }) {
   const id = `checkout-step-${step}`
   return (
-    <section aria-labelledby={id} className="rounded-[var(--radius-card)] bg-panel p-4 shadow-[var(--shadow-card)] sm:p-5 ak-rise">
+    <section aria-labelledby={id} className="min-w-0 border-t border-line pt-6 first:border-t-0 first:pt-0">
       <div className="mb-4 flex items-start gap-3">
-        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand-soft font-display text-sm font-semibold text-brand tnum" aria-hidden>
+        <span className="mt-px grid size-6 shrink-0 place-items-center rounded-full bg-ink text-xs font-medium text-canvas tnum" aria-hidden>
           {step}
         </span>
         <div className="min-w-0">
-          <h2 id={id} className="text-lg font-semibold leading-7 tracking-tight">
+          <h2 id={id} className="text-base leading-6 font-semibold tracking-tight">
             {title}
           </h2>
-          {subtitle && <p className="text-xs text-ink-3">{subtitle}</p>}
+          {subtitle && <p className="mt-0.5 text-xs text-ink-3">{subtitle}</p>}
         </div>
       </div>
       {children}
@@ -733,18 +785,23 @@ function Segmented({
 }) {
   const name = `seg-${legend.replace(/\W+/g, '-').toLowerCase()}`
   return (
-    <fieldset>
+    <fieldset className="min-w-0">
       <legend className="sr-only">{legend}</legend>
-      <div className={cn('grid gap-2', stacked ? 'grid-cols-1 sm:grid-cols-2' : options.length > 1 ? 'grid-cols-2' : 'grid-cols-1')}>
+      <div
+        className={cn(
+          'grid gap-2',
+          stacked || options.length === 1 ? 'grid-cols-1' : options.length > 2 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 min-[420px]:grid-cols-2',
+        )}
+      >
         {options.map((o) => {
           const active = o.value === value
           return (
             <label
               key={o.value}
               className={cn(
-                'relative flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors',
+                'relative flex min-h-14 cursor-pointer items-start gap-3 rounded-lg border bg-panel p-3.5 transition-colors',
                 'has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand',
-                active ? 'border-brand bg-brand-soft/60' : 'border-line-strong bg-panel hover:bg-sunken',
+                active ? 'border-ink shadow-[inset_0_0_0_1px_var(--ak-ink)]' : 'border-line-strong hover:border-ink-3',
               )}
             >
               <input
@@ -755,20 +812,22 @@ function Segmented({
                 onChange={() => onChange(o.value)}
                 className="sr-only"
               />
-              <span className={cn('mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg', active ? 'bg-brand text-on-brand' : 'bg-sunken text-ink-2')}>
-                {o.icon}
-              </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold text-ink">{o.label}</span>
-                {o.note && <span className="block text-xs text-ink-3">{o.note}</span>}
-              </span>
               <span
                 aria-hidden
                 className={cn(
-                  'absolute right-3 top-3 size-4 rounded-full border-2',
-                  active ? 'border-brand bg-brand shadow-[inset_0_0_0_2px_var(--ak-panel)]' : 'border-line-strong',
+                  'mt-0.5 grid size-[18px] shrink-0 place-items-center rounded-full border-2',
+                  active ? 'border-ink' : 'border-line-strong',
                 )}
-              />
+              >
+                {active && <span className="size-2 rounded-full bg-ink" />}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-2 text-sm font-medium text-ink">
+                  <span className="shrink-0 text-ink-3">{o.icon}</span>
+                  <span>{o.label}</span>
+                </span>
+                {o.note && <span className="mt-0.5 block text-xs leading-relaxed break-words text-ink-3">{o.note}</span>}
+              </span>
             </label>
           )
         })}
@@ -802,7 +861,7 @@ function DeliveryQuoteStatus({
   const locale = shop.locale || 'en'
   if (!pin) {
     return (
-      <p className="rounded-xl bg-sunken p-3 text-sm text-ink-2">
+      <p className="text-[13px] text-ink-3">
         {shop.deliveryBands.length > 0
           ? `Delivery from ${fmtMoney(Math.min(...shop.deliveryBands.map((b) => b.feeMinor)), shop.currency, locale)}, priced by distance from the shop.`
           : 'The delivery fee appears once your location is set.'}
@@ -812,9 +871,9 @@ function DeliveryQuoteStatus({
   if (outOfArea) {
     const bands = [...shop.deliveryBands].sort((a, b) => a.maxKm - b.maxKm)
     return (
-      <div role="alert" className="flex flex-col gap-3 rounded-xl border border-warn/30 bg-warn-soft p-3">
-        <p className="flex items-start gap-2 text-sm text-warn">
-          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+      <div role="alert" className="flex flex-col gap-3 rounded-lg bg-warn-soft p-3">
+        <p className="flex items-start gap-2 text-sm text-ink">
+          <AlertCircle className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />
           <span>
             {errorMessage(error)}.{' '}
             {shop.pickupEnabled ? 'Move the pin closer to the shop, or choose pickup.' : 'Move the pin closer to the shop.'}
@@ -850,8 +909,11 @@ function DeliveryQuoteStatus({
   }
   if (error) {
     return (
-      <div role="alert" className="flex items-center justify-between gap-3 rounded-xl bg-neg-soft p-3 text-sm text-neg">
-        <span>{errorMessage(error)}</span>
+      <div role="alert" className="flex items-center justify-between gap-3 rounded-lg bg-neg-soft p-3 text-sm text-ink">
+        <span className="flex min-w-0 items-start gap-2">
+          <AlertCircle className="mt-0.5 size-4 shrink-0 text-neg" aria-hidden />
+          <span className="min-w-0">{errorMessage(error)}</span>
+        </span>
         <Button variant="secondary" size="sm" onClick={onRetry} icon={<RotateCcw className="size-3.5" aria-hidden />}>
           Retry
         </Button>
@@ -859,8 +921,8 @@ function DeliveryQuoteStatus({
     )
   }
   return (
-    <div className="flex min-h-12 items-center gap-3 rounded-xl bg-sunken px-3 py-2.5" aria-live="polite">
-      <Bike className="size-5 shrink-0 text-brand" aria-hidden />
+    <div className="flex min-h-12 items-center gap-3 rounded-lg border border-line bg-panel px-3.5 py-2.5" aria-live="polite">
+      <Bike className="size-4 shrink-0 text-ink-3" aria-hidden />
       {busy || !quote ? (
         <span className="inline-flex items-center gap-2 text-sm text-ink-2">
           <Loader2 className="size-4 animate-spin" aria-hidden /> Checking delivery to your pin…
@@ -921,16 +983,17 @@ function OrderSummary({
         {lines.map((l) => (
           <li key={l.id} className="flex items-center gap-3">
             <div className="relative shrink-0">
-              <ProductImg src={imageByVariant.get(l.id) ?? null} name={l.name} className="size-12 rounded-xl object-cover" initialClassName="text-lg" />
-              <span className="absolute -right-1.5 -top-1.5 grid min-w-5 place-items-center rounded-full bg-ink px-1 text-[11px] font-bold text-canvas tnum">
+              <ProductImg src={imageByVariant.get(l.id) ?? null} name={l.name} className="size-12 rounded-lg object-cover" initialClassName="text-lg" />
+              <span className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-ink px-1 text-[11px] font-medium text-canvas ring-2 ring-panel tnum">
+                <span className="sr-only">Quantity </span>
                 {l.quantity}
               </span>
             </div>
             <div className="min-w-0 flex-1">
-              <p className="line-clamp-2 text-sm font-medium text-ink">{l.name}</p>
+              <p className="line-clamp-2 text-sm break-words text-ink">{l.name}</p>
               {l.variant && l.variant !== 'Default' && <p className="truncate text-xs text-ink-3">{l.variant}</p>}
             </div>
-            <span className="text-sm font-semibold text-ink tnum">{money(l.totalMinor)}</span>
+            <span className="shrink-0 text-sm font-medium text-ink tnum">{money(l.totalMinor)}</span>
           </li>
         ))}
       </ul>
@@ -945,7 +1008,7 @@ function OrderSummary({
           value={
             quote ? (
               quote.deliveryFeeMinor === 0 ? (
-                <span className="font-semibold text-pos">Free</span>
+                <span className="font-medium text-ink">Free</span>
               ) : (
                 money(quote.deliveryFeeMinor)
               )
@@ -958,8 +1021,8 @@ function OrderSummary({
         />
       </dl>
 
-      <div className="mt-4 flex items-end justify-between gap-3 rounded-2xl bg-sunken p-4" aria-live="polite">
-        <div>
+      <div className="mt-3 flex items-end justify-between gap-3 border-t border-line pt-3" aria-live="polite">
+        <div className="min-w-0">
           <p className="text-sm font-semibold text-ink">Total</p>
           <p className="text-xs text-ink-3">
             {effectiveTaxMode === 'inclusive'
@@ -975,19 +1038,19 @@ function OrderSummary({
             initial={{ opacity: 0.4, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, ease: EASE }}
-            className="font-display text-3xl font-semibold leading-none tracking-tight text-ink tnum"
+            className="shrink-0 font-display text-2xl leading-none font-semibold tracking-tight text-ink tnum"
           >
             {money(quote.totalMinor)}
           </motion.p>
         ) : (
-          <Skeleton className="h-8 w-28" />
+          <Skeleton className="h-7 w-28" />
         )}
       </div>
       {quote && (quote.depositDueMinor ?? 0) > 0 && (
-        <dl className="mt-2 flex flex-col gap-1.5 rounded-2xl border border-brand/25 p-3 text-sm" aria-label="How you pay">
+        <dl className="mt-3 flex flex-col gap-1.5 rounded-lg border border-line-strong p-3 text-sm" aria-label="How you pay">
           <div className="flex items-center justify-between gap-3">
             <dt className="font-semibold text-ink">{(quote.depositDueMinor ?? 0) >= quote.totalMinor ? 'Pay now (full amount)' : 'Deposit due now'}</dt>
-            <dd className="font-display text-lg font-semibold tracking-tight text-ink tnum">{money(quote.depositDueMinor ?? 0)}</dd>
+            <dd className="text-base font-semibold tracking-tight text-ink tnum">{money(quote.depositDueMinor ?? 0)}</dd>
           </div>
           {(quote.balanceOnDeliveryMinor ?? 0) > 0 && (
             <div className="flex items-center justify-between gap-3">
@@ -1018,7 +1081,7 @@ function TrustBlock({ shop }: { shop: PublicShop }) {
   const items: { icon: ReactNode; title: string; body: string }[] = []
   if (shop.registeredName) {
     items.push({
-      icon: <ShieldCheck className="size-4 text-pos" aria-hidden />,
+      icon: <ShieldCheck className="size-4 text-ink-3" aria-hidden />,
       title: `Paying ${shop.registeredName}`,
       body: shop.mpesaTill
         ? `Registered name on M-Pesa Till ${shop.mpesaTill}.`
@@ -1028,19 +1091,19 @@ function TrustBlock({ shop }: { shop: PublicShop }) {
     })
   }
   if (shop.returnPolicy) {
-    items.push({ icon: <RotateCcw className="size-4 text-ink-2" aria-hidden />, title: 'Returns', body: shop.returnPolicy })
+    items.push({ icon: <RotateCcw className="size-4 text-ink-3" aria-hidden />, title: 'Returns', body: shop.returnPolicy })
   }
   if (shop.locationLabel) {
-    items.push({ icon: <MapPin className="size-4 text-ink-2" aria-hidden />, title: 'Based in', body: shop.locationLabel })
+    items.push({ icon: <MapPin className="size-4 text-ink-3" aria-hidden />, title: 'Based in', body: shop.locationLabel })
   }
   if (items.length === 0) return null
   return (
-    <ul className="mt-5 flex flex-col gap-3 border-t border-line pt-4" aria-label="About this seller">
+    <ul className="mt-6 flex flex-col gap-3 border-t border-line pt-5" aria-label="About this seller">
       {items.map((it) => (
         <li key={it.title} className="flex items-start gap-2.5">
           <span className="mt-0.5 shrink-0">{it.icon}</span>
           <div className="min-w-0 text-xs">
-            <p className="font-semibold text-ink">{it.title}</p>
+            <p className="font-medium break-words text-ink">{it.title}</p>
             <p className="whitespace-pre-line text-ink-3">{it.body}</p>
           </div>
         </li>

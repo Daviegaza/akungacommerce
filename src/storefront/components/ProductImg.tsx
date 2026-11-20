@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import { initialOf } from './storefront-utils'
 
 /**
- * Lazy product image with an honest fallback: a brand-tinted tile with the
+ * Lazy product image with an honest fallback: a neutral tile with the
  * product initial when the photo is missing or fails to load.
  */
 export function ProductImg({
@@ -22,8 +22,8 @@ export function ProductImg({
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
   if (!src || failedSrc === src) {
     return (
-      <div role="img" aria-label={name} className={cn('grid place-items-center bg-brand-soft text-brand select-none', className)}>
-        <span className={cn('font-display text-4xl font-semibold leading-none', initialClassName)} aria-hidden>
+      <div role="img" aria-label={name} className={cn('grid place-items-center bg-sunken text-ink-3 select-none', className)}>
+        <span className={cn('font-display text-4xl font-medium leading-none', initialClassName)} aria-hidden>
           {initialOf(name)}
         </span>
       </div>

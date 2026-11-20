@@ -27,12 +27,12 @@ export function DropBadge({
 
   if (variant === 'block') {
     return (
-      <div className={cn('flex items-start gap-3 rounded-2xl bg-mango-soft p-4 text-ink', className)}>
-        <CalendarClock className="mt-0.5 size-5 shrink-0 text-warn" aria-hidden />
+      <div className={cn('flex items-start gap-3 rounded-lg border border-line bg-panel p-3.5 text-ink', className)}>
+        <CalendarClock className="mt-0.5 size-[18px] shrink-0 text-ink-3" aria-hidden />
         <div className="min-w-0">
-          <p className="font-semibold">Available from {formatDropDate(availableFrom, shop)}</p>
-          <p className="text-sm text-ink-2">
-            Drops in <span className="font-semibold tnum">{countdownText(left)}</span>. You can order once it drops.
+          <p className="text-sm font-semibold">Available from {formatDropDate(availableFrom, shop)}</p>
+          <p className="mt-0.5 text-sm text-ink-2">
+            Drops in <span className="font-medium text-ink tnum">{countdownText(left)}</span>. You can order once it drops.
           </p>
         </div>
       </div>
@@ -41,13 +41,13 @@ export function DropBadge({
   return (
     <span
       className={cn(
-        'inline-flex h-6 items-center gap-1 rounded-full bg-mango px-2 text-[11px] font-bold whitespace-nowrap text-on-mango shadow-sm',
+        'inline-flex h-6 items-center gap-1 rounded-md bg-panel/95 px-1.5 text-[11px] font-medium whitespace-nowrap text-ink ring-1 ring-line',
         className,
       )}
     >
-      <CalendarClock className="size-3.5" aria-hidden />
+      <CalendarClock className="size-3.5 text-ink-3" aria-hidden />
       Drops {formatDropDate(availableFrom, shop, false)}
-      {left < 86_400_000 && <span className="font-semibold tnum opacity-80">· {countdownText(left)}</span>}
+      {left < 86_400_000 && <span className="text-ink-2 tnum">· {countdownText(left)}</span>}
     </span>
   )
 }

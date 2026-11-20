@@ -6,7 +6,7 @@ import { DOCUMENT_KIND_LABEL, DOCUMENT_KINDS, DOCUMENT_STATUS_LABEL, trustBadges
 import type { ShopVerification } from '@/gateway/trust'
 import { INTEGRATION_LABEL_TEXT } from '@/integrations/registry'
 import { useAction, useGateway, useIntegrations, useOrg, useOrgQuery } from '../context'
-import { ErrorNotice, Notice, PageHeader, Section } from '../ui/layout'
+import { ErrorNotice, Notice, PageHeader } from '../ui/layout'
 import { When } from '../ui/format'
 import { Badge, Button, Field, Input, Select, Skeleton, buttonClass, type Tone } from '../ui/primitives'
 import { useQuery } from '@tanstack/react-query'
@@ -20,15 +20,15 @@ function StepBadge({ state, children }: { state: StepState; children: ReactNode 
 
 function Step({ icon, title, badge, children }: { icon: ReactNode; title: string; badge: ReactNode; children: ReactNode }) {
   return (
-    <section className="mb-4 rounded-[var(--radius-card)] bg-panel p-4 shadow-[var(--shadow-card)] ring-1 ring-line/60 sm:p-5">
+    <section className="border-t border-line py-6">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2.5 font-display text-[17px] font-bold tracking-tight text-ink">
-          <span className="flex size-8 items-center justify-center rounded-full bg-brand-soft text-brand">{icon}</span>
+        <h2 className="flex min-w-0 items-center gap-2 font-display text-[16px] font-semibold tracking-[-0.02em] text-ink">
+          <span className="flex shrink-0 items-center text-ink-3">{icon}</span>
           {title}
         </h2>
         {badge}
       </div>
-      <div className="flex flex-col gap-3 text-sm text-ink-2">{children}</div>
+      <div className="flex max-w-2xl flex-col gap-3 text-sm leading-relaxed text-ink-2">{children}</div>
     </section>
   )
 }
@@ -54,10 +54,17 @@ export default function TrustPage() {
       />
 
       {verification.isPending ? (
-        <div className="flex flex-col gap-4" aria-busy="true">
-          <Skeleton className="h-36" />
-          <Skeleton className="h-36" />
-          <Skeleton className="h-36" />
+        <div className="lg:max-w-[calc(100%-360px)]" aria-busy="true">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="space-y-3 border-t border-line py-6">
+              <div className="flex items-center justify-between gap-3">
+                <Skeleton className="h-5 w-44" />
+                <Skeleton className="h-5 w-20" />
+              </div>
+              <Skeleton className="h-4 w-full max-w-xl" />
+              <Skeleton className="h-4 w-2/3 max-w-md" />
+            </div>
+          ))}
         </div>
       ) : verification.isError ? (
         <ErrorNotice error={verification.error} onRetry={() => void verification.refetch()} />
@@ -65,7 +72,7 @@ export default function TrustPage() {
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-10">
           <div className="min-w-0">
             {verification.data.simulated && (
-              <div className="mb-4">
+              <div className="mb-6">
                 <Notice>Demo workspace: phone codes are shown on screen instead of sent, the M-Pesa name check is typed in, and you act as the Fungua reviewer.</Notice>
               </div>
             )}
@@ -108,8 +115,8 @@ function PhoneStep({ v }: { v: ShopVerification }) {
       {!phone ? (
         <p>
           Add your shop’s WhatsApp number in{' '}
-          <Link to="/app/shop" className="font-medium text-ink underline underline-offset-2">
-            My shop
+          <Link to="/app/shop" className="font-medium text-brand underline-offset-2 hover:underline">
+            Storefront
           </Link>{' '}
           first. That is the number buyers see, so that is the one we check.
         </p>
@@ -182,9 +189,9 @@ function MpesaNameStep({ v }: { v: ShopVerification }) {
     <Step icon={<Smartphone className="size-4" aria-hidden />} title="M-Pesa business name" badge={badge}>
       <p>
         Buyers check the name on their M-Pesa prompt before they pay. Fungua compares the name M-Pesa itself reports for your Till or Paybill with the name you gave
-        in My shop.
+        in Storefront.
       </p>
-      <dl className="divide-y divide-line rounded-xl ring-1 ring-line">
+      <dl className="divide-y divide-line rounded-[var(--radius-card)] border border-line">
         <div className="flex items-baseline justify-between gap-4 px-3 py-2.5">
           <dt className="text-ink-3">Name you gave</dt>
           <dd className="text-right font-medium text-ink">{m.registeredName ?? <span className="text-ink-3">Not set</span>}</dd>
@@ -203,7 +210,7 @@ function MpesaNameStep({ v }: { v: ShopVerification }) {
       </dl>
       {m.reportedName && !m.matched && (
         <p className="text-warn">
-          These don’t match, so buyers don’t see a badge. Change the name in My shop to exactly what M-Pesa shows, or contact Safaricom if M-Pesa shows the wrong
+          These don’t match, so buyers don’t see a badge. Change the name in Storefront to exactly what M-Pesa shows, or contact Safaricom if M-Pesa shows the wrong
           name.
         </p>
       )}
@@ -215,7 +222,7 @@ function MpesaNameStep({ v }: { v: ShopVerification }) {
       )}
       {v.simulated && gateway.simulateMpesaNameReport && can('integrations.manage') && (
         <form
-          className="flex flex-wrap items-end gap-2 rounded-xl bg-sunken p-3"
+          className="flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-line-strong p-3"
           onSubmit={(e) => {
             e.preventDefault()
             simulate.mutate(name)
@@ -310,7 +317,7 @@ function DocumentsStep({ v }: { v: ShopVerification }) {
               aria-invalid={fileError ? true : undefined}
               aria-describedby={fileError ? `${fileId}-err` : undefined}
               onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
-              className="block w-full text-sm text-ink-2 file:mr-3 file:h-10 file:rounded-xl file:border file:border-line-strong file:bg-panel file:px-3 file:text-sm file:font-semibold file:text-ink"
+              className="block w-full text-sm text-ink-2 file:mr-3 file:h-10 file:cursor-pointer file:rounded-lg file:border file:border-line-strong file:bg-panel file:px-3 file:text-sm file:font-medium file:text-ink hover:file:bg-sunken"
             />
             {fileError && (
               <p id={`${fileId}-err`} role="alert" className="text-xs font-medium text-neg">
@@ -343,29 +350,33 @@ function BuyerPreview({ v, shopName }: { v: ShopVerification; shopName: string }
     shopName,
   )
   return (
-    <Section title="What buyers see" description="In your shop, on product pages and next to “Report this shop”.">
+    <section aria-labelledby="buyer-preview-h" className="border-t border-line py-6 lg:sticky lg:top-6">
+      <h2 id="buyer-preview-h" className="font-display text-[16px] font-semibold tracking-[-0.02em] text-ink">
+        What buyers see
+      </h2>
+      <p className="mt-1 mb-4 text-[13px] leading-relaxed text-ink-3">In your shop, on product pages and next to “Report this shop”.</p>
       {badges.length === 0 ? (
-        <div className="flex items-start gap-2.5 rounded-2xl bg-sunken px-4 py-3 text-sm text-ink-2">
-          <CircleDashed className="mt-0.5 size-4 shrink-0" aria-hidden />
+        <div className="flex items-start gap-2.5 rounded-lg border border-dashed border-line-strong px-4 py-3 text-sm leading-relaxed text-ink-2">
+          <CircleDashed className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
           No badges yet. Buyers still see how long you have been on Fungua and how many orders you have completed.
         </div>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <ul className="divide-y divide-line border-y border-line">
           {badges.map((b) => (
-            <li key={b.id} className="flex gap-3 rounded-xl bg-pos-soft px-3 py-2.5">
+            <li key={b.id} className="flex gap-3 py-3">
               {b.id === 'mpesa_name' ? (
-                <BadgeCheck className="mt-0.5 size-5 shrink-0 text-pos" aria-hidden />
+                <BadgeCheck className="mt-0.5 size-[18px] shrink-0 text-pos" aria-hidden />
               ) : (
-                <ShieldCheck className="mt-0.5 size-5 shrink-0 text-pos" aria-hidden />
+                <ShieldCheck className="mt-0.5 size-[18px] shrink-0 text-pos" aria-hidden />
               )}
               <div className="min-w-0 text-sm">
-                <p className="font-semibold text-ink">{b.title}</p>
-                <p className="mt-0.5 text-ink-2">{b.explanation}</p>
+                <p className="font-medium text-ink">{b.title}</p>
+                <p className="mt-0.5 leading-relaxed text-ink-2">{b.explanation}</p>
               </div>
             </li>
           ))}
         </ul>
       )}
-    </Section>
+    </section>
   )
 }

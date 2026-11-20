@@ -75,17 +75,21 @@ function RiderScreen() {
   return <JobView token={token} job={query.data} onJob={setJob} />
 }
 
-function Card({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
+/** Open block: hairline + space, no boxed card. */
+function Block({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-[var(--radius-card)] bg-panel p-4 shadow-[var(--shadow-card)] ak-rise">
-      <h2 className="mb-2 flex items-center gap-2 text-base font-semibold tracking-tight">
-        <span className="text-brand">{icon}</span>
+    <section className="border-t border-line pt-5">
+      <h2 className="mb-2 flex items-center gap-2 text-[13px] font-medium text-ink-3">
+        <span className="text-ink-3">{icon}</span>
         {title}
       </h2>
       {children}
     </section>
   )
 }
+
+/** Primary/secondary text links on the rider page: neutral, large tap targets. */
+const actionLink = 'inline-flex min-h-11 items-center gap-1.5 rounded-lg text-[15px] font-semibold text-ink underline decoration-line-strong underline-offset-4 hover:decoration-ink'
 
 function JobView({ token, job, onJob }: { token: string; job: RiderJob; onJob(j: RiderJob): void }) {
   const money = (m: number) => fmtMoney(m, job.currency, job.locale)
@@ -94,11 +98,11 @@ function JobView({ token, job, onJob }: { token: string; job: RiderJob; onJob(j:
   const closed = job.status === 'delivered' || job.status === 'cancelled'
 
   return (
-    <main className="mx-auto flex max-w-lg flex-col gap-4 px-4 pb-16 pt-5">
-      <header>
-        <p className="text-sm text-ink-3">{job.shopName} · delivery job</p>
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Order <span className="tnum">#{job.orderNumber}</span>
+    <main className="mx-auto flex w-full min-w-0 max-w-lg flex-col gap-6 overflow-x-clip px-4 pt-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+      <header className="flex flex-col gap-1">
+        <p className="min-w-0 truncate text-[15px] font-semibold text-ink">{job.shopName}</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">
+          Delivery for order <span className="tnum">#{job.orderNumber}</span>
         </h1>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <Badge tone={job.status === 'delivered' ? 'pos' : job.status === 'cancelled' ? 'neg' : 'info'} dot>
@@ -106,8 +110,14 @@ function JobView({ token, job, onJob }: { token: string; job: RiderJob; onJob(j:
           </Badge>
           {job.attempts > 0 && <Badge tone="warn">Attempt {Math.min(job.attempts + 1, job.maxAttempts)} of {job.maxAttempts}</Badge>}
         </div>
-        <p className="mt-2 text-xs text-ink-3">Link works until {formatDateTime(job.expiresAt, job.locale, Intl.DateTimeFormat().resolvedOptions().timeZone)}. No account needed.</p>
+        <p className="mt-1 text-xs text-ink-3 tnum">Link works until {formatDateTime(job.expiresAt, job.locale, Intl.DateTimeFormat().resolvedOptions().timeZone)}. No account needed.</p>
       </header>
+
+      {job.status === 'delivered' && (
+        <p className="flex items-center gap-2.5 text-lg font-semibold text-ink" role="status">
+          <CheckCircle2 className="size-6 shrink-0 text-pos" aria-hidden /> Delivered. Thank you.
+        </p>
+      )}
 
       <LocationPreview
         shopLoc={pickupLoc}
@@ -117,41 +127,41 @@ function JobView({ token, job, onJob }: { token: string; job: RiderJob; onJob(j:
         height={240}
       />
 
-      <Card title="Pick up" icon={<Store className="size-4" aria-hidden />}>
-        <p className="text-sm text-ink">{job.pickup.label ?? job.shopName}</p>
-        <p className="text-xs text-ink-3">
+      <Block title="Pick up" icon={<Store className="size-4" aria-hidden />}>
+        <p className="break-words text-lg font-semibold text-ink">{job.pickup.label ?? job.shopName}</p>
+        <p className="text-sm text-ink-2 tnum">
           {job.itemCount} item{job.itemCount === 1 ? '' : 's'}
         </p>
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-1 flex flex-wrap gap-x-5">
           {pickupLoc && (
-            <a href={mapsLink(pickupLoc.lat, pickupLoc.lng)} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-brand hover:underline">
-              <ExternalLink className="size-4" aria-hidden /> Directions to shop
+            <a href={mapsLink(pickupLoc.lat, pickupLoc.lng)} target="_blank" rel="noopener noreferrer" className={actionLink}>
+              <ExternalLink className="size-4 text-ink-3" aria-hidden /> Directions to shop
             </a>
           )}
           {job.pickup.shopPhone && (
-            <a href={`tel:${job.pickup.shopPhone}`} className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-ink-2 hover:underline">
-              <Phone className="size-4" aria-hidden /> Call the shop
+            <a href={`tel:${job.pickup.shopPhone}`} className={actionLink}>
+              <Phone className="size-4 text-ink-3" aria-hidden /> Call the shop
             </a>
           )}
         </div>
-      </Card>
+      </Block>
 
-      <Card title="Drop off" icon={job.drop.pickupPoint ? <Package className="size-4" aria-hidden /> : <MapPin className="size-4" aria-hidden />}>
+      <Block title="Drop off" icon={job.drop.pickupPoint ? <Package className="size-4" aria-hidden /> : <MapPin className="size-4" aria-hidden />}>
         {job.drop.pickupPoint ? (
-          <p className="text-sm text-ink">
+          <p className="break-words text-lg text-ink">
             Pick-up point: <span className="font-semibold">{job.drop.pickupPoint.name}</span>
             {job.drop.pickupPoint.area ? `, ${job.drop.pickupPoint.area}` : ''}
           </p>
         ) : (
-          <dl className="grid gap-1 text-sm">
+          <dl className="grid gap-1.5 text-[15px]">
             {job.drop.landmark && <Line label="Landmark" value={job.drop.landmark} />}
             {job.drop.addressLine && <Line label="Street" value={job.drop.addressLine} />}
             {job.drop.building && <Line label="Building" value={job.drop.building} />}
             {job.drop.instructions && <Line label="Note" value={job.drop.instructions} />}
           </dl>
         )}
-        <div className="mt-2 flex flex-col gap-1 text-sm">
-          <p>
+        <div className="mt-3 flex flex-col gap-0.5 border-t border-line pt-3 text-[15px]">
+          <p className="break-words text-ink">
             Buyer: <span className="font-semibold">{job.buyerName}</span>
           </p>
           {job.buyerPhone && (
@@ -161,42 +171,38 @@ function JobView({ token, job, onJob }: { token: string; job: RiderJob; onJob(j:
                   {job.buyerPhone} <span className="text-xs text-ink-3">(shown after you accept)</span>
                 </span>
               ) : (
-                <a href={`tel:${job.buyerPhone}`} className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-brand hover:underline tnum">
-                  <Phone className="size-4" aria-hidden /> {job.buyerPhone}
+                <a href={`tel:${job.buyerPhone}`} className={`${actionLink} tnum`}>
+                  <Phone className="size-4 text-ink-3" aria-hidden /> {job.buyerPhone}
                 </a>
               )}
             </p>
           )}
           {dropLoc && (
-            <a href={mapsLink(dropLoc.lat, dropLoc.lng)} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-brand hover:underline">
-              <ExternalLink className="size-4" aria-hidden /> Directions to drop pin
+            <a href={mapsLink(dropLoc.lat, dropLoc.lng)} target="_blank" rel="noopener noreferrer" className={`${actionLink} self-start`}>
+              <ExternalLink className="size-4 text-ink-3" aria-hidden /> Directions to drop pin
             </a>
           )}
         </div>
-      </Card>
+      </Block>
 
-      <div className="flex items-center gap-3 rounded-2xl bg-mango-soft px-4 py-3 text-sm">
-        <Banknote className="size-5 shrink-0 text-on-mango" aria-hidden />
+      <Block title="Money" icon={<Banknote className="size-4" aria-hidden />}>
         {job.collectMinor > 0 ? (
-          <p>
-            Collect <span className="font-display text-lg font-semibold tnum">{money(job.collectMinor)}</span> from the buyer for {job.shopName}.
+          <p className="text-[15px] text-ink">
+            Collect <span className="font-display text-2xl font-semibold tracking-tight tnum">{money(job.collectMinor)}</span> from the buyer for{' '}
+            {job.shopName}.
           </p>
         ) : (
-          <p>Fully paid. Collect nothing from the buyer.</p>
+          <p className="text-[15px] font-medium text-ink">Fully paid. Collect nothing from the buyer.</p>
         )}
-      </div>
-      {job.depositOutstandingMinor > 0 && !closed && (
-        <p role="status" className="rounded-xl bg-warn-soft p-3 text-sm text-warn">
-          The buyer’s deposit ({money(job.depositOutstandingMinor)}) has not been received yet. Don’t collect the order until the shop confirms it.
-        </p>
-      )}
+        {job.depositOutstandingMinor > 0 && !closed && (
+          <p role="status" className="mt-3 rounded-lg bg-warn-soft p-3 text-sm text-ink">
+            <span className="font-semibold text-warn">Wait: </span>
+            The buyer’s deposit ({money(job.depositOutstandingMinor)}) has not been received yet. Don’t collect the order until the shop confirms it.
+          </p>
+        )}
+      </Block>
 
       {!closed && (job.accepted ? <Actions token={token} job={job} onJob={onJob} /> : <Accept token={token} job={job} onJob={onJob} />)}
-      {job.status === 'delivered' && (
-        <p className="flex items-center gap-2 rounded-2xl bg-pos-soft px-4 py-3 text-sm font-medium text-pos" role="status">
-          <CheckCircle2 className="size-5" aria-hidden /> Delivered. Thank you!
-        </p>
-      )}
     </main>
   )
 }
@@ -205,7 +211,7 @@ function Line({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex gap-2">
       <dt className="w-20 shrink-0 text-ink-3">{label}</dt>
-      <dd className="min-w-0 text-ink">{value}</dd>
+      <dd className="min-w-0 break-words text-ink">{value}</dd>
     </div>
   )
 }
@@ -221,16 +227,17 @@ function Accept({ token, job, onJob }: { token: string; job: RiderJob; onJob(j: 
     accept.mutate()
   }
   return (
-    <form onSubmit={submit} className="flex flex-col gap-3 rounded-[var(--radius-card)] bg-panel p-4 shadow-[var(--shadow-card)]">
+    <form onSubmit={submit} className="flex flex-col gap-3 border-t border-line pt-5">
+      <h2 className="text-base font-semibold tracking-tight text-ink">Take this job</h2>
       <Field label="Your name" hint="The shop and buyer see who is delivering.">
-        {(p) => <Input {...p} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" maxLength={60} className="h-11 rounded-xl" />}
+        {(p) => <Input {...p} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" maxLength={60} className="h-12 text-base" />}
       </Field>
       {accept.isError && (
-        <p role="alert" className="text-sm text-neg">
-          {errorMessage(accept.error)}
+        <p role="alert" className="flex items-start gap-2 rounded-lg bg-neg-soft p-3 text-sm text-neg">
+          <XCircle className="mt-0.5 size-4 shrink-0" aria-hidden /> {errorMessage(accept.error)}
         </p>
       )}
-      <Button type="submit" variant="brand" size="lg" loading={accept.isPending} disabled={name.trim().length < 2} icon={<Bike className="size-4" aria-hidden />} className="w-full rounded-2xl">
+      <Button type="submit" variant="primary" size="lg" loading={accept.isPending} disabled={name.trim().length < 2} icon={<Bike className="size-[18px]" aria-hidden />} className="h-14 w-full text-base">
         Accept this delivery
       </Button>
     </form>
@@ -252,30 +259,21 @@ function Actions({ token, job, onJob }: { token: string; job: RiderJob; onJob(j:
   const outOfAttempts = job.attempts >= job.maxAttempts
 
   return (
-    <section className="flex flex-col gap-3 rounded-[var(--radius-card)] bg-panel p-4 shadow-[var(--shadow-card)]" aria-label="Update the delivery">
+    <section
+      className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-2.5 border-t border-line bg-canvas px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+      aria-label="Update the delivery"
+    >
+      <p className="text-[13px] text-ink-3">{out ? 'Next step: hand the order to the buyer.' : 'Next step: collect the order from the shop.'}</p>
       {act.isError && (
-        <p role="alert" className="flex items-start gap-2 rounded-xl bg-neg-soft p-3 text-sm text-neg">
+        <p role="alert" className="flex items-start gap-2 rounded-lg bg-neg-soft p-3 text-sm text-neg">
           <XCircle className="mt-0.5 size-4 shrink-0" aria-hidden /> {errorMessage(act.error)}
         </p>
       )}
-      {!out && (
-        <Button variant="brand" size="lg" loading={busy('picked_up')} onClick={() => act.mutate({ action: 'picked_up' })} className="w-full rounded-2xl">
-          I’ve picked it up
-        </Button>
-      )}
-      <Button variant={out ? 'brand' : 'secondary'} size="lg" loading={busy('delivered')} onClick={() => act.mutate({ action: 'delivered' })} className="w-full rounded-2xl">
-        Delivered to the buyer
-      </Button>
-      {out && !outOfAttempts && !failOpen && (
-        <Button variant="ghost" onClick={() => setFailOpen(true)} className="min-h-11">
-          Couldn’t deliver
-        </Button>
-      )}
-      {failOpen && (
-        <div className="flex flex-col gap-3 rounded-xl border border-line p-3">
+      {failOpen ? (
+        <div className="flex flex-col gap-3">
           <Field label="What happened?">
             {(p) => (
-              <Select {...p} value={reason} onChange={(e) => setReason(e.target.value as FailedReason)}>
+              <Select {...p} value={reason} onChange={(e) => setReason(e.target.value as FailedReason)} className="h-12 text-base">
                 {FAILED_REASONS.filter((r) => r !== 'shop_issue').map((r) => (
                   <option key={r} value={r}>
                     {FAILED_REASON_LABEL[r]}
@@ -285,15 +283,45 @@ function Actions({ token, job, onJob }: { token: string; job: RiderJob; onJob(j:
             )}
           </Field>
           <p className="text-xs text-ink-3">The shop and buyer are told. Bring the order back to the shop.</p>
-          <div className="flex gap-2">
-            <Button variant="danger" loading={busy('failed')} onClick={() => act.mutate({ action: 'failed', reason })}>
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <Button variant="danger" size="lg" loading={busy('failed')} onClick={() => act.mutate({ action: 'failed', reason })} className="h-14 w-full text-base">
               Report failed delivery
             </Button>
-            <Button variant="ghost" onClick={() => setFailOpen(false)}>
+            <Button variant="secondary" size="lg" onClick={() => setFailOpen(false)} className="h-14">
               Cancel
             </Button>
           </div>
         </div>
+      ) : (
+        <>
+          {!out && (
+            <Button
+              variant="primary"
+              size="lg"
+              loading={busy('picked_up')}
+              onClick={() => act.mutate({ action: 'picked_up' })}
+              icon={<Package className="size-[18px]" aria-hidden />}
+              className="h-14 w-full text-base"
+            >
+              I’ve picked it up
+            </Button>
+          )}
+          <Button
+            variant={out ? 'primary' : 'secondary'}
+            size="lg"
+            loading={busy('delivered')}
+            onClick={() => act.mutate({ action: 'delivered' })}
+            icon={<CheckCircle2 className="size-[18px]" aria-hidden />}
+            className="h-14 w-full text-base"
+          >
+            Delivered to the buyer
+          </Button>
+          {out && !outOfAttempts && (
+            <Button variant="secondary" size="lg" onClick={() => setFailOpen(true)} className="h-12 w-full text-neg">
+              Couldn’t deliver
+            </Button>
+          )}
+        </>
       )}
     </section>
   )

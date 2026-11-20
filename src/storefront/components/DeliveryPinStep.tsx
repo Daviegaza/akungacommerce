@@ -82,16 +82,16 @@ export function DeliveryPinStep({
     <div className="flex flex-col gap-3">
       <div
         className={cn(
-          'flex items-start gap-3 rounded-xl border p-3',
-          pin ? 'border-pos/30 bg-pos-soft' : error ? 'border-neg/30 bg-neg-soft' : 'border-line bg-sunken',
+          'flex items-start gap-3 rounded-lg border bg-panel p-3.5',
+          error && !pin ? 'border-neg/50' : 'border-line-strong',
         )}
         aria-live="polite"
       >
-        <span className={cn('mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg', pin ? 'bg-pos text-white' : 'bg-panel text-brand')}>
-          {pin ? <Check className="size-4" aria-hidden /> : <MapPin className="size-4" aria-hidden />}
+        <span className="mt-0.5 shrink-0">
+          {pin ? <Check className="size-4 text-pos" aria-hidden /> : <MapPin className={cn('size-4', error ? 'text-neg' : 'text-ink-3')} aria-hidden />}
         </span>
         <div className="min-w-0 text-sm">
-          <p className="font-semibold text-ink">
+          <p className="font-medium text-ink">
             {pin
               ? source === 'gps'
                 ? 'Using your current location'
@@ -107,9 +107,9 @@ export function DeliveryPinStep({
           </p>
         </div>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="grid gap-2 min-[420px]:flex min-[420px]:flex-wrap">
         <Button
-          variant={pin ? 'secondary' : 'brand'}
+          variant={pin ? 'secondary' : 'primary'}
           onClick={locate}
           disabled={locating}
           icon={locating ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <LocateFixed className="size-4" aria-hidden />}
@@ -117,7 +117,7 @@ export function DeliveryPinStep({
         >
           {locating ? 'Finding you…' : pin && source === 'gps' ? 'Update my location' : 'Use my current location'}
         </Button>
-        <Button variant="secondary" onClick={() => setMapOpen(true)} icon={<MapIcon className="size-4" aria-hidden />} className="min-h-11">
+        <Button variant="secondary" onClick={() => setMapOpen(true)} icon={<MapIcon className="size-4 text-ink-3" aria-hidden />} className="min-h-11">
           {pin ? 'Adjust pin on map' : 'Set pin on map'}
         </Button>
       </div>

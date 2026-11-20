@@ -85,25 +85,3 @@ export function WorkspacePreview() {
     </div>
   )
 }
-
-/** Phone storefront preview: the merchant's brand, not Fungua's, leads. */
-export function StorefrontPreview() {
-  return (
-    <div aria-hidden className="w-[188px] overflow-hidden rounded-[22px] border-[5px] border-[#0e1420] bg-[#fbf8f3] shadow-[var(--shadow-lift)] dark:border-[#2c3446]">
-      <div className="px-3 pt-3 pb-2">
-        <p className="font-serif text-[13px] font-semibold tracking-tight text-[#2b2118]">Atelier Lumen</p>
-        <p className="text-[9px] text-[#7a6a5a]">Handmade ceramics · Berlin</p>
-      </div>
-      <img
-        src="https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?w=400&q=70&auto=format&fit=crop"
-        alt=""
-        className="aspect-square w-full object-cover"
-      />
-      <div className="px-3 py-2.5">
-        <p className="text-[11px] font-medium text-[#2b2118]">Stoneware mug, sage</p>
-        <p className="tnum text-[11px] text-[#7a6a5a]">€24.00</p>
-        <span className="mt-2 block rounded-md bg-[#2b2118] py-1.5 text-center text-[10px] font-semibold text-[#fbf8f3]">Add to bag</span>
-      </div>
-    </div>
-  )
-}

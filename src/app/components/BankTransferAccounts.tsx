@@ -43,7 +43,8 @@ export function BankTransferAccounts() {
     <Section
       title="Bank transfers (Nigeria)"
       description="Buyers who pick bank transfer pay into an account number made for their order. A transfer is matched automatically only when it is exactly the amount due."
-      icon={<Landmark className="size-4" aria-hidden />}
+      icon={<Landmark className="size-[18px]" aria-hidden />}
+      className="border-t border-line pt-6"
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -60,10 +61,10 @@ export function BankTransferAccounts() {
         {allowed && (
           <div className="flex flex-wrap items-end gap-2">
             <div className="flex min-w-[220px] flex-1 flex-col gap-1 sm:max-w-sm">
-              <label htmlFor={selectId} className="text-xs font-medium text-ink-3">
+              <label htmlFor={selectId} className="text-[13px] font-medium text-ink-2">
                 Order that needs an account number
               </label>
-              <Select id={selectId} value={chosen} onChange={(e) => setOrderId(e.target.value)} className="h-10" disabled={open.length === 0}>
+              <Select id={selectId} value={chosen} onChange={(e) => setOrderId(e.target.value)} disabled={open.length === 0}>
                 {open.length === 0 && <option value="">No unpaid NGN order without an account</option>}
                 {open.map((o) => (
                   <option key={o.id} value={o.id}>
@@ -85,12 +86,12 @@ export function BankTransferAccounts() {
         )}
         {assign.isError && <ErrorNotice error={assign.error} />}
         {result?.status === 'not_configured' && (
-          <p className="rounded-xl bg-warn-soft px-3 py-2.5 text-sm text-warn" role="status">
+          <p className="max-w-2xl rounded-lg border border-warn/25 bg-warn-soft px-4 py-3 text-sm leading-relaxed text-ink-2" role="status">
             {result.reason}
           </p>
         )}
         {result?.status === 'assigned' && (
-          <p className="rounded-xl bg-pos-soft px-3 py-2.5 text-sm text-ink" role="status">
+          <p className="max-w-2xl rounded-lg border border-pos/25 bg-pos-soft px-4 py-3 text-sm leading-relaxed text-ink" role="status">
             Order #{result.account.orderNumber} now shows {result.account.bankName}, account{' '}
             <span className="font-mono">{result.account.accountNumber}</span> on its tracking page.
           </p>
@@ -151,17 +152,20 @@ function SimulateTransfer({ accounts, orders }: { accounts: VirtualAccountRecord
   const amountMinor = Math.round(Number(amount || fallback) * 100)
   return (
     <form
-      className="flex flex-wrap items-end gap-2 rounded-xl bg-info-soft p-3"
+      className="flex flex-wrap items-end gap-2 rounded-lg border border-dashed border-line-strong p-3"
       onSubmit={(e) => {
         e.preventDefault()
         sim.mutate({ accountNumber: account.accountNumber, amountMinor })
       }}
     >
-      <p className="w-full text-xs font-medium text-info">
-        Demo: pretend the buyer transferred money into this account (simulated, no money moves). Real Paystack amounts arrive in kobo, which is
-        not yet confirmed in a sandbox test.
+      <p className="w-full text-xs leading-relaxed text-ink-2">
+        <Badge tone="info" className="mr-1.5">
+          Demo
+        </Badge>
+        Pretend the buyer transferred money into this account (simulated, no money moves). Real Paystack amounts arrive in kobo, which is not yet
+        confirmed in a sandbox test.
       </p>
-      <Select aria-label="Dedicated account" value={account.accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className="h-10 w-56">
+      <Select aria-label="Dedicated account" value={account.accountNumber} onChange={(e) => setAccountNumber(e.target.value)} className="w-56 max-w-full">
         {accounts.map((a) => (
           <option key={a.id} value={a.accountNumber}>
             {a.accountNumber}
@@ -175,7 +179,7 @@ function SimulateTransfer({ accounts, orders }: { accounts: VirtualAccountRecord
         value={amount}
         placeholder={fallback || 'Amount'}
         onChange={(e) => setAmount(e.target.value)}
-        className="h-10 w-32 tnum"
+        className="w-32 tnum"
       />
       <Button type="submit" size="md" loading={sim.isPending} disabled={!(amountMinor > 0)}>
         Simulate transfer

@@ -207,14 +207,14 @@ export default function NewOrderPage() {
         }
       />
 
-      <div className="grid gap-10 lg:grid-cols-[1fr_340px]">
+      <div className="grid gap-x-12 gap-y-2 lg:grid-cols-[minmax(0,1fr)_320px] xl:gap-x-16">
         <div className="min-w-0">
-          <Section title="Customer">
+          <Section title="Customer" description="Who the order is for.">
             {selectedCustomer ? (
-              <div className="flex items-center justify-between gap-3 py-1">
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-panel px-4 py-3">
                 <div className="min-w-0">
-                  <p className="font-medium">{selectedCustomer.name}</p>
-                  <p className="text-sm text-ink-3">
+                  <p className="truncate font-medium text-ink">{selectedCustomer.name}</p>
+                  <p className="tnum truncate text-sm text-ink-3">
                     {selectedCustomer.phoneE164 ? formatPhone(selectedCustomer.phoneE164) : selectedCustomer.email ?? 'No contact details'}
                   </p>
                 </div>
@@ -231,7 +231,7 @@ export default function NewOrderPage() {
                     <Input value={customerQuery} onChange={(e) => setCustomerQuery(e.target.value)} placeholder="Find customer by name, phone or email" className="pl-9" />
                   </label>
                   {customerMatches.length > 0 && (
-                    <ul className="mt-1 divide-y divide-line rounded-lg border border-line bg-panel">
+                    <ul className="mt-1 divide-y divide-line overflow-hidden rounded-lg border border-line bg-panel">
                       {customerMatches.map((c) => (
                         <li key={c.id}>
                           <button
@@ -240,10 +240,10 @@ export default function NewOrderPage() {
                               setCustomerId(c.id)
                               setCustomerQuery('')
                             }}
-                            className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm hover:bg-sunken"
+                            className="flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm hover:bg-sunken"
                           >
-                            <span className="font-medium">{c.name}</span>
-                            <span className="tnum text-ink-3">{c.phoneE164 ? formatPhone(c.phoneE164) : c.email}</span>
+                            <span className="min-w-0 truncate font-medium">{c.name}</span>
+                            <span className="tnum shrink-0 text-ink-3">{c.phoneE164 ? formatPhone(c.phoneE164) : c.email}</span>
                           </button>
                         </li>
                       ))}
@@ -268,7 +268,7 @@ export default function NewOrderPage() {
             )}
           </Section>
 
-          <Section title="Items">
+          <Section title="Items" description="Prices and stock come from your catalogue." className="border-t border-line pt-6">
             {products.isPending ? (
               <Skeleton className="h-10" />
             ) : products.isError ? (
@@ -285,12 +285,12 @@ export default function NewOrderPage() {
                   <Input value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="Search products or SKU to add" className="pl-9" />
                 </label>
                 {productMatches.length > 0 && (
-                  <ul className="mt-1 divide-y divide-line rounded-lg border border-line bg-panel">
+                  <ul className="mt-1 divide-y divide-line overflow-hidden rounded-lg border border-line bg-panel">
                     {productMatches.map(({ product, variant }) => {
                       const avail = available(variant)
                       return (
                         <li key={variant.id}>
-                          <button type="button" onClick={() => addLine(variant.id)} className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm hover:bg-sunken">
+                          <button type="button" onClick={() => addLine(variant.id)} className="flex min-h-11 w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm hover:bg-sunken">
                             <span className="min-w-0">
                               <span className="block truncate font-medium">{variantLabel(product, variant)}</span>
                               <span className="text-xs text-ink-3">
@@ -317,7 +317,7 @@ export default function NewOrderPage() {
                   return (
                     <li key={l.variantId} className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-2 py-3 sm:grid-cols-[1fr_auto_120px_110px_auto] sm:items-center">
                       <div className="min-w-0">
-                        <p className="truncate font-medium">{variantLabel(entry.product, entry.variant)}</p>
+                        <p className="truncate font-medium text-ink">{variantLabel(entry.product, entry.variant)}</p>
                         <p className="text-xs text-ink-3">
                           <Money minor={entry.variant.priceMinor} currency={entry.variant.currency} /> each
                           {entry.product.taxRateBps > 0 && ` · tax ${entry.product.taxRateBps / 100}%`}
@@ -335,7 +335,7 @@ export default function NewOrderPage() {
                             const v = Number.parseInt(e.target.value.replace(/\D/g, ''), 10)
                             updateLine(i, { quantity: Number.isFinite(v) && v > 0 ? Math.min(v, 99999) : 1 })
                           }}
-                          className="tnum h-8 w-12 rounded-md border border-line-strong bg-panel text-center text-sm"
+                          className="tnum h-9 w-12 rounded-lg border border-line-strong bg-panel text-center text-sm text-ink focus:border-brand focus:outline-none"
                         />
                         <Button size="sm" variant="ghost" aria-label="Increase quantity" onClick={() => updateLine(i, { quantity: l.quantity + 1 })} className="px-2">
                           <Plus className="size-4" />
@@ -352,11 +352,11 @@ export default function NewOrderPage() {
                           placeholder="Discount"
                           inputMode="decimal"
                           aria-invalid={parsed.errors[`discount-${i}`] ? true : undefined}
-                          className="h-8"
+                          className="h-9"
                         />
                         {touched && parsed.errors[`discount-${i}`] && <p className="mt-1 text-xs text-neg">{parsed.errors[`discount-${i}`]}</p>}
                       </div>
-                      <p className="tnum text-right font-medium sm:text-right">
+                      <p className="tnum self-center text-right font-medium text-ink">
                         {lineTotals ? <Money minor={lineTotals.totalMinor} currency={org.baseCurrency} /> : '—'}
                       </p>
                       <Button size="sm" variant="ghost" aria-label={`Remove ${entry.product.name}`} onClick={() => setLines((prev) => prev.filter((_, idx) => idx !== i))} className="justify-self-end px-2">
@@ -366,6 +366,9 @@ export default function NewOrderPage() {
                   )
                 })}
               </ul>
+            )}
+            {lines.length === 0 && variants.size > 0 && (
+              <p className="rounded-lg border border-dashed border-line-strong px-4 py-5 text-center text-sm text-ink-3">No items yet. Search above to add the first one.</p>
             )}
             {stockWarnings.length > 0 && (
               <div className="mt-3">
@@ -381,8 +384,8 @@ export default function NewOrderPage() {
             )}
           </Section>
 
-          <Section title="Fulfilment">
-            <div role="radiogroup" aria-label="Fulfilment method" className="mb-4 inline-flex rounded-lg bg-sunken p-1">
+          <Section title="Fulfilment" description="How the order reaches the customer." className="border-t border-line pt-6">
+            <div role="radiogroup" aria-label="Fulfilment method" className="mb-5 inline-flex rounded-lg bg-sunken p-1">
               {(['pickup', 'delivery'] as const).map((m) => (
                 <button
                   key={m}
@@ -390,14 +393,17 @@ export default function NewOrderPage() {
                   role="radio"
                   aria-checked={method === m}
                   onClick={() => setMethod(m)}
-                  className={cn('h-8 rounded-md px-4 text-sm font-medium', method === m ? 'bg-panel text-ink shadow-sm' : 'text-ink-3')}
+                  className={cn(
+                    'h-9 min-w-24 rounded-md px-4 text-sm font-medium transition-colors',
+                    method === m ? 'bg-panel text-ink ring-1 ring-line-strong' : 'text-ink-3 hover:text-ink',
+                  )}
                 >
                   {m === 'pickup' ? 'Pickup' : 'Delivery'}
                 </button>
               ))}
             </div>
             {method === 'delivery' && (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Recipient" optional hint="Defaults to the customer.">
                   {(p) => <Input {...p} value={recipientName} onChange={(e) => setRecipientName(e.target.value)} />}
                 </Field>
@@ -429,8 +435,8 @@ export default function NewOrderPage() {
             )}
           </Section>
 
-          <Section title="Details">
-            <div className="grid gap-3 sm:grid-cols-2">
+          <Section title="Details" description="For your reports and your team." className="border-t border-line pt-6">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Channel" hint="Where the customer reached you. Used for channel reports.">
                 {(p) => (
                   <Select {...p} value={channel} onChange={(e) => setChannel(e.target.value as OrderChannel)}>
@@ -449,9 +455,11 @@ export default function NewOrderPage() {
           </Section>
         </div>
 
-        <aside className="lg:sticky lg:top-10 lg:self-start">
-          <div className="border-t border-line pt-4 lg:border-t-0 lg:pt-0">
-            <h2 className="mb-3 text-[15px] font-semibold">Summary</h2>
+        <aside className="min-w-0 lg:sticky lg:top-20 lg:self-start" aria-labelledby="new-order-summary-h">
+          <div className="border-t border-line pt-6 lg:rounded-[var(--radius-card)] lg:border lg:bg-panel lg:p-5">
+            <h2 id="new-order-summary-h" className="mb-2 font-display text-[16px] font-semibold tracking-[-0.02em] text-ink">
+              Summary
+            </h2>
             <dl className="divide-y divide-line text-sm">
               {preview && !(preview instanceof Error) ? (
                 <>
@@ -459,10 +467,10 @@ export default function NewOrderPage() {
                   {preview.discountMinor > 0 && <SummaryRow label="Discounts" minor={-preview.discountMinor} currency={org.baseCurrency} />}
                   <SummaryRow label={org.taxMode === 'inclusive' ? 'Tax included' : 'Tax'} minor={preview.taxMinor} currency={org.baseCurrency} />
                   {method === 'delivery' && <SummaryRow label="Delivery" minor={preview.deliveryFeeMinor} currency={org.baseCurrency} />}
-                  <div className="flex items-baseline justify-between py-3 text-base font-semibold">
-                    <dt>Total</dt>
-                    <dd>
-                      <Money minor={preview.totalMinor} currency={org.baseCurrency} />
+                  <div className="flex items-baseline justify-between gap-4 py-3">
+                    <dt className="font-semibold text-ink">Total</dt>
+                    <dd className="text-right">
+                      <Money minor={preview.totalMinor} currency={org.baseCurrency} className="font-display text-[18px] font-semibold tracking-tight text-ink" />
                     </dd>
                   </div>
                 </>
@@ -470,9 +478,10 @@ export default function NewOrderPage() {
                 <p className="py-3 text-ink-3">Add items to see totals.</p>
               )}
             </dl>
+            <p className="text-xs leading-relaxed text-ink-3">Payments are recorded on the order once you have received them.</p>
 
-            <fieldset className="mt-4">
-              <legend className="mb-2 text-[13px] font-medium">Save as</legend>
+            <fieldset className="mt-5 border-t border-line pt-4">
+              <legend className="float-left mb-2 w-full text-[13px] font-semibold text-ink">Save as</legend>
               {(
                 [
                   ['confirmed', 'Confirmed', 'Reserves stock now.'],
@@ -480,10 +489,10 @@ export default function NewOrderPage() {
                   ['draft', 'Draft', 'No stock reserved.'],
                 ] as const
               ).map(([value, label, hint]) => (
-                <label key={value} className="flex cursor-pointer items-start gap-3 py-1.5">
-                  <input type="radio" name="status" value={value} checked={status === value} onChange={() => setStatus(value)} className="mt-1 accent-[var(--ak-accent)]" />
-                  <span>
-                    <span className="block text-sm font-medium">{label}</span>
+                <label key={value} className="flex min-h-10 cursor-pointer items-start gap-3 py-1.5">
+                  <input type="radio" name="status" value={value} checked={status === value} onChange={() => setStatus(value)} className="mt-1 size-4 shrink-0 accent-[var(--ak-accent)]" />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-ink">{label}</span>
                     <span className="block text-xs text-ink-3">{hint}</span>
                   </span>
                 </label>
@@ -502,11 +511,25 @@ export default function NewOrderPage() {
                 <ErrorNotice error={mutationError} />
               </div>
             )}
-            <Button type="submit" variant="primary" size="lg" loading={busy} className="mt-5 w-full">
+            {/* Below lg the submit lives in the bottom bar so it is always in reach. */}
+            <Button type="submit" variant="primary" size="lg" loading={busy} className="mt-5 hidden w-full lg:inline-flex">
               Save order
             </Button>
           </div>
         </aside>
+      </div>
+
+      {/* Phones and tablets: total + save, kept above the mobile tab bar and the safe area. */}
+      <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 -mx-4 mt-8 flex items-center justify-between gap-3 border-t border-line bg-canvas/95 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden">
+        <div className="min-w-0">
+          <p className="text-xs text-ink-3">{touched && formErrors.length > 0 ? `${formErrors.length} ${formErrors.length === 1 ? 'thing' : 'things'} to fix in the summary` : 'Total'}</p>
+          <p className="truncate font-display text-[17px] font-semibold tracking-tight text-ink">
+            {preview && !(preview instanceof Error) ? <Money minor={preview.totalMinor} currency={org.baseCurrency} /> : <span className="text-sm font-normal text-ink-3">Add items</span>}
+          </p>
+        </div>
+        <Button type="submit" variant="primary" loading={busy} className="shrink-0">
+          Save order
+        </Button>
       </div>
     </form>
   )
@@ -514,9 +537,9 @@ export default function NewOrderPage() {
 
 function SummaryRow({ label, minor, currency }: { label: string; minor: number; currency: string }) {
   return (
-    <div className="flex items-baseline justify-between py-2">
+    <div className="flex items-baseline justify-between gap-4 py-2">
       <dt className="text-ink-3">{label}</dt>
-      <dd>
+      <dd className="text-right text-ink-2">
         <Money minor={minor} currency={currency} />
       </dd>
     </div>

@@ -22,12 +22,27 @@ import { whatsappChatLink } from '@/integrations/whatsapp-link'
 import { useAction, useOrg, useOrgQuery } from '../context'
 import { DefinitionList, ErrorNotice, Notice, Section, Sheet } from '../ui/layout'
 import { Money, When } from '../ui/format'
-import { Badge, Button, Field, Input, Select, Skeleton, Textarea } from '../ui/primitives'
+import { Badge, Button, Field, Input, Select, Skeleton, Textarea, buttonClass } from '../ui/primitives'
 
 /** Deposit, handoff (own rider link / pick-up point / courier) and failed deliveries for one order. */
 export function OrderDeliveryPanel({ order }: { order: OrderDetail }) {
   const query = useOrgQuery('order-delivery', (g, o) => g.getOrderDelivery(o, order.id), [order.id, order.updatedAt, order.history.length])
-  if (query.isPending) return <Skeleton className="mb-8 h-40 w-full rounded-2xl" />
+  if (query.isPending) {
+    return (
+      <div className="mb-8 border-t border-line pt-6" aria-busy="true">
+        <Skeleton className="h-5 w-44" />
+        <Skeleton className="mt-2 h-3 w-64 max-w-full" />
+        <div className="mt-5 flex flex-col divide-y divide-line">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex justify-between py-3">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
   if (query.isError) return <ErrorNotice error={query.error} onRetry={() => query.refetch()} />
   return <PanelBody order={order} d={query.data} />
 }
@@ -46,6 +61,7 @@ function PanelBody({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
 
   return (
     <Section
+      className="border-t border-line pt-6"
       title="Deposit and delivery"
       description={delivery ? 'Who carries the order, and what happens if a delivery fails.' : 'Deposit for this pickup order.'}
       actions={
@@ -100,32 +116,34 @@ function PanelBody({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
       )}
 
       {failedEvents.length > 0 && (
-        <ul className="mt-3 space-y-2 text-sm" aria-label="Failed delivery attempts">
+        <ul className="mt-5 divide-y divide-line border-y border-line text-sm" aria-label="Failed delivery attempts">
           {failedEvents.map((e) => (
-            <li key={`${e.attempt}-${e.createdAt}`} className="rounded-xl bg-warn-soft px-3 py-2 text-ink">
-              <span className="font-semibold">Attempt {e.attempt} failed</span> · {e.reason ? FAILED_REASON_LABEL[e.reason] : 'Other'}
-              {e.actor === 'rider' && ' · reported by rider'}
-              {e.forfeitedMinor > 0 && (
-                <>
-                  {' '}
-                  · kept <Money minor={e.forfeitedMinor} currency={d.currency} />
-                </>
-              )}
-              {e.note && <span className="block text-ink-2">{e.note}</span>}
-              <span className="block text-xs text-ink-3">
+            <li key={`${e.attempt}-${e.createdAt}`} className="flex flex-col gap-1 py-3 text-ink">
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <Badge tone="warn">Attempt {e.attempt} failed</Badge>
+                <span>{e.reason ? FAILED_REASON_LABEL[e.reason] : 'Other'}</span>
+                {e.actor === 'rider' && <span className="text-ink-3">· reported by rider</span>}
+                {e.forfeitedMinor > 0 && (
+                  <span className="text-ink-2">
+                    · kept <Money minor={e.forfeitedMinor} currency={d.currency} />
+                  </span>
+                )}
+              </p>
+              {e.note && <p className="break-words text-ink-2">{e.note}</p>}
+              <p className="text-xs text-ink-3">
                 <When iso={e.createdAt} />
-              </span>
+              </p>
             </li>
           ))}
           {outOfAttempts && order.status === 'dispatched' && (
-            <li className="rounded-2xl border border-line p-3">
+            <li className="py-4">
               <p className="font-semibold text-ink">No delivery attempts left</p>
               <p className="mt-0.5 text-ink-2">
                 When the goods are back at the shop, mark the order returned. The items go back into stock, the order is closed and Fungua works out what
                 you owe the buyer{d.forfeitedMinor > 0 ? ' (the kept delivery fee stays with you)' : ''}.
               </p>
               {canReturn ? (
-                <Button className="mt-2" size="sm" variant="primary" icon={<Undo2 className="size-4" aria-hidden />} onClick={() => setReturnOpen(true)}>
+                <Button className="mt-3" size="sm" variant="primary" icon={<Undo2 className="size-4" aria-hidden />} onClick={() => setReturnOpen(true)}>
                   Mark returned to shop
                 </Button>
               ) : (
@@ -166,9 +184,9 @@ function handoffText(d: OrderDelivery): string {
 function HandoffEditor({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
   const [kind, setKind] = useState<HandoffKind>(d.handoff.kind ?? 'own_rider')
   return (
-    <div className="mt-4 rounded-2xl border border-line p-3">
+    <div className="mt-6 border-t border-line pt-5">
       <fieldset>
-        <legend className="mb-2 text-sm font-semibold text-ink">How does it go out?</legend>
+        <legend className="mb-3 text-[15px] font-semibold text-ink">How does it go out?</legend>
         <div className="grid grid-cols-3 gap-2" role="radiogroup">
           {(
             [
@@ -179,18 +197,18 @@ function HandoffEditor({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
           ).map(([k, icon]) => (
             <label
               key={k}
-              className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-xl border px-2 text-center text-xs font-semibold has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand sm:text-sm ${
-                kind === k ? 'border-brand bg-brand-soft/60 text-ink' : 'border-line-strong text-ink-2 hover:bg-sunken'
+              className={`flex min-h-11 min-w-0 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 text-center text-xs font-medium transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand sm:flex-row sm:gap-1.5 sm:text-sm ${
+                kind === k ? 'border-ink bg-panel text-ink ring-1 ring-ink' : 'border-line-strong text-ink-2 hover:bg-sunken hover:text-ink'
               }`}
             >
               <input type="radio" name={`handoff-${order.id}`} className="sr-only" checked={kind === k} onChange={() => setKind(k)} />
-              {icon}
-              {HANDOFF_LABEL[k]}
+              <span className={kind === k ? 'text-ink' : 'text-ink-3'}>{icon}</span>
+              <span className="leading-tight">{HANDOFF_LABEL[k]}</span>
             </label>
           ))}
         </div>
       </fieldset>
-      <div className="mt-3">
+      <div className="mt-4">
         {kind === 'own_rider' && <RiderLinkBox order={order} d={d} />}
         {kind === 'pickup_point' && <PickupPointChooser order={order} d={d} />}
         {kind === 'courier' && <CourierForm order={order} d={d} />}
@@ -227,10 +245,10 @@ function RiderLinkBox({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
         </p>
       )}
       {url && (
-        <div className="rounded-xl bg-brand-soft p-3">
+        <div className="rounded-lg border border-line bg-sunken/60 p-4">
           <p className="text-xs font-medium text-ink-2">Rider link (shown once; works for {RIDER_LINK_DEFAULT_HOURS} hours)</p>
-          <p className="mt-1 break-all font-mono text-xs text-ink select-all">{url}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <p className="mt-1.5 break-all font-mono text-xs text-ink select-all">{url}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
             <Button
               size="sm"
               variant="brand"
@@ -247,12 +265,13 @@ function RiderLinkBox({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
               {copied ? 'Copied' : 'Copy link'}
             </Button>
             <a
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-line-strong px-3 text-sm font-semibold text-ink hover:bg-sunken"
+              className={buttonClass('secondary', 'sm')}
               href={`https://wa.me/?text=${encodeURIComponent(`Delivery for order #${order.number}: ${url}`)}`}
               target="_blank"
               rel="noopener noreferrer"
             >
               <Link2 className="size-4" aria-hidden /> Send on WhatsApp
+              <span className="sr-only"> (opens in a new tab)</span>
             </a>
           </div>
         </div>
@@ -286,7 +305,7 @@ function RiderLinkBox({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
         </div>
       )}
       {order.customerPhone && url && (
-        <a className="text-xs font-medium text-ink-2 underline underline-offset-2" href={whatsappChatLink(order.customerPhone, `Your order #${order.number} is on its way with our rider.`)} target="_blank" rel="noopener noreferrer">
+        <a className="inline-flex min-h-10 items-center text-xs font-medium text-ink-2 underline underline-offset-2 hover:text-ink" href={whatsappChatLink(order.customerPhone, `Your order #${order.number} is on its way with our rider.`)} target="_blank" rel="noopener noreferrer">
           Tell the buyer it’s on the way (WhatsApp)
         </a>
       )}
@@ -300,7 +319,7 @@ function PickupPointChooser({ order, d }: { order: OrderDetail; d: OrderDelivery
   const [id, setId] = useState(d.handoff.pickupPoint?.id ?? '')
   const save = useAction<void>((g, o) => g.setOrderHandoff(o, order.id, { kind: 'pickup_point', pickupPointId: id }))
   if (points.isPending) return <Skeleton className="h-10 w-full" />
-  if (active.length === 0) return <p className="text-sm text-ink-3">No pick-up points yet. Add them under My shop → Pick-up points.</p>
+  if (active.length === 0) return <p className="text-sm text-ink-3">No pick-up points yet. Add them under Storefront → Pick-up points.</p>
   return (
     <div className="flex flex-wrap items-end gap-2">
       <Field label="Pick-up point" className="min-w-48 flex-1">
@@ -495,8 +514,8 @@ function ReturnSheet({ order, d, onClose }: { order: OrderDetail; d: OrderDelive
 function ReturnedSummary({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
   const s = d.refundSuggestion ?? null
   return (
-    <div className="mt-4 rounded-2xl border border-line p-3 text-sm">
-      <p className="flex flex-wrap items-center gap-2 font-semibold text-ink">
+    <div className="mt-6 border-t border-line pt-5 text-sm">
+      <p className="flex flex-wrap items-center gap-2 text-[15px] font-semibold text-ink">
         <Undo2 className="size-4 text-ink-3" aria-hidden /> Returned to shop
         <span className="text-xs font-normal text-ink-3">
           <When iso={d.returnedAt as string} />
@@ -532,7 +551,7 @@ function RefundTodo({ order, s }: { order: OrderDetail; s: RefundSuggestion }) {
     )
   }
   return (
-    <div className="mt-3 rounded-xl bg-warn-soft p-3">
+    <div className="mt-4 rounded-lg border border-warn/25 bg-warn-soft p-4">
       <p className="font-semibold text-ink">
         Refund to do: <Money minor={s.amountMinor} currency={s.currency} />
       </p>
@@ -566,7 +585,7 @@ function RefundTodo({ order, s }: { order: OrderDetail; s: RefundSuggestion }) {
           </Button>
         </div>
       ) : (
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           <Button variant="primary" size="sm" loading={confirm.isPending} onClick={() => confirm.mutate()}>
             I’ve refunded it, record it
           </Button>
@@ -575,7 +594,7 @@ function RefundTodo({ order, s }: { order: OrderDetail; s: RefundSuggestion }) {
           </Button>
           {order.customerPhone && (
             <a
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-ink-2 underline-offset-2 hover:underline"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-[13px] font-semibold text-ink-2 underline-offset-2 hover:underline"
               href={whatsappChatLink(order.customerPhone, `Hi, your order #${order.number} came back to us. We are refunding you.`)}
               target="_blank"
               rel="noopener noreferrer"

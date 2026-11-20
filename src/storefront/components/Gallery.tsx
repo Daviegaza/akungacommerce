@@ -64,7 +64,7 @@ export function Gallery({ images, name, overlay }: { images: ProductImage[]; nam
               onClick={() => goTo(index - 1)}
               disabled={index === 0}
               aria-label="Previous photo"
-              className="absolute top-1/2 left-3 hidden size-10 -translate-y-1/2 place-items-center rounded-full bg-panel/90 text-ink shadow-md transition-opacity disabled:opacity-0 sm:grid"
+              className="absolute top-1/2 left-3 hidden size-10 -translate-y-1/2 place-items-center rounded-full bg-panel/95 text-ink ring-1 ring-line transition-opacity hover:bg-panel disabled:opacity-0 sm:grid"
             >
               <ChevronLeft className="size-5" aria-hidden />
             </button>
@@ -73,7 +73,7 @@ export function Gallery({ images, name, overlay }: { images: ProductImage[]; nam
               onClick={() => goTo(index + 1)}
               disabled={index >= images.length - 1}
               aria-label="Next photo"
-              className="absolute top-1/2 right-3 hidden size-10 -translate-y-1/2 place-items-center rounded-full bg-panel/90 text-ink shadow-md transition-opacity disabled:opacity-0 sm:grid"
+              className="absolute top-1/2 right-3 hidden size-10 -translate-y-1/2 place-items-center rounded-full bg-panel/95 text-ink ring-1 ring-line transition-opacity hover:bg-panel disabled:opacity-0 sm:grid"
             >
               <ChevronRight className="size-5" aria-hidden />
             </button>
@@ -88,7 +88,7 @@ export function Gallery({ images, name, overlay }: { images: ProductImage[]; nam
                 />
               ))}
             </div>
-            <span className="absolute top-3 right-3 rounded-full bg-ink/70 px-2 py-0.5 text-[11px] font-semibold text-white tnum sm:hidden">
+            <span className="absolute top-3 right-3 rounded-md bg-black/55 px-1.5 py-0.5 text-[11px] font-medium text-white tnum sm:hidden">
               {index + 1}/{images.length}
             </span>
           </>
@@ -105,8 +105,8 @@ export function Gallery({ images, name, overlay }: { images: ProductImage[]; nam
               aria-label={`Show photo ${i + 1}`}
               aria-current={i === index}
               className={cn(
-                'size-16 shrink-0 overflow-hidden rounded-xl border-2 transition-colors sm:size-20',
-                i === index ? 'border-brand' : 'border-transparent opacity-75 hover:opacity-100',
+                'size-16 shrink-0 overflow-hidden rounded-lg border-2 transition-[border-color,opacity] sm:size-[72px]',
+                i === index ? 'border-ink' : 'border-transparent opacity-70 hover:opacity-100',
               )}
             >
               <ProductImg src={img.url} name={img.alt || name} className="size-full" initialClassName="text-lg" />

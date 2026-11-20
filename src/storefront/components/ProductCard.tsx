@@ -79,7 +79,7 @@ export function ProductCard({
 
   return (
     <article className={cn('group relative flex min-w-0 flex-col', className)}>
-      <div className="relative aspect-square overflow-hidden rounded-2xl bg-sunken shadow-[var(--shadow-card)] transition-shadow duration-300 group-hover:shadow-[var(--shadow-lift)]">
+      <div className="relative aspect-square overflow-hidden rounded-[var(--radius-card)] bg-sunken">
         <Link to={href} className="block size-full" tabIndex={-1} aria-hidden>
           <ProductImg
             src={first?.url}
@@ -105,9 +105,7 @@ export function ProductCard({
         <div className="pointer-events-none absolute top-2 left-2 flex flex-col items-start gap-1">
           {upcoming && <DropBadge availableFrom={product.availableFrom} shop={shop} />}
           {fresh && (
-            <span className="inline-flex h-6 items-center rounded-full bg-mango px-2 text-[11px] font-bold text-on-mango shadow-sm">
-              New
-            </span>
+            <span className="inline-flex h-6 items-center rounded-md bg-panel/95 px-1.5 text-[11px] font-medium text-ink ring-1 ring-line">New</span>
           )}
         </div>
 
@@ -130,9 +128,9 @@ export function ProductCard({
           <span
             key={heartPop}
             className={cn(
-              'grid size-9 place-items-center rounded-full bg-panel/90 shadow-sm backdrop-blur transition-colors',
+              'grid size-9 place-items-center rounded-full bg-panel/90 ring-1 ring-line/60 backdrop-blur transition-colors',
               heartPop > 0 && 'ak-pop',
-              saved ? 'text-brand' : 'text-ink-2 hover:text-ink',
+              saved ? 'text-ink' : 'text-ink-2 hover:text-ink',
             )}
           >
             <Heart className={cn('size-[18px]', saved && 'fill-current')} aria-hidden />
@@ -151,11 +149,11 @@ export function ProductCard({
               animate={added && !reduce ? { scale: [1, 1.2, 1] } : { scale: 1 }}
               transition={{ duration: 0.35, ease: [0.2, 0.8, 0.2, 1] }}
               className={cn(
-                'grid size-9 place-items-center rounded-full shadow-[0_6px_16px_-6px_var(--ak-brand)] transition-colors',
-                added ? 'bg-pos text-white' : 'bg-brand text-on-brand hover:bg-brand-strong',
+                'grid size-9 place-items-center rounded-full transition-colors',
+                added ? 'bg-pos text-white' : 'bg-primary text-on-primary hover:opacity-90',
               )}
             >
-              {added ? <Check className="size-[18px]" aria-hidden /> : <Plus className="size-5" strokeWidth={2.5} aria-hidden />}
+              {added ? <Check className="size-[18px]" aria-hidden /> : <Plus className="size-[18px]" strokeWidth={2.25} aria-hidden />}
             </motion.span>
           </motion.button>
         )}
@@ -164,10 +162,10 @@ export function ProductCard({
         </span>
       </div>
 
-      <div className="flex flex-col gap-1 px-0.5 pt-2.5">
+      <div className="flex min-w-0 flex-col gap-1 pt-2.5">
         <Link
           to={href}
-          className="line-clamp-2 text-sm leading-snug font-medium text-ink decoration-brand/40 underline-offset-2 hover:underline"
+          className="line-clamp-2 text-sm leading-snug break-words text-ink decoration-ink-3/50 underline-offset-2 hover:underline"
         >
           {product.name}
         </Link>
@@ -201,7 +199,7 @@ export function ProductCard({
         )}
         {single && !upcoming && !soldOut && <StockLine available={single.available} lowStockThreshold={single.lowStockThreshold} className="text-xs" />}
         {shop.deliveryPromise && !soldOut && !upcoming && (
-          <p className="flex items-center gap-1 text-xs text-pos">
+          <p className="flex min-w-0 items-center gap-1 text-xs text-ink-3">
             <Truck className="size-3.5 shrink-0" aria-hidden />
             <span className="truncate">{shop.deliveryPromise}</span>
           </p>

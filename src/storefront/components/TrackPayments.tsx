@@ -34,10 +34,10 @@ export function BankTransferPanel({ order, money }: { order: TrackedOrder; money
   }
 
   return (
-    <section className="rounded-[var(--radius-card)] border border-brand/25 bg-panel p-4 shadow-[var(--shadow-card)] sm:p-5 ak-rise" aria-label="Pay by bank transfer">
+    <section aria-label="Pay by bank transfer">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm text-ink-2">Transfer exactly</p>
+        <div className="min-w-0">
+          <p className="text-[13px] text-ink-3">Transfer exactly</p>
           <p className="font-display text-4xl font-semibold leading-tight tracking-tight tnum">{money(due)}</p>
           {order.paidMinor > 0 && <p className="text-xs text-ink-3 tnum">{money(order.paidMinor)} of {money(order.totalMinor)} received</p>}
         </div>
@@ -49,7 +49,7 @@ export function BankTransferPanel({ order, money }: { order: TrackedOrder; money
 
       {bt.account ? (
         <div className="mt-4 flex flex-col gap-3">
-          <dl className="flex flex-col gap-2 rounded-xl bg-sunken p-3 text-sm">
+          <dl className="flex flex-col divide-y divide-line rounded-lg bg-sunken px-3 text-sm">
             <Row label="Bank" value={bt.account.bankName} />
             <Row
               label="Account number"
@@ -75,8 +75,8 @@ export function BankTransferPanel({ order, money }: { order: TrackedOrder; money
           </p>
         </div>
       ) : (
-        <p className="mt-4 flex items-start gap-2 rounded-xl bg-sunken p-3 text-sm text-ink-2">
-          <Landmark className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
+        <p className="mt-4 flex items-start gap-2 text-sm text-ink-2">
+          <Landmark className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
           <span>
             {order.shop.name} will share the bank account details with you. When you transfer, send exactly {money(due)} and put order number{' '}
             <strong className="font-semibold text-ink tnum">{reference}</strong> in the narration.
@@ -89,10 +89,10 @@ export function BankTransferPanel({ order, money }: { order: TrackedOrder; money
 
 function Row({ label, value, mono, action }: { label: string; value: string; mono?: boolean; action?: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-2">
+    <div className="flex min-h-14 items-center justify-between gap-2 py-2">
       <div className="min-w-0">
         <dt className="text-xs text-ink-3">{label}</dt>
-        <dd className={mono ? 'font-display text-base font-bold tracking-wide tnum text-ink' : 'font-medium text-ink'}>{value}</dd>
+        <dd className={mono ? 'break-all font-display text-base font-semibold tracking-wide tnum text-ink' : 'break-words font-medium text-ink'}>{value}</dd>
       </div>
       {action}
     </div>
@@ -118,7 +118,7 @@ function CopyBtn({
       type="button"
       onClick={() => onCopy(id, text)}
       aria-label={done ? 'Copied' : label}
-      className="grid size-11 shrink-0 place-items-center rounded-xl text-ink-2 hover:bg-panel hover:text-ink"
+      className="grid size-11 shrink-0 place-items-center rounded-lg text-ink-2 hover:bg-panel hover:text-ink"
     >
       {done ? <Check className="size-4 text-pos" aria-hidden /> : <Copy className="size-4" aria-hidden />}
     </button>

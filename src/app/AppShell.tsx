@@ -208,10 +208,10 @@ function CountDot({ count, className }: { count: number; className?: string }) {
 
 function SideNav({ toConfirm }: { toConfirm: number }) {
   return (
-    <nav aria-label="Workspace" className="flex flex-col gap-5">
+    <nav aria-label="Workspace" className="flex flex-col gap-3">
       {NAV_GROUPS.map((group, gi) => (
         <div key={group.label ?? gi} className="flex flex-col gap-px">
-          {group.label && <p className="px-3 pb-2 text-[10px] font-semibold tracking-[0.14em] text-ink-3 uppercase">{group.label}</p>}
+          {group.label && <p className="px-2.5 pb-1.5 text-[11px] font-medium tracking-[0.08em] text-ink-3 uppercase">{group.label}</p>}
           {group.items.map((item) => (
             <NavLink
               key={item.to}
@@ -219,14 +219,16 @@ function SideNav({ toConfirm }: { toConfirm: number }) {
               end={item.end}
               className={({ isActive }) =>
                 cn(
-                  'group flex h-10 items-center gap-3 rounded-xl px-3 text-[13px] font-medium transition-colors',
-                  isActive ? 'bg-brand-soft font-semibold text-brand' : 'text-ink-2 hover:bg-sunken hover:text-ink',
+                  'group relative flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] font-medium transition-colors',
+                  isActive
+                    ? 'bg-ink/[0.06] text-ink before:absolute before:top-2 before:bottom-2 before:-left-3 before:w-[3px] before:rounded-r before:bg-brand'
+                    : 'text-ink-2 hover:bg-ink/[0.04] hover:text-ink',
                 )
               }
             >
               {({ isActive }) => (
                 <>
-                  <item.icon className={cn('size-[17px]', isActive ? 'text-brand' : 'text-ink-3 group-hover:text-ink-2')} aria-hidden />
+                  <item.icon className={cn('size-[17px]', isActive ? 'text-ink' : 'text-ink-3 group-hover:text-ink-2')} aria-hidden />
                   <span className="flex-1 truncate">{item.label}</span>
                   {item.to === '/app/orders' && <CountDot count={toConfirm} />}
                 </>
@@ -258,16 +260,16 @@ function MobileNav({ toConfirm, slug }: { toConfirm: number; slug: string | null
   const tab = (active: boolean) =>
     cn(
       'relative flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors',
-      active ? 'text-brand' : 'text-ink-3 hover:text-ink-2',
+      active ? 'text-ink' : 'text-ink-3 hover:text-ink-2',
     )
 
   return (
     <>
       <nav
         aria-label="Workspace"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_28px_rgba(14,20,32,0.06)] backdrop-blur-xl md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
       >
-        <div className="flex h-[68px] items-stretch">
+        <div className="flex h-16 items-stretch">
           <NavLink to="/app" end className={({ isActive }) => tab(isActive)}>
             <Home className="size-[22px]" aria-hidden />
             Today
@@ -375,11 +377,11 @@ export function AppShell() {
       </a>
       <DemoBanner />
       <div className="md:grid md:grid-cols-[248px_1fr] xl:grid-cols-[264px_1fr]">
-        <aside className="sticky top-0 hidden h-dvh flex-col overflow-y-auto border-r border-line bg-panel px-4 py-5 md:flex">
-          <Link to="/app" className="mb-6 self-start rounded-lg px-2 py-1.5" aria-label="Fungua, go to Today">
+        <aside className="sticky top-0 hidden h-dvh flex-col overflow-y-auto border-r border-line bg-panel px-3 py-4 md:flex [&>*]:shrink-0">
+          <Link to="/app" className="mb-4 self-start rounded-lg px-2.5 py-1" aria-label="Fungua, go to Today">
             <FunguaLogo size={22} />
           </Link>
-          <div className="mb-5 rounded-xl border border-line bg-canvas/70 px-3 py-3">
+          <div className="mb-3 border-b border-line px-2.5 pb-3">
             <OrgSwitcher />
             <p className="mt-0.5 truncate text-xs text-ink-3">
               {org.baseCurrency} · {org.timezone.replace(/_/g, ' ')}
@@ -391,7 +393,7 @@ export function AppShell() {
             </Link>
           )}
           <SideNav toConfirm={toConfirm} />
-          <div className="mt-auto pt-4">
+          <div className="mt-auto pt-3">
             {slug && (
               <ViewShopLink
                 slug={slug}
@@ -409,7 +411,7 @@ export function AppShell() {
         </aside>
 
         <div className="min-w-0">
-          <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-2 border-b border-line/80 bg-canvas/95 px-4 backdrop-blur-xl sm:px-6 md:justify-end lg:px-9">
+          <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-2 border-b border-line bg-canvas/90 px-3 backdrop-blur-md sm:px-5 md:justify-end lg:px-8">
             <div className="flex min-w-0 items-center gap-2.5 md:hidden">
               <Link to="/app" aria-label="Fungua, go to Today" className="shrink-0 rounded-lg">
                 <FunguaMark size={26} />
@@ -426,7 +428,7 @@ export function AppShell() {
               </span>
             </div>
           </header>
-          <main id="main" className="mx-auto w-full max-w-[1320px] px-4 pt-7 pb-28 sm:px-6 md:pb-16 lg:px-10 lg:pt-9">
+          <main id="main" className="mx-auto w-full max-w-[1280px] px-4 pt-6 pb-28 sm:px-6 md:pb-16 lg:px-10 lg:pt-8">
             <Outlet />
           </main>
         </div>

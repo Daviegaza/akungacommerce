@@ -95,23 +95,23 @@ export function StockAdjustSheet({ target, onClose }: { target: StockTarget; onC
       <form id={formId} onSubmit={submit} noValidate className="flex flex-col gap-5">
         {adjust.isError && <ErrorNotice error={adjust.error} />}
 
-        <dl className="grid grid-cols-3 gap-3 border-b border-line pb-4 text-sm">
-          <div>
+        <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-[var(--radius-card)] border border-line bg-line text-sm">
+          <div className="bg-panel px-3 py-2.5">
             <dt className="text-xs text-ink-3">On hand</dt>
-            <dd className="tnum mt-0.5 text-lg font-semibold">{target.onHand}</dd>
+            <dd className="tnum mt-0.5 font-display text-lg font-semibold tracking-tight">{target.onHand}</dd>
           </div>
-          <div>
+          <div className="bg-panel px-3 py-2.5">
             <dt className="text-xs text-ink-3">Reserved</dt>
-            <dd className="tnum mt-0.5 text-lg font-semibold">{target.reserved}</dd>
+            <dd className="tnum mt-0.5 font-display text-lg font-semibold tracking-tight text-ink-2">{target.reserved}</dd>
           </div>
-          <div>
+          <div className="bg-panel px-3 py-2.5">
             <dt className="text-xs text-ink-3">Available</dt>
-            <dd className="tnum mt-0.5 text-lg font-semibold">{target.onHand - target.reserved}</dd>
+            <dd className="tnum mt-0.5 font-display text-lg font-semibold tracking-tight">{target.onHand - target.reserved}</dd>
           </div>
         </dl>
 
         <div className="flex flex-col gap-1.5">
-          <span id={directionLabelId} className="text-[13px] font-medium text-ink">
+          <span id={directionLabelId} className="text-[13px] font-semibold text-ink">
             Change
           </span>
           <div role="group" aria-labelledby={directionLabelId} className="flex gap-1 rounded-lg bg-sunken p-1">

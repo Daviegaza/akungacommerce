@@ -7,7 +7,7 @@ import { formatPhone } from '@/domain/locale'
 import { whatsappChatLink } from '@/integrations/whatsapp-link'
 import type { CreatedInvite, TeamInvite } from '@/gateway/expansion'
 import { useAction, useGateway, useOrg, useOrgQuery } from '../context'
-import { ErrorNotice, Sheet } from '../ui/layout'
+import { ErrorNotice, Sheet, Table, Td, Th } from '../ui/layout'
 import { When } from '../ui/format'
 import { Badge, Button, Field, Input, Skeleton, buttonClass, type Tone } from '../ui/primitives'
 
@@ -17,18 +17,20 @@ const STATUS_LABEL: Record<TeamInvite['status'], string> = { pending: 'Waiting',
 export function RolePicker({ value, onChange, roles }: { value: Role; onChange: (r: Role) => void; roles: Role[] }) {
   const caps = roleCapabilities(value)
   return (
-    <fieldset className="flex flex-col gap-2">
+    <fieldset className="flex min-w-0 flex-col gap-2">
       <legend className="mb-1 text-[13px] font-semibold text-ink">Role</legend>
-      {roles.map((r) => (
-        <label key={r} className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border p-3 ${value === r ? 'border-brand bg-brand-soft/50' : 'border-line hover:bg-sunken'}`}>
-          <input type="radio" name="invite-role" checked={value === r} onChange={() => onChange(r)} className="mt-1 size-4 shrink-0 accent-[var(--ak-brand)]" />
-          <span className="text-sm">
-            <span className="font-semibold text-ink">{ROLE_PLAIN[r].title}</span>
-            <span className="block text-ink-3">{ROLE_PLAIN[r].summary}</span>
-          </span>
-        </label>
-      ))}
-      <div className="mt-1 grid gap-3 rounded-xl bg-sunken p-3 text-xs sm:grid-cols-2">
+      <div className="divide-y divide-line overflow-hidden rounded-[var(--radius-card)] border border-line">
+        {roles.map((r) => (
+          <label key={r} className={`flex min-h-11 cursor-pointer items-start gap-3 px-3.5 py-3 transition-colors ${value === r ? 'bg-sunken/70' : 'hover:bg-sunken/40'}`}>
+            <input type="radio" name="invite-role" checked={value === r} onChange={() => onChange(r)} className="mt-0.5 size-4 shrink-0 accent-[var(--ak-brand)]" />
+            <span className="min-w-0 text-sm">
+              <span className="font-medium text-ink">{ROLE_PLAIN[r].title}</span>
+              <span className="block text-xs leading-relaxed text-ink-3">{ROLE_PLAIN[r].summary}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      <div className="mt-1 grid gap-3 rounded-lg border border-line bg-sunken/50 p-3 text-xs sm:grid-cols-2">
         <div>
           <p className="mb-1 font-semibold text-ink">{ROLE_PLAIN[value].title} can</p>
           {caps.can.length === 0 ? <p className="text-ink-3">Only view</p> : <ul className="list-disc space-y-0.5 pl-4 text-ink-2">{caps.can.map((c) => <li key={c}>{c}</li>)}</ul>}
@@ -50,10 +52,10 @@ function ShareInvite({ created }: { created: CreatedInvite }) {
   return (
     <div className="flex flex-col gap-3" role="status">
       <p className="text-sm text-ink">
-        Invitation ready for <strong>{created.invite.email ?? (created.invite.phoneE164 ? formatPhone(created.invite.phoneE164) : '')}</strong>. Fungua does not send it
+        Invitation ready for <strong className="font-semibold">{created.invite.email ?? (created.invite.phoneE164 ? formatPhone(created.invite.phoneE164) : '')}</strong>. Fungua does not send it
         for you: share the link below. It works once and expires in 7 days.
       </p>
-      <div className="rounded-xl bg-sunken p-3 text-xs break-all text-ink-2">{link}</div>
+      <div className="rounded-lg border border-line bg-sunken/50 px-3 py-2.5 font-mono text-xs break-all text-ink-2 select-all">{link}</div>
       <p className="text-xs text-ink-3">This link is shown only now. If you lose it, send a new invitation.</p>
       <div className="flex flex-wrap gap-2">
         <Button
@@ -140,7 +142,7 @@ function InviteSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: 
         <form id="invite-form" onSubmit={submit} noValidate className="flex flex-col gap-4">
           {create.isError && <ErrorNotice error={create.error} />}
           <Field label="Email or phone number" error={error} hint="Email invites must be accepted by that email address. Phone invites work for whoever opens the link, so send it only to them.">
-            {(p) => <Input {...p} autoComplete="off" value={contact} onChange={(e) => setContact(e.target.value)} placeholder="wanjiru@shop.co.ke or 0712 345 678" />}
+            {(p) => <Input {...p} autoComplete="off" value={contact} onChange={(e) => setContact(e.target.value)} placeholder="name@yourshop.com or a phone number" />}
           </Field>
           <RolePicker value={role} onChange={setRole} roles={roles} />
         </form>
@@ -149,36 +151,94 @@ function InviteSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: 
   )
 }
 
-function InviteRow({ invite }: { invite: TeamInvite }) {
+function inviteContact(invite: TeamInvite): string {
+  return invite.email ?? (invite.phoneE164 ? formatPhone(invite.phoneE164) : '')
+}
+
+/** One invitation: a table row on sm+, a compact divided item on phones. */
+function InviteRow({ invite, layout }: { invite: TeamInvite; layout: 'row' | 'item' }) {
   const gateway = useGateway()
   const { org } = useOrg()
   const revoke = useAction((g, o) => g.revokeInvite(o, invite.id))
   const simulate = useAction((g, o) => (g.simulateInviteAcceptance ? g.simulateInviteAcceptance(o, invite.id) : Promise.resolve()))
   const canTouch = invite.role !== 'owner' || org.role === 'owner'
-  return (
-    <li className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
-        <p className="truncate text-sm font-medium text-ink">{invite.email ?? (invite.phoneE164 ? formatPhone(invite.phoneE164) : '')}</p>
-        <p className="text-xs text-ink-3">
-          {ROLE_LABEL[invite.role]} · {invite.status === 'pending' ? <>expires <When iso={invite.expiresAt} dateOnly /></> : <>sent <When iso={invite.createdAt} dateOnly /></>}
-        </p>
-        {(revoke.error ?? simulate.error) && <ErrorNotice error={revoke.error ?? simulate.error} />}
-      </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
-        <Badge tone={STATUS_TONE[invite.status]}>{STATUS_LABEL[invite.status]}</Badge>
-        {invite.status === 'pending' && canTouch && (
-          <>
-            {gateway.simulateInviteAcceptance && (
-              <Button size="sm" variant="ghost" loading={simulate.isPending} onClick={() => simulate.mutate(undefined)}>
-                Simulate joining (demo)
-              </Button>
-            )}
-            <Button size="sm" variant="ghost" loading={revoke.isPending} onClick={() => revoke.mutate(undefined)} aria-label={`Revoke invitation for ${invite.email ?? invite.phoneE164}`}>
-              Revoke
-            </Button>
-          </>
+  const error = revoke.error ?? simulate.error
+
+  const when =
+    invite.status === 'pending' ? (
+      <>
+        Expires <When iso={invite.expiresAt} dateOnly />
+      </>
+    ) : (
+      <>
+        Sent <When iso={invite.createdAt} dateOnly />
+      </>
+    )
+
+  const actions =
+    invite.status === 'pending' && canTouch ? (
+      <div className="flex flex-wrap items-center gap-1 sm:justify-end">
+        {gateway.simulateInviteAcceptance && (
+          <Button size="sm" variant="ghost" className="h-10" loading={simulate.isPending} onClick={() => simulate.mutate(undefined)}>
+            Simulate joining (demo)
+          </Button>
         )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-10 text-ink-3 hover:text-neg"
+          loading={revoke.isPending}
+          onClick={() => revoke.mutate(undefined)}
+          aria-label={`Revoke invitation for ${invite.email ?? invite.phoneE164}`}
+        >
+          Revoke
+        </Button>
       </div>
+    ) : null
+
+  if (layout === 'row') {
+    return (
+      <tr>
+        <Td className="max-w-[280px]">
+          <p className="truncate font-medium text-ink">{inviteContact(invite)}</p>
+          {error && (
+            <div className="mt-2 whitespace-normal">
+              <ErrorNotice error={error} />
+            </div>
+          )}
+        </Td>
+        <Td>
+          <Badge>
+            <span className="sr-only">Role: </span>
+            {ROLE_LABEL[invite.role]}
+          </Badge>
+        </Td>
+        <Td>
+          <Badge tone={STATUS_TONE[invite.status]}>{STATUS_LABEL[invite.status]}</Badge>
+        </Td>
+        <Td className="text-[13px] whitespace-nowrap text-ink-2">{when}</Td>
+        <Td align="right" className="whitespace-nowrap">
+          {actions}
+        </Td>
+      </tr>
+    )
+  }
+
+  return (
+    <li className="py-3">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 truncate text-sm font-medium text-ink">{inviteContact(invite)}</p>
+        <Badge tone={STATUS_TONE[invite.status]}>{STATUS_LABEL[invite.status]}</Badge>
+      </div>
+      <p className="mt-0.5 text-xs text-ink-3">
+        {ROLE_LABEL[invite.role]} · {when}
+      </p>
+      {actions && <div className="mt-1.5 -ml-3">{actions}</div>}
+      {error && (
+        <div className="mt-2">
+          <ErrorNotice error={error} />
+        </div>
+      )}
     </li>
   )
 }
@@ -192,25 +252,58 @@ export function TeamInvites() {
   if (!manage) return null
   const list = invites.data ?? []
   return (
-    <div className="mt-6">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <h3 className="text-[13px] font-semibold text-ink">Invitations</h3>
-        <Button size="sm" variant="primary" icon={<UserPlus className="size-4" aria-hidden />} onClick={() => setOpen(true)}>
+    <div className="mt-8">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-[13px] font-semibold text-ink">Invitations</h3>
+          <p className="mt-0.5 text-xs text-ink-3">Links you created. Nothing is sent automatically.</p>
+        </div>
+        <Button size="sm" variant="primary" className="h-10 shrink-0" icon={<UserPlus className="size-4" aria-hidden />} onClick={() => setOpen(true)}>
           Invite staff
         </Button>
       </div>
       {invites.isPending ? (
-        <Skeleton className="h-12" />
+        <div className="divide-y divide-line rounded-[var(--radius-card)] border border-line" aria-busy>
+          {[0, 1].map((i) => (
+            <div key={i} className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-5 w-16" />
+            </div>
+          ))}
+        </div>
       ) : invites.isError ? (
         <ErrorNotice error={invites.error} onRetry={() => void invites.refetch()} />
       ) : list.length === 0 ? (
-        <p className="text-sm text-ink-3">No invitations yet. Invite a cashier, a rider or a manager by email or phone.</p>
+        <p className="border-y border-line py-4 text-sm text-ink-3">No invitations yet. Invite a cashier, a rider or a manager by email or phone.</p>
       ) : (
-        <ul className="divide-y divide-line border-y border-line">
-          {list.map((i) => (
-            <InviteRow key={i.id} invite={i} />
-          ))}
-        </ul>
+        <>
+          <div className="hidden sm:block">
+            <Table>
+              <caption className="sr-only">Team invitations</caption>
+              <thead>
+                <tr>
+                  <Th>Invited</Th>
+                  <Th>Role</Th>
+                  <Th>Status</Th>
+                  <Th>Date</Th>
+                  <Th align="right">
+                    <span className="sr-only">Actions</span>
+                  </Th>
+                </tr>
+              </thead>
+              <tbody>
+                {list.map((i) => (
+                  <InviteRow key={i.id} invite={i} layout="row" />
+                ))}
+              </tbody>
+            </Table>
+          </div>
+          <ul className="divide-y divide-line border-y border-line sm:hidden">
+            {list.map((i) => (
+              <InviteRow key={i.id} invite={i} layout="item" />
+            ))}
+          </ul>
+        </>
       )}
       {open && <InviteSheet open={open} onOpenChange={setOpen} />}
     </div>

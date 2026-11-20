@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useId, useState, type FormEvent, type ReactNode } from 'react'
 import { Check, Plus, Trash2 } from 'lucide-react'
 import {
   DEFAULT_SHOP_POLICY,
@@ -11,8 +11,67 @@ import {
 import { formatMoney, money, parseMajor, toMajorString } from '@/domain/money'
 import type { PickupPoint } from '@/gateway/delivery'
 import { useAction, useOrg, useOrgQuery } from '../context'
-import { EmptyState, ErrorNotice, Notice, Section } from '../ui/layout'
-import { Badge, Button, Field, Input, Select, Skeleton, Switch } from '../ui/primitives'
+import { EmptyState, ErrorNotice, Notice } from '../ui/layout'
+import { Button, Field, Input, Select, Skeleton, Switch } from '../ui/primitives'
+
+/**
+ * Settings row: on lg a 260px label column (title + one-line description) beside the fields;
+ * stacked on phones. Sections are divided by a top hairline. Shared by the settings pages.
+ */
+export function SettingsBlock({
+  title,
+  description,
+  actions,
+  children,
+  id,
+  wide,
+  first,
+}: {
+  title: ReactNode
+  description?: ReactNode
+  actions?: ReactNode
+  children: ReactNode
+  /** Optional anchor id for in-page links. */
+  id?: string
+  /** Full-width content (tables, logs): heading row above instead of a label column. */
+  wide?: boolean
+  /** First block under the page header: no top hairline (the header already draws one). */
+  first?: boolean
+}) {
+  const headingId = useId()
+  if (wide) {
+    return (
+      <section id={id} aria-labelledby={headingId} className={`scroll-mt-24 ${first ? 'pb-7' : 'border-t border-line py-7'}`}>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h2 id={headingId} className="font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">
+              {title}
+            </h2>
+            {description && <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-ink-3">{description}</p>}
+          </div>
+          {actions && <div className="flex shrink-0 flex-wrap gap-2">{actions}</div>}
+        </div>
+        {children}
+      </section>
+    )
+  }
+  return (
+    <section
+      id={id}
+      aria-labelledby={headingId}
+      className={`grid scroll-mt-24 gap-4 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10 ${first ? 'pb-7' : 'border-t border-line py-7'}`}
+    >
+      <div className="min-w-0">
+        <h2 id={headingId} className="font-display text-[15px] font-semibold tracking-[-0.02em] text-ink">
+          {title}
+        </h2>
+        {description && <p className="mt-1 text-[13px] leading-relaxed text-ink-3">{description}</p>}
+        {actions && <div className="mt-3 flex flex-wrap gap-2">{actions}</div>}
+      </div>
+      <div className="min-w-0">{children}</div>
+    </section>
+  )
+}
 
 const MODE_LABEL: Record<PaymentMode, { title: string; body: string }> = {
   pay_on_delivery: { title: 'Pay on delivery', body: 'Nothing is due before the order arrives.' },
@@ -68,18 +127,22 @@ function fromForm(f: PolicyForm, currency: string): { policy: ShopPolicy | null;
 export function DeliveryRulesSection() {
   const query = useOrgQuery('shop-policy', (g, o) => g.getShopPolicy(o))
   return (
-    <Section
+    <SettingsBlock
+      id="deposits"
       title="Deposits and failed deliveries"
       description="Set what buyers pay up front and who pays for a wasted delivery trip. Buyers see these rules, in plain words, before they order."
     >
       {query.isPending ? (
-        <Skeleton className="h-48 w-full rounded-2xl" />
+        <div className="space-y-3" aria-busy>
+          <Skeleton className="h-36 w-full rounded-[var(--radius-card)]" />
+          <Skeleton className="h-11 w-full" />
+        </div>
       ) : query.isError ? (
         <ErrorNotice error={query.error} onRetry={() => query.refetch()} />
       ) : (
         <PolicyEditor key={JSON.stringify(query.data)} saved={query.data ?? DEFAULT_SHOP_POLICY} />
       )}
-    </Section>
+    </SettingsBlock>
   )
 }
 
@@ -109,19 +172,27 @@ function PolicyEditor({ saved }: { saved: ShopPolicy }) {
   return (
     <form onSubmit={submit} noValidate>
       <fieldset disabled={readOnly} className="min-w-0 space-y-5">
-        <fieldset>
-          <legend className="mb-2 text-sm font-semibold text-ink">How buyers pay</legend>
-          <div className="grid gap-2 sm:grid-cols-3">
+        <fieldset className="min-w-0">
+          <legend className="mb-2 text-[13px] font-semibold text-ink">How buyers pay</legend>
+          <div className="divide-y divide-line overflow-hidden rounded-[var(--radius-card)] border border-line bg-panel">
             {(Object.keys(MODE_LABEL) as PaymentMode[]).map((m) => (
               <label
                 key={m}
-                className={`flex min-h-16 cursor-pointer flex-col gap-0.5 rounded-xl border p-3 text-sm has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-brand ${
-                  form.paymentMode === m ? 'border-brand bg-brand-soft/60' : 'border-line-strong hover:bg-sunken'
+                className={`flex min-h-14 cursor-pointer items-start gap-3 px-4 py-3 text-sm transition-colors ${
+                  form.paymentMode === m ? 'bg-sunken/60' : 'hover:bg-sunken/40'
                 }`}
               >
-                <input type="radio" name="payment-mode" className="sr-only" checked={form.paymentMode === m} onChange={() => set('paymentMode', m)} />
-                <span className="font-semibold text-ink">{MODE_LABEL[m].title}</span>
-                <span className="text-xs text-ink-3">{MODE_LABEL[m].body}</span>
+                <input
+                  type="radio"
+                  name="payment-mode"
+                  className="mt-0.5 size-4 shrink-0 accent-brand"
+                  checked={form.paymentMode === m}
+                  onChange={() => set('paymentMode', m)}
+                />
+                <span className="min-w-0">
+                  <span className="block font-medium text-ink">{MODE_LABEL[m].title}</span>
+                  <span className="block text-xs leading-relaxed text-ink-3">{MODE_LABEL[m].body}</span>
+                </span>
               </label>
             ))}
           </div>
@@ -184,8 +255,8 @@ function PolicyEditor({ saved }: { saved: ShopPolicy }) {
         </div>
 
         {preview && (
-          <div className="rounded-2xl bg-sunken p-4">
-            <p className="text-xs font-semibold text-ink-2">What buyers will read</p>
+          <div className="rounded-lg border border-line bg-sunken/50 px-4 py-3">
+            <p className="text-xs font-medium text-ink-3">What buyers will read</p>
             <ul className="mt-1.5 flex list-disc flex-col gap-1 pl-4 text-sm text-ink">
               {policyText(preview, { currency, locale: org.locale, delivers: true }).map((l) => (
                 <li key={l}>{l}</li>
@@ -199,8 +270,8 @@ function PolicyEditor({ saved }: { saved: ShopPolicy }) {
       </fieldset>
 
       {!readOnly && (
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <Button type="submit" variant="brand" loading={save.isPending} disabled={!dirty && !save.isError}>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <Button type="submit" variant="secondary" loading={save.isPending} disabled={!dirty && !save.isError}>
             Save rules
           </Button>
           <span className="text-sm" aria-live="polite">
@@ -231,7 +302,8 @@ export function PickupPointsSection() {
   const active = points.filter((p) => p.active)
 
   return (
-    <Section
+    <SettingsBlock
+      id="pickup-points"
       title="Pick-up points"
       description="Agent shops or counters where buyers can collect. Buyers see them at checkout with the fee and opening hours. This is your own list — no courier network is connected."
       actions={
@@ -243,7 +315,14 @@ export function PickupPointsSection() {
       }
     >
       {query.isPending ? (
-        <Skeleton className="h-24 w-full rounded-2xl" />
+        <div className="divide-y divide-line rounded-[var(--radius-card)] border border-line" aria-busy>
+          {[0, 1].map((i) => (
+            <div key={i} className="flex items-center justify-between gap-3 px-4 py-3.5">
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-16" />
+            </div>
+          ))}
+        </div>
       ) : query.isError ? (
         <ErrorNotice error={query.error} onRetry={() => query.refetch()} />
       ) : (
@@ -251,16 +330,29 @@ export function PickupPointsSection() {
           {active.length === 0 && !adding && (
             <EmptyState title="No pick-up points yet" body="Add an agent shop or counter you already use. Buyers can then choose it at checkout instead of home delivery." />
           )}
-          <ul className="divide-y divide-line rounded-2xl border border-line bg-panel">
-            {active.map((p) => (
-              <PointRow key={p.id} point={p} currency={org.baseCurrency} locale={org.locale} readOnly={readOnly} />
-            ))}
-          </ul>
-          {adding && <PointEditor currency={org.baseCurrency} onDone={() => setAdding(false)} />}
+          {active.length > 0 && (
+            <div className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-panel">
+              <div className="hidden grid-cols-[minmax(0,1fr)_120px_112px] gap-4 border-b border-line bg-sunken/50 px-4 py-2.5 text-xs font-medium text-ink-3 sm:grid" aria-hidden>
+                <span>Point</span>
+                <span className="text-right">Buyer pays</span>
+                <span />
+              </div>
+              <ul className="divide-y divide-line">
+                {active.map((p) => (
+                  <PointRow key={p.id} point={p} currency={org.baseCurrency} locale={org.locale} readOnly={readOnly} />
+                ))}
+              </ul>
+            </div>
+          )}
+          {adding && (
+            <div className="rounded-[var(--radius-card)] border border-line bg-panel p-4">
+              <PointEditor currency={org.baseCurrency} onDone={() => setAdding(false)} />
+            </div>
+          )}
           {points.length > active.length && <p className="text-xs text-ink-3">{points.length - active.length} removed point(s) are kept on past orders.</p>}
         </div>
       )}
-    </Section>
+    </SettingsBlock>
   )
 }
 
@@ -269,31 +361,36 @@ function PointRow({ point, currency, locale, readOnly }: { point: PickupPoint; c
   const archive = useAction<void>((g, o) => g.archivePickupPoint(o, point.id))
   if (editing) {
     return (
-      <li className="p-3">
+      <li className="bg-sunken/30 p-4">
         <PointEditor currency={currency} point={point} onDone={() => setEditing(false)} />
       </li>
     )
   }
   return (
-    <li className="flex flex-wrap items-center justify-between gap-3 p-3">
+    <li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_120px_112px]">
       <div className="min-w-0 text-sm">
-        <p className="font-semibold text-ink">{point.name}</p>
-        <p className="text-ink-3">{[point.area, point.hours].filter(Boolean).join(' · ') || 'No area or hours yet'}</p>
+        <p className="truncate font-medium text-ink">{point.name}</p>
+        <p className="truncate text-xs text-ink-3">{[point.area, point.hours].filter(Boolean).join(' · ') || 'No area or hours yet'}</p>
       </div>
-      <div className="flex items-center gap-2">
-        <Badge>{point.feeMinor === 0 ? 'Free' : formatMoney(money(point.feeMinor, currency), locale)}</Badge>
-        {!readOnly && (
-          <>
-            <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
-              Edit
-            </Button>
-            <Button size="sm" variant="ghost" aria-label={`Remove ${point.name}`} loading={archive.isPending} onClick={() => archive.mutate()}>
-              <Trash2 className="size-4" aria-hidden />
-            </Button>
-          </>
-        )}
-      </div>
-      {archive.isError && <div className="w-full"><ErrorNotice error={archive.error} /></div>}
+      <p className="tnum text-right text-sm text-ink">
+        <span className="sr-only">Buyer pays </span>
+        {point.feeMinor === 0 ? 'Free' : formatMoney(money(point.feeMinor, currency), locale)}
+      </p>
+      {!readOnly && (
+        <div className="col-span-2 flex items-center justify-end gap-1 sm:col-span-1">
+          <Button size="sm" variant="ghost" className="h-10" onClick={() => setEditing(true)}>
+            Edit
+          </Button>
+          <Button size="sm" variant="ghost" className="size-10 px-0" aria-label={`Remove ${point.name}`} loading={archive.isPending} onClick={() => archive.mutate()}>
+            {!archive.isPending && <Trash2 className="size-4" aria-hidden />}
+          </Button>
+        </div>
+      )}
+      {archive.isError && (
+        <div className="col-span-full">
+          <ErrorNotice error={archive.error} />
+        </div>
+      )}
     </li>
   )
 }
@@ -320,7 +417,7 @@ function PointEditor({ currency, point, onDone }: { currency: string; point?: Pi
   return (
     <form
       noValidate
-      className="space-y-3 rounded-2xl border border-line bg-panel p-3"
+      className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault()
         setTouched(true)

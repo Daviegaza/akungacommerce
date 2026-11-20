@@ -79,7 +79,7 @@ export function ShareButton({
         aria-label={label}
         aria-expanded={open}
         className={cn(
-          'grid size-11 place-items-center rounded-full border border-line bg-panel text-ink transition-colors hover:bg-sunken',
+          'grid size-11 place-items-center rounded-lg border border-line-strong bg-panel text-ink-2 transition-colors hover:bg-sunken hover:text-ink',
           className,
         )}
       >
@@ -88,15 +88,15 @@ export function ShareButton({
       {open && (
         <div
           role="menu"
-          className="ak-rise absolute top-[calc(100%+6px)] right-0 z-40 w-56 overflow-hidden rounded-2xl border border-line bg-panel p-1.5 shadow-[var(--shadow-lift)]"
+          className="ak-rise absolute top-[calc(100%+6px)] right-0 z-40 w-56 overflow-hidden rounded-[var(--radius-card)] border border-line bg-panel p-1 shadow-[var(--shadow-lift)]"
         >
           <button
             type="button"
             role="menuitem"
             onClick={copy}
-            className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-ink hover:bg-sunken"
+            className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm text-ink hover:bg-sunken"
           >
-            {copied ? <Check className="size-4 text-pos" aria-hidden /> : <Link2 className="size-4" aria-hidden />}
+            {copied ? <Check className="size-4 text-pos" aria-hidden /> : <Link2 className="size-4 text-ink-3" aria-hidden />}
             {copied ? 'Link copied' : 'Copy link'}
           </button>
           <a
@@ -105,7 +105,7 @@ export function ShareButton({
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => setOpen(false)}
-            className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-ink hover:bg-sunken"
+            className="flex h-11 w-full items-center gap-3 rounded-lg px-3 text-sm text-ink hover:bg-sunken"
           >
             <WhatsAppGlyph className="size-4 text-[#25D366]" />
             Share on WhatsApp

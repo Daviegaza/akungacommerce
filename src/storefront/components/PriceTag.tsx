@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 import { discountPercent, fmtMoney } from './storefront-utils'
 
-/** Bold display price; "was" price + mango chip only for a real compare-at above the price. */
+/** Display price; struck-through "was" price + quiet discount chip only for a real compare-at above the price. */
 export function PriceTag({
   priceMinor,
   compareAtMinor,
@@ -25,12 +25,12 @@ export function PriceTag({
       <span
         className={cn(
           'font-display font-semibold tracking-tight text-ink tnum',
-          size === 'sm' && 'text-base',
-          size === 'md' && 'text-lg',
-          size === 'lg' && 'text-3xl',
+          size === 'sm' && 'text-sm',
+          size === 'md' && 'text-[15px]',
+          size === 'lg' && 'text-2xl sm:text-[1.75rem]',
         )}
       >
-        {from && <span className="mr-1 font-body text-xs font-medium text-ink-3">From</span>}
+        {from && <span className="mr-1 font-body text-xs font-normal text-ink-3">From</span>}
         {fmtMoney(priceMinor, currency, locale)}
       </span>
       {pct !== null && compareAtMinor !== null && (
@@ -41,8 +41,8 @@ export function PriceTag({
           </span>
           <span
             className={cn(
-              'inline-flex items-center rounded-md bg-mango px-1.5 font-bold text-on-mango tnum',
-              size === 'lg' ? 'h-6 text-sm' : 'h-5 text-[11px]',
+              'inline-flex items-center rounded-md bg-mango-soft px-1.5 font-medium text-ink tnum',
+              size === 'lg' ? 'h-6 text-[13px]' : 'h-5 text-[11px]',
             )}
           >
             −{pct}%

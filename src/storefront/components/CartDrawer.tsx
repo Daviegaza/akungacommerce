@@ -56,7 +56,7 @@ export function CartDrawer({ slug, shop }: { slug: string; shop: PublicShop }) {
       {isOpen && (
         <div className="fixed inset-0 z-50" key="cart">
           <motion.div
-            className="absolute inset-0 bg-ink/45"
+            className="absolute inset-0 bg-black/45"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -72,41 +72,39 @@ export function CartDrawer({ slug, shop }: { slug: string; shop: PublicShop }) {
             transition={{ duration: 0.32, ease: EASE }}
             className={cn(
               'absolute flex flex-col bg-canvas shadow-[var(--shadow-lift)]',
-              'inset-x-0 bottom-0 max-h-[88dvh] rounded-t-[1.75rem]',
-              'sm:inset-y-0 sm:right-0 sm:left-auto sm:max-h-none sm:w-[420px] sm:rounded-none sm:rounded-l-[1.75rem]',
+              'inset-x-0 bottom-0 max-h-[88dvh] rounded-t-[var(--radius-card)]',
+              'sm:inset-y-0 sm:right-0 sm:left-auto sm:max-h-none sm:w-[420px] sm:rounded-none sm:border-l sm:border-line',
             )}
           >
-            <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-line-strong sm:hidden" aria-hidden />
-            <div className="flex items-center justify-between px-5 pt-3 pb-2 sm:pt-5">
-              <h2 id="rafu-cart-title" className="text-2xl font-semibold tracking-tight text-ink">
+            <div className="mx-auto mt-2 h-1 w-9 rounded-full bg-line-strong sm:hidden" aria-hidden />
+            <div className="flex items-center justify-between border-b border-line py-2 pr-3 pl-5 sm:py-3">
+              <h2 id="rafu-cart-title" className="text-base font-semibold tracking-tight text-ink">
                 Your cart
-                {cart.count > 0 && <span className="ml-2 text-base font-semibold text-ink-3 tnum">{cart.count}</span>}
+                {cart.count > 0 && <span className="ml-1.5 text-sm font-normal text-ink-3 tnum">{cart.count}</span>}
               </h2>
               <button
                 ref={closeRef}
                 type="button"
                 onClick={close}
                 aria-label="Close cart"
-                className="grid size-11 place-items-center rounded-full text-ink-2 hover:bg-sunken hover:text-ink"
+                className="grid size-11 place-items-center rounded-lg text-ink-2 hover:bg-sunken hover:text-ink"
               >
                 <X className="size-5" aria-hidden />
               </button>
             </div>
 
             {cart.lines.length === 0 ? (
-              <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-14 text-center">
-                <span className="grid size-16 place-items-center rounded-full bg-brand-soft text-brand">
-                  <ShoppingBag className="size-7" aria-hidden />
-                </span>
-                <p className="font-display text-xl font-semibold text-ink">Your cart is empty</p>
+              <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-14 pb-[max(3.5rem,env(safe-area-inset-bottom))] text-center">
+                <ShoppingBag className="mb-1 size-7 text-ink-3" aria-hidden />
+                <p className="text-base font-semibold text-ink">Your cart is empty</p>
                 <p className="max-w-xs text-sm text-ink-3">Tap + on anything you like and it will wait for you here.</p>
-                <Button variant="brand" size="lg" className="mt-2" onClick={close}>
+                <Button variant="primary" size="lg" className="mt-4" onClick={close}>
                   Keep shopping
                 </Button>
               </div>
             ) : (
               <>
-                <ul className="flex-1 space-y-1 overflow-y-auto overscroll-contain px-3">
+                <ul className="flex-1 divide-y divide-line overflow-y-auto overscroll-contain px-5">
                   <AnimatePresence initial={false}>
                     {cart.lines.map((l) => {
                       const atMax = l.maxQuantity !== null && l.quantity >= l.maxQuantity
@@ -118,12 +116,12 @@ export function CartDrawer({ slug, shop }: { slug: string; shop: PublicShop }) {
                           animate={{ opacity: 1, y: 0 }}
                           exit={reduce ? { opacity: 0 } : { opacity: 0, x: -24 }}
                           transition={{ duration: 0.22, ease: EASE }}
-                          className="flex gap-3 rounded-2xl p-2"
+                          className="flex gap-3 py-4"
                         >
                           <Link
                             to={productPath(slug, l.productId)}
                             onClick={close}
-                            className="size-20 shrink-0 overflow-hidden rounded-xl bg-sunken"
+                            className="size-[72px] shrink-0 overflow-hidden rounded-lg bg-sunken"
                             tabIndex={-1}
                             aria-hidden
                           >
@@ -135,7 +133,7 @@ export function CartDrawer({ slug, shop }: { slug: string; shop: PublicShop }) {
                                 <Link
                                   to={productPath(slug, l.productId)}
                                   onClick={close}
-                                  className="line-clamp-2 text-sm leading-snug font-semibold text-ink hover:underline"
+                                  className="line-clamp-2 text-sm leading-snug font-medium break-words text-ink hover:underline"
                                 >
                                   {l.name}
                                 </Link>
@@ -145,22 +143,22 @@ export function CartDrawer({ slug, shop }: { slug: string; shop: PublicShop }) {
                                 type="button"
                                 onClick={() => cart.remove(l.variantId)}
                                 aria-label={`Remove ${l.name}`}
-                                className="-mt-1 -mr-1 grid size-9 shrink-0 place-items-center rounded-full text-ink-3 hover:bg-sunken hover:text-neg"
+                                className="-mt-2 -mr-2 grid size-10 shrink-0 place-items-center rounded-lg text-ink-3 hover:bg-sunken hover:text-neg"
                               >
                                 <Trash2 className="size-4" aria-hidden />
                               </button>
                             </div>
                             <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                              <div className="flex h-9 items-center rounded-full border border-line-strong bg-panel">
+                              <div className="flex h-10 items-center rounded-lg border border-line-strong bg-panel">
                                 <button
                                   type="button"
                                   onClick={() => cart.setQuantity(l.variantId, l.quantity - 1)}
                                   aria-label={l.quantity === 1 ? `Remove ${l.name}` : `One less ${l.name}`}
-                                  className="grid size-9 place-items-center rounded-full text-ink hover:bg-sunken"
+                                  className="grid size-10 place-items-center rounded-l-lg text-ink-2 hover:bg-sunken hover:text-ink"
                                 >
                                   <Minus className="size-4" aria-hidden />
                                 </button>
-                                <span className="w-7 text-center text-sm font-semibold tnum" aria-live="polite">
+                                <span className="w-7 text-center text-sm font-medium tnum" aria-live="polite">
                                   {l.quantity}
                                 </span>
                                 <button
@@ -168,12 +166,12 @@ export function CartDrawer({ slug, shop }: { slug: string; shop: PublicShop }) {
                                   onClick={() => cart.setQuantity(l.variantId, l.quantity + 1)}
                                   disabled={atMax}
                                   aria-label={`One more ${l.name}`}
-                                  className="grid size-9 place-items-center rounded-full text-ink hover:bg-sunken disabled:opacity-35"
+                                  className="grid size-10 place-items-center rounded-r-lg text-ink-2 hover:bg-sunken hover:text-ink disabled:opacity-35"
                                 >
                                   <Plus className="size-4" aria-hidden />
                                 </button>
                               </div>
-                              <span className="font-display text-base font-semibold text-ink tnum">
+                              <span className="text-sm font-semibold text-ink tnum">
                                 {fmtMoney(l.unitPriceMinor * l.quantity, l.currency, shop.locale)}
                               </span>
                             </div>
@@ -185,12 +183,12 @@ export function CartDrawer({ slug, shop }: { slug: string; shop: PublicShop }) {
                   </AnimatePresence>
                 </ul>
 
-                <div className="border-t border-line bg-panel px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-sm font-medium text-ink-2">Subtotal</span>
-                    <span className="font-display text-2xl font-semibold text-ink tnum">{fmtMoney(cart.subtotalMinor, currency, shop.locale)}</span>
+                <div className="border-t border-line bg-canvas px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-sm text-ink-2">Subtotal</span>
+                    <span className="text-xl font-semibold tracking-tight text-ink tnum">{fmtMoney(cart.subtotalMinor, currency, shop.locale)}</span>
                   </div>
-                  <p className="mt-0.5 text-xs text-ink-3">
+                  <p className="mt-1 text-xs text-ink-3">
                     {shop.deliveryEnabled
                       ? fee !== null
                         ? `Delivery from ${fmtMoney(fee, shop.currency, shop.locale)}, added before you pay.`
@@ -200,9 +198,9 @@ export function CartDrawer({ slug, shop }: { slug: string; shop: PublicShop }) {
                         : 'Your full total is shown before you pay.'}
                   </p>
                   <Button
-                    variant="brand"
+                    variant="primary"
                     size="lg"
-                    className="mt-3 w-full text-base"
+                    className="mt-4 w-full"
                     onClick={() => {
                       close()
                       navigate(`${shopPath(slug)}/checkout`)
@@ -218,11 +216,16 @@ export function CartDrawer({ slug, shop }: { slug: string; shop: PublicShop }) {
                       )}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-line-strong bg-panel text-[15px] font-semibold text-ink transition-colors hover:bg-sunken"
+                      className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-line-strong bg-panel text-[15px] font-medium text-ink transition-colors hover:bg-sunken"
                     >
                       <WhatsAppGlyph className="size-5 text-[#25D366]" />
                       Order on WhatsApp
                     </a>
+                  )}
+                  {wa && (
+                    <p className="mt-2 text-center text-[11px] leading-snug text-ink-3">
+                      Opens your own WhatsApp with the order typed out. Nothing is sent until you press send.
+                    </p>
                   )}
                 </div>
               </>

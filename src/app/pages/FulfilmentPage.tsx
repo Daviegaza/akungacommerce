@@ -76,29 +76,30 @@ function QueueRow({
   return (
     <li className="py-3">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-[15px] text-ink">
-            <Link to={`/app/orders/${o.id}`} className="tnum font-medium hover:underline">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm text-ink">
+            <Link to={`/app/orders/${o.id}`} className="tnum font-medium underline-offset-2 hover:underline">
               #{o.number}
             </Link>
             <span className="text-ink-2"> · {o.customerName ?? 'Walk-in'}</span>
           </p>
-          <p className="mt-0.5 text-xs text-ink-3">
+          <p className="mt-0.5 truncate text-xs text-ink-3">
             {o.fulfilmentMethod === 'pickup' ? 'Pickup' : 'Delivery'} · <When iso={o.createdAt} />
           </p>
         </div>
-        <Money minor={o.totalMinor} currency={o.currency} className="text-sm font-medium text-ink" />
+        <Money minor={o.totalMinor} currency={o.currency} className="shrink-0 text-sm font-medium text-ink" />
       </div>
       {step && (
-        <div className="mt-2">
+        <div className="mt-2 flex justify-end">
           <Button
             size="sm"
-            variant={o.status === 'pending_confirmation' ? 'secondary' : 'primary'}
+            variant="secondary"
             loading={pending}
             disabled={!allowed}
             onClick={() => onAdvance(step)}
             aria-label={`${step.label}, order ${o.number}`}
             title={allowed ? undefined : 'Your role cannot move orders'}
+            className="h-10 sm:h-9"
           >
             {step.label}
           </Button>
@@ -168,10 +169,20 @@ export default function FulfilmentPage() {
       {orders.isPending ? (
         <div className="grid gap-8 lg:grid-cols-3">
           {LANES.map((l) => (
-            <div key={l.id} className="flex flex-col gap-3">
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-16" />
-              <Skeleton className="h-16" />
+            <div key={l.id} className="flex flex-col">
+              <div className="border-b border-line-strong pb-2.5">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="mt-1.5 h-3 w-44" />
+              </div>
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex items-start justify-between gap-3 border-b border-line py-3.5">
+                  <div className="flex flex-col gap-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              ))}
             </div>
           ))}
         </div>
@@ -197,7 +208,7 @@ export default function FulfilmentPage() {
 
           {awaiting.length > 0 && (
             <details className="group mb-8 border-b border-line">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-2 [&::-webkit-details-marker]:hidden">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 py-2 [&::-webkit-details-marker]:hidden">
                 <span className="text-[15px] font-semibold text-ink">
                   Awaiting confirmation <span className="tnum ml-1 font-normal text-ink-3">{awaiting.length}</span>
                 </span>
@@ -215,14 +226,14 @@ export default function FulfilmentPage() {
               const headingId = `lane-${lane.id}`
               return (
                 <section key={lane.id} aria-labelledby={headingId} className="min-w-0">
-                  <div className="border-b border-line pb-2">
-                    <h2 id={headingId} className="text-[15px] font-semibold text-ink">
-                      {lane.title} <span className="tnum ml-1 font-normal text-ink-3">{list.length}</span>
+                  <div className="border-b border-line-strong pb-2.5">
+                    <h2 id={headingId} className="flex items-baseline justify-between gap-2 font-display text-[15px] font-semibold tracking-[-0.01em] text-ink">
+                      {lane.title} <span className="tnum text-[13px] font-normal text-ink-3">{list.length}</span>
                     </h2>
-                    <p className="text-xs text-ink-3">{lane.hint}</p>
+                    <p className="mt-0.5 text-xs text-ink-3">{lane.hint}</p>
                   </div>
                   {list.length === 0 ? (
-                    <p className="py-4 text-sm text-ink-3">Nothing here.</p>
+                    <p className="py-5 text-sm text-ink-3">Nothing here.</p>
                   ) : (
                     <ul className="divide-y divide-line">{list.map(row)}</ul>
                   )}

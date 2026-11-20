@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type DragEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, CheckCircle2, Download, FileSpreadsheet, Upload } from 'lucide-react'
+import { ArrowLeft, Check, CheckCircle2, Download, FileSpreadsheet, Upload } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import {
   IMPORT_MAX_BYTES,
   IMPORT_MAX_ROWS,
@@ -23,6 +24,34 @@ import { Badge, Button, Skeleton, buttonClass, type Tone } from '../ui/primitive
 const ACTION_LABEL: Record<RowAction, string> = { create: 'New', update: 'Update', skip: 'Skip', error: 'Fix' }
 const ACTION_TONE: Record<RowAction, Tone> = { create: 'pos', update: 'info', skip: 'neutral', error: 'neg' }
 const PREVIEW_LIMIT = 200
+const STEPS = ['Upload', 'Preview', 'Import'] as const
+
+/** Where you are in the import: 1 upload, 2 preview, 3 ready to import (check passed), 4 finished. */
+function StepStrip({ current }: { current: 1 | 2 | 3 | 4 }) {
+  return (
+    <ol aria-label="Import steps" className="mb-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px]">
+      {STEPS.map((label, i) => {
+        const n = i + 1
+        const state = n < current ? 'done' : n === current ? 'current' : 'todo'
+        return (
+          <li key={label} aria-current={n === current ? 'step' : undefined} className="flex items-center gap-2">
+            <span
+              className={cn(
+                'tnum flex size-6 items-center justify-center rounded-md border text-xs font-medium',
+                state === 'current' ? 'border-ink bg-ink text-canvas' : state === 'done' ? 'border-line-strong text-ink-2' : 'border-line text-ink-3',
+              )}
+              aria-hidden
+            >
+              {state === 'done' ? <Check className="size-3.5" /> : n}
+            </span>
+            <span className={state === 'todo' ? 'text-ink-3' : 'font-medium text-ink'}>{label}</span>
+            {state === 'done' && <span className="sr-only">(done)</span>}
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
 
 export default function ProductImportPage() {
   const { org, can } = useOrg()
@@ -112,7 +141,7 @@ export default function ProductImportPage() {
   const header = (
     <PageHeader
       back={
-        <Link to="/app/products" className="inline-flex items-center gap-1 text-sm font-semibold text-ink-3 hover:text-ink">
+        <Link to="/app/products" className="inline-flex min-h-10 items-center gap-1 text-sm font-medium text-ink-3 hover:text-ink">
           <ArrowLeft className="size-4" aria-hidden /> Products
         </Link>
       }
@@ -143,14 +172,16 @@ export default function ProductImportPage() {
     return (
       <>
         {header}
-        <div role="status" className="ak-rise flex flex-col items-start gap-3 rounded-[var(--radius-card)] bg-pos-soft p-5 text-ink">
-          <CheckCircle2 className="size-7 text-pos" aria-hidden />
-          <p className="font-display text-lg font-bold">Import finished</p>
-          <p className="text-sm text-ink-2">
+        <StepStrip current={4} />
+        <div role="status" className="flex flex-col items-start gap-3 border-t border-line pt-6 text-ink">
+          <p className="flex items-center gap-2 font-display text-lg font-semibold tracking-tight">
+            <CheckCircle2 className="size-5 text-pos" aria-hidden /> Import finished
+          </p>
+          <p className="tnum max-w-2xl text-sm leading-relaxed text-ink-2">
             {done.createdProducts} new {done.createdProducts === 1 ? 'product' : 'products'} ({done.createdVariants} variants), {done.updatedVariants} updated,{' '}
             {done.skipped} skipped. New products are live on your shop straight away; add photos from Products.
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="mt-1 flex flex-wrap gap-2">
             <Link to="/app/products" className={buttonClass('primary', 'sm')}>
               See products
             </Link>
@@ -164,10 +195,13 @@ export default function ProductImportPage() {
   }
 
   const shown = (plan?.rows ?? []).filter((r) => !onlyProblems || r.action === 'error').slice(0, PREVIEW_LIMIT)
+  const previewing = Boolean(plan && parsed && parsed.fileErrors.length === 0)
+  const step: 1 | 2 | 3 = !previewing ? 1 : dryRun?.ok ? 3 : 2
 
   return (
     <>
       {header}
+      <StepStrip current={step} />
 
       <Section title="1 · Choose your file" description="Columns: name, description, category, variant name, sku, price, compare-at price, stock, image url. Only name and price are required.">
         <div
@@ -177,10 +211,13 @@ export default function ProductImportPage() {
           }}
           onDragLeave={() => setDragging(false)}
           onDrop={onDrop}
-          className={`flex flex-col items-center gap-3 rounded-[var(--radius-card)] border-2 border-dashed px-5 py-8 text-center transition-colors ${dragging ? 'border-brand bg-brand-soft' : 'border-line-strong bg-panel/60'}`}
+          className={cn(
+            'flex flex-col items-center gap-3 rounded-[var(--radius-card)] border border-dashed px-5 py-8 text-center transition-colors',
+            dragging ? 'border-brand bg-brand-soft/40' : 'border-line-strong',
+          )}
         >
-          <FileSpreadsheet className="size-8 text-ink-3" aria-hidden />
-          <p className="text-sm text-ink-2">{fileName ? <strong className="text-ink">{fileName}</strong> : 'Drop a CSV file here, or'}</p>
+          <FileSpreadsheet className="size-6 text-ink-3" aria-hidden />
+          <p className="min-w-0 text-sm break-words text-ink-2">{fileName ? <span className="font-medium text-ink">{fileName}</span> : 'Drop a CSV file here, or'}</p>
           <input
             ref={fileInput}
             id="csv-file"
@@ -192,7 +229,7 @@ export default function ProductImportPage() {
               if (f) void readFile(f)
             }}
           />
-          <label htmlFor="csv-file" className={buttonClass('primary', 'md', 'cursor-pointer focus-within:ring-2')}>
+          <label htmlFor="csv-file" className={buttonClass(fileName ? 'secondary' : 'primary', 'md', 'cursor-pointer focus-within:ring-2')}>
             <Upload className="size-4" aria-hidden /> {fileName ? 'Choose another file' : 'Choose file'}
           </label>
           <p className="text-xs text-ink-3">Rows with the same name become one product with several variants. Rows without a SKU are always added as new.</p>
@@ -205,20 +242,25 @@ export default function ProductImportPage() {
       </Section>
 
       {parsed && parsed.fileErrors.length > 0 && (
-        <Notice tone="warn">
-          <p className="font-semibold">This file can't be imported yet</p>
-          <ul className="mt-1 list-disc pl-5">
-            {parsed.fileErrors.map((e) => (
-              <li key={e}>{e}</li>
-            ))}
-          </ul>
-        </Notice>
+        <div className="mb-8">
+          <Notice tone="warn">
+            <p className="font-semibold">This file can't be imported yet</p>
+            <ul className="mt-1 list-disc pl-5">
+              {parsed.fileErrors.map((e) => (
+                <li key={e}>{e}</li>
+              ))}
+            </ul>
+          </Notice>
+        </div>
       )}
 
       {plan && parsed && parsed.fileErrors.length === 0 && (
-        <Section title="2 · Check what will happen">
+        <Section title="2 · Check what will happen" className="border-t border-line pt-6">
           {products.isPending ? (
-            <Skeleton className="h-24" />
+            <div className="flex flex-col gap-3" aria-busy="true">
+              <Skeleton className="h-6 w-2/3" />
+              <Skeleton className="h-40" />
+            </div>
           ) : (
             <div className="flex flex-col gap-4">
               <ul className="flex flex-wrap gap-2" aria-label="Summary">
@@ -235,10 +277,10 @@ export default function ProductImportPage() {
                 <fieldset className="flex flex-col gap-2">
                   <legend className="mb-1 text-[13px] font-semibold text-ink">Some SKUs already exist in your shop</legend>
                   {(['update', 'skip'] as const).map((m) => (
-                    <label key={m} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl p-2 hover:bg-sunken">
+                    <label key={m} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg p-2 hover:bg-sunken">
                       <input type="radio" name="dup" value={m} checked={mode === m} onChange={() => { setMode(m); setDryRun(null) }} className="mt-1 size-4 shrink-0 accent-[var(--ak-brand)]" />
                       <span className="text-sm">
-                        <span className="font-semibold text-ink">{m === 'update' ? 'Update them' : 'Leave them as they are'}</span>
+                        <span className="font-medium text-ink">{m === 'update' ? 'Update them' : 'Leave them as they are'}</span>
                         <span className="block text-ink-3">
                           {m === 'update'
                             ? 'Price, compare-at price and stock come from the file. A blank compare-at price removes it. Blank description or category keeps the current one.'
@@ -251,7 +293,7 @@ export default function ProductImportPage() {
               )}
 
               {plan.counts.error > 0 && (
-                <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl bg-warn-soft p-3 text-sm text-ink">
+                <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-warn/25 bg-warn-soft p-3 text-sm text-ink">
                   <input type="checkbox" checked={skipInvalid} onChange={(e) => { setSkipInvalid(e.target.checked); setDryRun(null) }} className="mt-0.5 size-5 accent-[var(--ak-brand)]" />
                   <span>
                     Import the {validRows} good rows and leave out the {plan.counts.error} with problems. Or fix them in your spreadsheet and upload again.
@@ -259,12 +301,12 @@ export default function ProductImportPage() {
                 </label>
               )}
 
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs text-ink-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="tnum text-xs text-ink-3">
                   {shown.length < (onlyProblems ? plan.counts.error : plan.rows.length) ? `Showing the first ${PREVIEW_LIMIT} rows.` : `${plan.rows.length} rows.`}
                 </p>
                 {plan.counts.error > 0 && (
-                  <label className="flex items-center gap-2 text-sm text-ink-2">
+                  <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm text-ink-2">
                     <input type="checkbox" checked={onlyProblems} onChange={(e) => setOnlyProblems(e.target.checked)} className="size-4 accent-[var(--ak-brand)]" />
                     Only rows with problems
                   </label>
@@ -274,7 +316,7 @@ export default function ProductImportPage() {
               {shown.length === 0 ? (
                 <EmptyState title="Nothing to show" />
               ) : (
-                <Table>
+                <Table className="min-w-[560px]">
                   <caption className="sr-only">Import preview</caption>
                   <thead>
                     <tr>
@@ -336,7 +378,7 @@ export default function ProductImportPage() {
       )}
 
       {plan && parsed && parsed.fileErrors.length === 0 && (
-        <Section title="3 · Import">
+        <Section title="3 · Import" className="border-t border-line pt-6">
           <div className="flex flex-col gap-3">
             {run.isError && <ErrorNotice error={run.error} />}
             {dryRun && !dryRun.ok && (
@@ -353,7 +395,7 @@ export default function ProductImportPage() {
               </Notice>
             )}
             {dryRun?.ok && (
-              <p role="status" className="rounded-xl bg-pos-soft p-3 text-sm text-ink">
+              <p role="status" className="tnum rounded-lg border border-pos/25 bg-pos-soft px-4 py-3 text-sm text-ink">
                 Check passed: {dryRun.createdProducts} new products ({dryRun.createdVariants} variants), {dryRun.updatedVariants} updates, {dryRun.skipped} skipped. Nothing has changed yet.
               </p>
             )}

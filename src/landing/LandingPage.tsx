@@ -4,7 +4,7 @@ import { ArrowRight, Check, Menu, X } from 'lucide-react'
 import { BRAND } from '@/brand/brand'
 import { FunguaLogo } from '@/brand/FunguaLogo'
 import { buttonClass } from '@/app/ui/primitives'
-import { StorefrontPreview, WorkspacePreview } from './ProductPreview'
+import { WorkspacePreview } from './ProductPreview'
 import { Container, Faq, Features, FinalCta, Global, HowItWorks, IntegrationStatus, LandingFooter, Pricing, Trust } from './sections'
 import { DEMO_SHOP_PATH } from './constants'
 
@@ -62,11 +62,6 @@ function Hero() {
   const points = ['Your own branded storefront', 'One live order and stock view', 'Sell across channels and countries']
   return (
     <section aria-labelledby="hero-title" className="relative isolate overflow-hidden border-b border-line">
-      <div className="pointer-events-none absolute inset-0 -z-10 opacity-70" aria-hidden>
-        <div className="absolute -top-48 right-[-8rem] size-[38rem] rounded-full border border-line/70" />
-        <div className="absolute -top-32 right-[-4rem] size-[30rem] rounded-full border border-line/60" />
-        <div className="absolute top-0 right-0 h-full w-[58%] bg-[radial-gradient(ellipse_at_70%_25%,rgba(47,91,234,0.09),transparent_62%)]" />
-      </div>
       <Container className="grid items-center gap-12 py-16 sm:py-20 lg:min-h-[650px] lg:grid-cols-[0.88fr_1.12fr] lg:gap-8 lg:py-24">
         <div className="relative z-10 max-w-[590px]">
           <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-line bg-panel/80 px-3 py-1.5 text-[11px] font-semibold tracking-[0.13em] text-ink-2">
@@ -97,29 +92,10 @@ function Hero() {
           <p className="mt-7 text-[11px] leading-5 text-ink-3">Explore with fictional sample data. No sign-up needed for the demo.</p>
         </div>
 
-        <div className="relative min-w-0 lg:pl-2">
-          <div className="absolute -inset-5 -z-10 rounded-[2rem] border border-line/70 bg-panel/40 shadow-[0_30px_90px_rgba(14,20,32,0.08)]" />
-          <div className="overflow-hidden rounded-2xl border border-line bg-panel shadow-[0_18px_60px_rgba(14,20,32,0.12)]">
-            <div className="flex h-11 items-center justify-between border-b border-line bg-panel px-4">
-              <div className="flex items-center gap-1.5" aria-hidden>
-                <span className="size-2 rounded-full bg-[#d6d9df]" />
-                <span className="size-2 rounded-full bg-[#d6d9df]" />
-                <span className="size-2 rounded-full bg-[#d6d9df]" />
-              </div>
-              <span className="font-mono text-[10px] tracking-wide text-ink-3">WORKSPACE PREVIEW</span>
-              <span className="size-4" />
-            </div>
-            <div className="p-2 sm:p-3">
-              <WorkspacePreview />
-            </div>
-          </div>
-          <div className="relative z-10 mt-[-2.25rem] ml-auto w-[48%] min-w-[150px] max-w-[220px] sm:mt-[-4.5rem] sm:mr-[-1rem]">
-            <div className="overflow-hidden rounded-[1.5rem] border-[5px] border-[#111827] bg-panel shadow-[0_18px_48px_rgba(14,20,32,0.2)]">
-              <StorefrontPreview />
-            </div>
-          </div>
-          <p className="mt-3 text-right text-[10px] tracking-wide text-ink-3">Illustrative product preview · sample data</p>
-        </div>
+        <figure className="relative min-w-0 lg:pl-2">
+          <WorkspacePreview />
+          <figcaption className="mt-3 text-[11px] text-ink-3">Illustrative preview with fictional sample data: the workspace order list.</figcaption>
+        </figure>
       </Container>
     </section>
   )

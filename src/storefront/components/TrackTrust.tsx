@@ -37,15 +37,15 @@ function PaymentReceipts({ token, paidMinor, locale, timezone }: Omit<TrackTrust
   if (list.length === 0) return null
 
   return (
-    <section aria-labelledby="rafu-receipts" className="rounded-[var(--radius-card)] bg-panel p-4 shadow-[var(--shadow-card)] sm:p-5 ak-rise">
-      <h2 id="rafu-receipts" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-        <ReceiptText className="size-5 text-ink-2" aria-hidden />
+    <section aria-labelledby="rafu-receipts" className="border-t border-line pt-5">
+      <h2 id="rafu-receipts" className="flex items-center gap-2 text-base font-semibold tracking-tight text-ink">
+        <ReceiptText className="size-[18px] text-ink-3" aria-hidden />
         {list.length === 1 ? 'Payment receipt' : 'Payment receipts'}
       </h2>
       <p className="mt-1 text-xs text-ink-3">Confirmed by M-Pesa, not typed in by the shop.</p>
-      <ul className="mt-3 flex flex-col gap-3">
+      <ul className="mt-3 flex flex-col divide-y divide-line">
         {list.map((r, i) => (
-          <li key={`${r.receiptMasked}-${i}`} className="rounded-xl border border-line p-3">
+          <li key={`${r.receiptMasked}-${i}`} className="py-3 first:pt-0 last:pb-0">
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
               <dt className="text-ink-3">Amount</dt>
               <dd className="text-right font-semibold text-ink tnum">{fmtMoney(r.amountMinor, r.currency, locale)}</dd>
@@ -84,19 +84,19 @@ function MarketingOptOut({ token, shopName }: { token: string; shopName: string 
 
   if (optOut.isSuccess) {
     return (
-      <p role="status" className="flex items-start gap-2 px-1 text-sm text-ink-2">
+      <p role="status" className="flex items-start gap-2 border-t border-line pt-5 text-sm text-ink-2">
         <BellOff className="mt-0.5 size-4 shrink-0" aria-hidden />
         Done. {shopName} will not send you offers. You will still get updates about your orders.
       </p>
     )
   }
   return (
-    <div className="px-1">
+    <div className="border-t border-line pt-3">
       <button
         type="button"
         onClick={() => optOut.mutate()}
         disabled={optOut.isPending}
-        className="inline-flex min-h-11 items-center gap-2 rounded-lg text-sm font-medium text-ink-3 hover:text-ink disabled:opacity-60"
+        className="inline-flex min-h-11 items-center gap-2 rounded-lg text-left text-sm font-medium text-ink-3 hover:text-ink disabled:opacity-60"
       >
         <BellOff className="size-4" aria-hidden />
         {optOut.isPending ? 'Saving…' : `Never send me offers from ${shopName}`}

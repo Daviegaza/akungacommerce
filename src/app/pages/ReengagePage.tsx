@@ -17,7 +17,7 @@ import { whatsappChatLink } from '@/integrations/whatsapp-link'
 import { useAction, useCustomers, useOrders, useOrg, useOrgQuery } from '../context'
 import { EmptyState, ErrorNotice, Notice, PageHeader, Section } from '../ui/layout'
 import { Money, When } from '../ui/format'
-import { Button, PillTabs, Skeleton, Textarea } from '../ui/primitives'
+import { Button, PillTabs, Skeleton, Textarea, buttonClass } from '../ui/primitives'
 import { WhatsAppGlyph } from '@/storefront/components/WhatsAppGlyph'
 
 function BackLink() {
@@ -112,11 +112,11 @@ export default function ReengagePage() {
       ) : (
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-10">
           <div className="min-w-0">
-            <div className="mb-5 flex items-start gap-2.5 rounded-2xl bg-sunken px-4 py-3 text-sm text-ink-2">
-              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-pos" aria-hidden />
+            <div className="mb-6 flex items-start gap-2.5 text-sm leading-relaxed text-ink-2">
+              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
               <p>
-                <span className="font-semibold text-ink">{consenting}</span> of {customers.data.length} customers agreed to offers. Only they can be picked. Others can
-                still get messages about their own orders.
+                <span className="tnum font-semibold text-ink">{consenting}</span> of <span className="tnum">{customers.data.length}</span> customers agreed to
+                offers. Only they can be picked. Others can still get messages about their own orders.
               </p>
             </div>
 
@@ -129,7 +129,10 @@ export default function ReengagePage() {
               }}
               tabs={SEGMENTS.map((id) => ({ id, label: SEGMENT_TEXT[id].label, count: results[id].members.length }))}
             />
-            <p className="mt-2 mb-4 text-xs text-ink-3">{SEGMENT_TEXT[segment].rule}.</p>
+            <p className="mt-3 mb-4 text-[13px] text-ink-2">
+              <span className="text-ink-3">Why they are here: </span>
+              {SEGMENT_TEXT[segment].rule}.
+            </p>
 
             {current.excludedNoConsent > 0 && (
               <p className="mb-4 text-xs text-ink-3">
@@ -144,19 +147,19 @@ export default function ReengagePage() {
                 body="Customers appear here once they have ordered and agreed to offers, for example by ticking the box at checkout."
               />
             ) : (
-              <ul className="divide-y divide-line border-y border-line" aria-label={`${SEGMENT_TEXT[segment].label}: customers who agreed to offers`}>
+              <ul className="-mx-4 divide-y divide-line border-y border-line px-4 sm:mx-0 sm:px-0" aria-label={`${SEGMENT_TEXT[segment].label}: customers who agreed to offers`}>
                 {current.members.map(({ customer, stats: st }) => {
                   const last = lastContact.get(customer.id) ?? null
                   const wait = cooldownDaysLeft(last, nowMs)
                   const state = rows[customer.id]
                   const spent = st.spent.find((x) => x.currency === org.baseCurrency) ?? st.spent[0]
                   return (
-                    <li key={customer.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <li key={customer.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                       <div className="min-w-0">
                         <Link to={`/app/customers/${customer.id}`} className="block truncate text-[15px] font-medium text-ink hover:underline">
                           {customer.name}
                         </Link>
-                        <p className="mt-0.5 text-xs text-ink-3">
+                        <p className="tnum mt-0.5 text-xs text-ink-3">
                           {st.orderCount} {st.orderCount === 1 ? 'order' : 'orders'}
                           {spent && (
                             <>
@@ -179,7 +182,7 @@ export default function ReengagePage() {
                       </div>
                       <div className="shrink-0">
                         {state?.kind === 'opened' ? (
-                          <span className="inline-flex h-9 items-center gap-1.5 text-[13px] font-medium text-pos">
+                          <span className="inline-flex h-10 items-center gap-1.5 text-[13px] font-medium text-pos">
                             <CheckCircle2 className="size-4" aria-hidden /> Chat opened
                           </span>
                         ) : state?.kind === 'ready' ? (
@@ -189,19 +192,20 @@ export default function ReengagePage() {
                             rel="noopener noreferrer"
                             autoFocus
                             onClick={() => setRows((r) => ({ ...r, [customer.id]: { kind: 'opened' } }))}
-                            className="inline-flex h-9 items-center gap-2 rounded-xl bg-[#1f8f4e] px-3.5 text-[13px] font-semibold text-white hover:opacity-90"
+                            className={buttonClass('primary', 'sm', 'h-10 max-w-full')}
                           >
                             <WhatsAppGlyph className="size-4" />
                             Open chat with {customer.name.split(/\s+/)[0]}
                             <span className="sr-only"> (opens WhatsApp in a new tab)</span>
                           </a>
                         ) : wait > 0 ? (
-                          <span className="inline-flex h-9 items-center text-[13px] text-ink-3">
+                          <span className="inline-flex min-h-10 items-center text-[13px] text-ink-3">
                             Offer sent recently · wait {wait} {wait === 1 ? 'day' : 'days'}
                           </span>
                         ) : (
                           <Button
                             size="sm"
+                            className="h-10"
                             disabled={!templateOk || (start.isPending && start.variables?.customer.id === customer.id)}
                             loading={start.isPending && start.variables?.customer.id === customer.id}
                             onClick={() => prepare(customer)}
@@ -218,20 +222,29 @@ export default function ReengagePage() {
           </div>
 
           <div className="mt-8 min-w-0 lg:mt-0">
-            <Section title="Your message" description="{name} becomes the customer’s first name, {shop} your business name.">
+            <Section
+              title="Your message"
+              description="{name} becomes the customer’s first name, {shop} your business name."
+              className="border-t border-line pt-5"
+            >
               <label htmlFor="reengage-template" className="sr-only">
                 Message template
               </label>
               <Textarea id="reengage-template" rows={5} maxLength={600} value={template} onChange={(e) => setTemplate(e.target.value)} />
               {!templateOk && <p className="mt-1 text-xs font-medium text-neg">Write at least a short sentence.</p>}
-              <p className="mt-4 mb-1.5 text-[13px] font-semibold text-ink">What they will see</p>
-              <p className="rounded-2xl rounded-tl-sm bg-[#dcf8c6] px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap text-[#111b21] dark:bg-[#005c4b] dark:text-[#e9edef]">
+              <p className="mt-5 mb-1.5 text-[13px] font-semibold text-ink">What they will see</p>
+              <p className="rounded-lg rounded-tl-sm border border-line bg-sunken px-3.5 py-2.5 text-sm leading-relaxed break-words whitespace-pre-wrap text-ink">
                 {preview}
               </p>
-              <p className="mt-3 text-xs leading-relaxed text-ink-3">
-                “Reply STOP to opt out” is always added. When someone replies STOP, open their page and choose Record opt-out. Each customer can get one offer a
-                week.
-              </p>
+              <div className="mt-4 flex flex-col gap-2 border-t border-line pt-4 text-xs leading-relaxed text-ink-3">
+                <p>
+                  Each button opens your own WhatsApp with this message filled in. Nothing is sent automatically: you read it and press send yourself.
+                </p>
+                <p>
+                  “Reply STOP to opt out” is always added. When someone replies STOP, open their page and choose Record opt-out. Each customer can get one
+                  offer a week.
+                </p>
+              </div>
             </Section>
           </div>
         </div>

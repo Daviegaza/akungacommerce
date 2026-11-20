@@ -8,9 +8,9 @@ import { formatMoney, money, parseMajor, toMajorString } from '@/domain/money'
 import type { ShopSettings } from '@/gateway/storefront'
 import { MapFallback, PinPicker, StaticMap, type LatLng } from '@/maps'
 import { BRAND } from '@/brand/brand'
-import { DeliveryRulesSection, PickupPointsSection } from '../components/DeliveryRules'
+import { DeliveryRulesSection, PickupPointsSection, SettingsBlock } from '../components/DeliveryRules'
 import { useAction, useOrg, useOrgQuery } from '../context'
-import { ErrorNotice, Notice, PageHeader, Section } from '../ui/layout'
+import { ErrorNotice, Notice, PageHeader } from '../ui/layout'
 import { Badge, Button, Field, Input, Skeleton, Switch, Textarea, buttonClass } from '../ui/primitives'
 
 /* ───────────── Constants & helpers ───────────── */
@@ -219,12 +219,21 @@ export default function ShopSettingsPage() {
 
   return (
     <div className="ak-rise">
-      <PageHeader title="My shop" description="Your public shop link, how it looks, how buyers pay and how orders reach them." />
+      <PageHeader title="Storefront" description="Your public shop link, how it looks, how buyers pay and how orders reach them." />
       {query.isPending ? (
-        <div className="space-y-4" aria-busy>
-          <Skeleton className="h-44 w-full rounded-2xl" />
-          <Skeleton className="h-10 w-2/3" />
-          <Skeleton className="h-10 w-1/2" />
+        <div aria-busy>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="grid gap-4 border-t border-line py-7 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-48" />
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-11 w-full" />
+                <Skeleton className="h-11 w-2/3" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : query.isError ? (
         <ErrorNotice error={query.error} onRetry={() => query.refetch()} />
@@ -292,104 +301,118 @@ function ShopForm({ saved }: { saved: ShopSettings | null }) {
         </div>
       )}
 
-      <ShopPreviewHeader form={form} orgName={org.name} />
+      <SettingsBlock first={!readOnly} title="Link and publishing" description="The address you share on WhatsApp, Instagram and TikTok, and whether buyers can open it.">
+        <div className="space-y-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                {savedLive ? (
+                  <Badge tone="pos" dot>
+                    Live
+                  </Badge>
+                ) : (
+                  <Badge tone="neutral" dot>
+                    Not published
+                  </Badge>
+                )}
+                {dirty && <Badge tone="warn">Unsaved changes</Badge>}
+              </div>
+              <p className="mt-2 text-sm text-ink-2">
+                {savedLive ? (
+                  <>
+                    Live at{' '}
+                    <a href={shopUrl(savedLive)} target="_blank" rel="noreferrer" className="font-medium break-all text-brand underline-offset-2 hover:underline">
+                      {shopUrl(savedLive).replace(/^https?:\/\//, '')}
+                    </a>
+                  </>
+                ) : (
+                  'Only you can see this shop. Publish it when you’re ready for buyers.'
+                )}
+              </p>
+              {form.published !== Boolean(saved?.published) && (
+                <p className="mt-1 text-xs text-ink-3">{form.published ? 'Goes live when you save.' : 'Will be hidden from buyers when you save.'}</p>
+              )}
+            </div>
+            {saved?.slug && (
+              <a href={`/s/${saved.slug}`} target="_blank" rel="noreferrer" className={buttonClass('secondary', 'sm', 'h-10 shrink-0 self-start')}>
+                <ExternalLink className="size-4" aria-hidden />
+                Preview shop
+              </a>
+            )}
+          </div>
 
-      {/* Publish status */}
-      <div className="mt-5 mb-10 flex flex-col gap-3 rounded-2xl border border-line bg-panel p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            {savedLive ? (
-              <Badge tone="pos" dot>
-                Live
-              </Badge>
-            ) : (
-              <Badge tone="neutral" dot>
-                Not published
-              </Badge>
-            )}
-            {dirty && <Badge tone="warn">Unsaved changes</Badge>}
+          <div className="border-t border-line pt-4">
+            <Switch
+              checked={form.published}
+              onChange={(v) => set('published', v)}
+              label="Publish shop"
+              description="Buyers can open your link and order once you save with this on."
+              disabled={readOnly}
+            />
           </div>
-          <p className="mt-1.5 text-sm text-ink-2">
-            {savedLive ? (
-              <>
-                Live at{' '}
-                <a href={shopUrl(savedLive)} target="_blank" rel="noreferrer" className="font-medium break-all text-ink underline underline-offset-2">
-                  {shopUrl(savedLive).replace(/^https?:\/\//, '')}
-                </a>
-              </>
-            ) : (
-              'Only you can see this shop. Publish it when you’re ready for buyers.'
+
+          <fieldset disabled={readOnly} className="min-w-0 border-t border-line pt-4">
+            <Field
+              label="Shop link"
+              error={slugError}
+              hint={`3–40 characters: lowercase letters, numbers and hyphens. Changing it later breaks links you've already shared.`}
+            >
+              {(p) => (
+                <div className="flex items-stretch overflow-hidden rounded-lg border border-line-strong focus-within:border-brand focus-within:shadow-[0_0_0_3px_var(--ak-brand-soft)]">
+                  <span className="hidden items-center border-r border-line bg-sunken px-3 text-sm text-ink-3 sm:flex">{window.location.host}/s/</span>
+                  <Input
+                    {...p}
+                    value={form.slug}
+                    onChange={(e) => set('slug', e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    maxLength={40}
+                    className="rounded-none border-0 focus:shadow-none"
+                  />
+                </div>
+              )}
+            </Field>
+            {form.slug !== suggestSlug(org.name) && (
+              <button type="button" onClick={() => set('slug', suggestSlug(org.name))} className="mt-2 min-h-8 text-xs font-medium text-ink-2 underline underline-offset-2 hover:text-ink">
+                Use “{suggestSlug(org.name)}”
+              </button>
             )}
-          </p>
-          {form.published !== Boolean(saved?.published) && (
-            <p className="mt-1 text-xs text-ink-3">{form.published ? 'Goes live when you save.' : 'Will be hidden from buyers when you save.'}</p>
-          )}
+          </fieldset>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-3">
-          {saved?.slug && (
-            <a href={`/s/${saved.slug}`} target="_blank" rel="noreferrer" className={buttonClass('secondary', 'md')}>
-              <ExternalLink className="size-4" aria-hidden />
-              Preview shop
-            </a>
-          )}
-          <div className="w-44">
-            <Switch checked={form.published} onChange={(v) => set('published', v)} label="Publish shop" disabled={readOnly} />
-          </div>
-        </div>
-      </div>
+      </SettingsBlock>
 
       {savedLive && <ShareKit slug={savedLive} shopName={org.name} tagline={saved?.tagline ?? null} />}
 
       <fieldset disabled={readOnly} className="min-w-0">
-        <Section title="Shop link" description="The address you share on WhatsApp, Instagram and TikTok.">
-          <Field
-            label="Shop link"
-            error={slugError}
-            hint={`3–40 characters: lowercase letters, numbers and hyphens. Changing it later breaks links you've already shared.`}
-          >
-            {(p) => (
-              <div className="flex items-stretch overflow-hidden rounded-lg border border-line-strong focus-within:border-ink">
-                <span className="hidden items-center bg-sunken px-3 text-sm text-ink-3 sm:flex">{window.location.host}/s/</span>
-                <Input
-                  {...p}
-                  value={form.slug}
-                  onChange={(e) => set('slug', e.target.value.toLowerCase().replace(/\s+/g, '-'))}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  maxLength={40}
-                  className="rounded-none border-0"
-                />
-              </div>
-            )}
-          </Field>
-          {form.slug !== suggestSlug(org.name) && (
-            <button type="button" onClick={() => set('slug', suggestSlug(org.name))} className="mt-2 text-xs font-medium text-ink-2 underline underline-offset-2">
-              Use “{suggestSlug(org.name)}”
-            </button>
-          )}
-        </Section>
+        <SettingsBlock title="Branding" description="Photos sell. A wide cover and a clear logo make the shop feel real.">
+          <div className="space-y-5">
+            <ShopPreviewHeader form={form} orgName={org.name} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Cover image link" optional error={errors.coverUrl} hint="An https:// image, landscape works best.">
+                {(p) => <Input {...p} type="url" inputMode="url" placeholder="https://…" value={form.coverUrl} onChange={(e) => set('coverUrl', e.target.value)} />}
+              </Field>
+              <Field label="Logo image link" optional error={errors.logoUrl} hint="Square image. We show your first letter if empty.">
+                {(p) => <Input {...p} type="url" inputMode="url" placeholder="https://…" value={form.logoUrl} onChange={(e) => set('logoUrl', e.target.value)} />}
+              </Field>
+            </div>
+          </div>
+        </SettingsBlock>
 
-        <Section title="Look" description="Photos sell. A wide cover and a clear logo make the shop feel real.">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Cover image link" optional error={errors.coverUrl} hint="An https:// image, landscape works best.">
-              {(p) => <Input {...p} type="url" inputMode="url" placeholder="https://…" value={form.coverUrl} onChange={(e) => set('coverUrl', e.target.value)} />}
-            </Field>
-            <Field label="Logo image link" optional error={errors.logoUrl} hint="Square image. We show your first letter if empty.">
-              {(p) => <Input {...p} type="url" inputMode="url" placeholder="https://…" value={form.logoUrl} onChange={(e) => set('logoUrl', e.target.value)} />}
-            </Field>
-            <Field label="Tagline" optional className="sm:col-span-2" hint={`${form.tagline.length}/80`}>
+        <SettingsBlock title="About" description="What buyers read first: one line under your name, then who you are.">
+          <div className="space-y-4">
+            <Field label="Tagline" optional hint={`${form.tagline.length}/80`}>
               {(p) => (
                 <Input {...p} maxLength={80} placeholder="Handmade cushions and throws, delivered in Nairobi" value={form.tagline} onChange={(e) => set('tagline', e.target.value)} />
               )}
             </Field>
-            <Field label="About" optional className="sm:col-span-2" hint="Who you are, what you make, where you are.">
+            <Field label="About" optional hint="Who you are, what you make, where you are.">
               {(p) => <Textarea {...p} rows={4} maxLength={1000} value={form.about} onChange={(e) => set('about', e.target.value)} />}
             </Field>
           </div>
-        </Section>
+        </SettingsBlock>
 
-        <Section title="Contact & trust" description="Buyers of small shops worry about scams. These details answer that worry.">
+        <SettingsBlock title="Contact and WhatsApp" description="Buyers of small shops worry about scams. These details answer that worry.">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="WhatsApp number" optional error={errors.whatsapp} hint="Buyers can send their order to this number.">
               {(p) => <Input {...p} type="tel" inputMode="tel" autoComplete="tel" placeholder="0712 345 678" value={form.whatsapp} onChange={(e) => set('whatsapp', e.target.value)} />}
@@ -403,9 +426,9 @@ function ShopForm({ saved }: { saved: ShopSettings | null }) {
               {(p) => <Input {...p} placeholder="MTO HOME ENTERPRISES" value={form.registeredName} onChange={(e) => set('registeredName', e.target.value)} />}
             </Field>
           </div>
-        </Section>
+        </SettingsBlock>
 
-        <Section title="Location" description="Drop a pin on your shop or dispatch point. Buyers see the area, and delivery fees are measured from here.">
+        <SettingsBlock title="Location" description="Drop a pin on your shop or dispatch point. Buyers see the area, and delivery fees are measured from here.">
           <div className="space-y-4">
             {readOnly ? (
               form.location ? (
@@ -436,10 +459,10 @@ function ShopForm({ saved }: { saved: ShopSettings | null }) {
               )}
             </div>
           </div>
-        </Section>
+        </SettingsBlock>
 
-        <Section title="Delivery" description="How orders reach buyers. The fee is added before they pay — never as a surprise.">
-          <div className="space-y-5">
+        <SettingsBlock title="Pickup and delivery" description="How orders reach buyers. The fee is added before they pay — never as a surprise.">
+          <div className="space-y-6">
             <div className="max-w-lg space-y-4">
               <Switch checked={form.pickupEnabled} onChange={(v) => set('pickupEnabled', v)} label="Pickup" description="Buyers collect from your location." disabled={readOnly} />
               <Switch
@@ -458,58 +481,63 @@ function ShopForm({ saved }: { saved: ShopSettings | null }) {
 
             {form.deliveryEnabled && (
               <>
-                <div>
-                  <h3 className="text-sm font-semibold text-ink">Distance bands</h3>
-                  <p className="mb-3 text-xs text-ink-3">Each row covers buyers up to that distance. Further than your last row = no delivery.</p>
-                  <ul className="space-y-2">
-                    {form.bands.map((row, i) => {
-                      const rowErr = errors.bandRows?.[row.id]
-                      return (
-                        <li key={row.id} className="flex flex-wrap items-start gap-2">
-                          <label className="flex items-center gap-2 text-sm text-ink-2">
-                            <span className="w-12 shrink-0">Up to</span>
-                            <Input
-                              aria-label={`Band ${i + 1} distance in km`}
-                              aria-invalid={rowErr?.km ? true : undefined}
-                              inputMode="decimal"
-                              value={row.km}
-                              onChange={(e) => set('bands', form.bands.map((b) => (b.id === row.id ? { ...b, km: e.target.value } : b)))}
-                              className="tnum w-20"
-                            />
-                            <span>km</span>
-                          </label>
-                          <span className="mt-2.5 text-ink-3" aria-hidden>
-                            →
-                          </span>
-                          <label className="flex items-center gap-2 text-sm text-ink-2">
-                            <span className="sr-only">Band {i + 1} fee</span>
-                            <span className="text-ink-3">{currency}</span>
-                            <Input
-                              aria-label={`Band ${i + 1} fee in ${currency}`}
-                              aria-invalid={rowErr?.fee ? true : undefined}
-                              inputMode="decimal"
-                              value={row.fee}
-                              onChange={(e) => set('bands', form.bands.map((b) => (b.id === row.id ? { ...b, fee: e.target.value } : b)))}
-                              className="tnum w-28"
-                            />
-                          </label>
-                          <Button
-                            variant="ghost"
-                            aria-label={`Remove band ${i + 1}`}
-                            onClick={() => set('bands', form.bands.filter((b) => b.id !== row.id))}
-                            className="px-2"
-                          >
-                            <Trash2 className="size-4" aria-hidden />
-                          </Button>
-                          {(rowErr?.km || rowErr?.fee) && (
-                            <p role="alert" className="w-full text-xs font-medium text-neg">
-                              {[rowErr.km, rowErr.fee].filter(Boolean).join(' ')}
-                            </p>
-                          )}
-                        </li>
-                      )
-                    })}
-                  </ul>
+                <div className="border-t border-line pt-5">
+                  <h3 className="text-[13px] font-semibold text-ink">Distance bands</h3>
+                  <p className="mt-0.5 mb-3 text-xs text-ink-3">Each row covers buyers up to that distance. Further than your last row = no delivery.</p>
+                  {form.bands.length > 0 && (
+                    <div className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-panel">
+                      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px] gap-3 border-b border-line bg-sunken/50 px-3 py-2 text-xs font-medium text-ink-3" aria-hidden>
+                        <span>Up to (km)</span>
+                        <span>Fee ({currency})</span>
+                        <span />
+                      </div>
+                      <ul className="divide-y divide-line">
+                        {form.bands.map((row, i) => {
+                          const rowErr = errors.bandRows?.[row.id]
+                          return (
+                            <li key={row.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px] items-center gap-x-3 gap-y-1.5 px-3 py-2">
+                              <label className="flex min-w-0 items-center gap-2 text-sm text-ink-2">
+                                <Input
+                                  aria-label={`Band ${i + 1} distance in km`}
+                                  aria-invalid={rowErr?.km ? true : undefined}
+                                  inputMode="decimal"
+                                  value={row.km}
+                                  onChange={(e) => set('bands', form.bands.map((b) => (b.id === row.id ? { ...b, km: e.target.value } : b)))}
+                                  className="tnum h-10 min-w-0"
+                                />
+                                <span className="shrink-0 text-ink-3">km</span>
+                              </label>
+                              <label className="flex min-w-0 items-center gap-2 text-sm text-ink-2">
+                                <span className="sr-only">Band {i + 1} fee</span>
+                                <span className="shrink-0 text-xs text-ink-3">{currency}</span>
+                                <Input
+                                  aria-label={`Band ${i + 1} fee in ${currency}`}
+                                  aria-invalid={rowErr?.fee ? true : undefined}
+                                  inputMode="decimal"
+                                  value={row.fee}
+                                  onChange={(e) => set('bands', form.bands.map((b) => (b.id === row.id ? { ...b, fee: e.target.value } : b)))}
+                                  className="tnum h-10 min-w-0"
+                                />
+                              </label>
+                              <Button
+                                variant="ghost"
+                                aria-label={`Remove band ${i + 1}`}
+                                onClick={() => set('bands', form.bands.filter((b) => b.id !== row.id))}
+                                className="size-10 px-0"
+                              >
+                                <Trash2 className="size-4" aria-hidden />
+                              </Button>
+                              {(rowErr?.km || rowErr?.fee) && (
+                                <p role="alert" className="col-span-3 text-xs font-medium text-neg">
+                                  {[rowErr.km, rowErr.fee].filter(Boolean).join(' ')}
+                                </p>
+                              )}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
+                  )}
                   {errors.bands && (
                     <p role="alert" className="mt-2 text-xs font-medium text-neg">
                       {errors.bands}
@@ -519,7 +547,7 @@ function ShopForm({ saved }: { saved: ShopSettings | null }) {
                     <Button
                       variant="secondary"
                       size="sm"
-                      className="mt-3"
+                      className="mt-3 h-10"
                       icon={<Plus className="size-4" aria-hidden />}
                       onClick={() => {
                         const last = Number(form.bands.at(-1)?.km)
@@ -568,10 +596,10 @@ function ShopForm({ saved }: { saved: ShopSettings | null }) {
               </>
             )}
           </div>
-        </Section>
+        </SettingsBlock>
 
-        <Section title="Payments" description="How buyers pay you.">
-          <div className="space-y-4">
+        <SettingsBlock title="Payment options" description="How buyers pay you. These are shown at checkout.">
+          <div className="space-y-5">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="M-Pesa Till number" optional error={errors.mpesaTill} hint="Buy Goods, 5–8 digits.">
                 {(p) => <Input {...p} inputMode="numeric" className="tnum" value={form.mpesaTill} onChange={(e) => set('mpesaTill', e.target.value.replace(/\D/g, ''))} maxLength={8} />}
@@ -580,7 +608,7 @@ function ShopForm({ saved }: { saved: ShopSettings | null }) {
                 {(p) => <Input {...p} inputMode="numeric" className="tnum" value={form.mpesaPaybill} onChange={(e) => set('mpesaPaybill', e.target.value.replace(/\D/g, ''))} maxLength={8} />}
               </Field>
             </div>
-            <div className="max-w-lg">
+            <div className="max-w-lg border-t border-line pt-4">
               <Switch checked={form.codEnabled} onChange={(v) => set('codEnabled', v)} label="Cash on delivery" description="Buyers pay the rider or at pickup." disabled={readOnly} />
             </div>
             {errors.payments && (
@@ -592,30 +620,32 @@ function ShopForm({ saved }: { saved: ShopSettings | null }) {
               {BRAND.name} shows these to buyers. Automatic M-Pesa confirmation needs Daraja setup — until then you confirm payments yourself.
             </Notice>
           </div>
-        </Section>
+        </SettingsBlock>
 
-        <Section title="Returns policy" description="Plain words beat legal text. Buyers read this before they pay.">
+        <SettingsBlock title="Policies" description="Plain words beat legal text. Buyers read this before they pay.">
           <Field label="Returns policy" optional hint="e.g. “Exchange within 7 days if unused, with the tags on. Buyer pays return delivery.”">
             {(p) => <Textarea {...p} rows={4} maxLength={1500} value={form.returnPolicy} onChange={(e) => set('returnPolicy', e.target.value)} />}
           </Field>
-        </Section>
+        </SettingsBlock>
 
-        <Section title="Order tracking links" description="How long a buyer's tracking link keeps working after the order is delivered or cancelled.">
+        <SettingsBlock title="Order tracking links" description="How long a buyer's tracking link keeps working after the order is delivered or cancelled.">
           <Field
             label="Days after the order closes"
             error={errors.trackingLinkDays}
             hint="7 to 3650. After this the link shows “not found”, so old links shared in chats stop revealing order details."
-            className="max-w-xs"
+            className="max-w-sm"
           >
-            {(p) => <Input {...p} inputMode="numeric" value={form.trackingLinkDays} onChange={(e) => set('trackingLinkDays', e.target.value)} />}
+            {(p) => <Input {...p} inputMode="numeric" className="tnum max-w-[160px]" value={form.trackingLinkDays} onChange={(e) => set('trackingLinkDays', e.target.value)} />}
           </Field>
-        </Section>
+        </SettingsBlock>
       </fieldset>
 
       {!readOnly && (
         <div
-          className={`mt-2 flex flex-col gap-2 rounded-2xl border border-line bg-panel/95 p-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between ${
-            dirty || save.isError || errorCount > 0 ? 'sticky bottom-20 z-10 shadow-[var(--shadow-lift)] lg:bottom-4' : ''
+          className={`flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between ${
+            dirty || save.isError || errorCount > 0
+              ? 'sticky bottom-20 z-10 rounded-[var(--radius-card)] border border-line bg-panel/95 px-4 py-3 shadow-[var(--shadow-lift)] backdrop-blur lg:bottom-4'
+              : 'border-t border-line py-4'
           }`}
         >
           <div className="min-w-0 text-sm" aria-live="polite">
@@ -655,8 +685,8 @@ function ShopPreviewHeader({ form, orgName }: { form: Form; orgName: string }) {
   const showLogo = logo && brokenLogo !== logo
 
   return (
-    <div className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-panel shadow-[var(--shadow-card)]">
-      <div className="relative h-32 bg-brand-soft sm:h-44">
+    <div className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-panel">
+      <div className="relative h-32 bg-sunken sm:h-40">
         {showCover ? (
           <img src={cover} alt="" className="size-full object-cover" onError={() => setBrokenCover(cover)} />
         ) : (
@@ -667,7 +697,7 @@ function ShopPreviewHeader({ form, orgName }: { form: Form; orgName: string }) {
         <span className="absolute top-3 left-3 rounded-md bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white">Preview</span>
       </div>
       <div className="flex items-end gap-4 px-4 pb-4 sm:px-5">
-        <div className="-mt-8 flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 border-panel bg-brand text-2xl font-semibold text-on-brand sm:size-20">
+        <div className="-mt-8 flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-card)] border-4 border-panel bg-brand text-2xl font-semibold text-on-brand sm:size-20">
           {showLogo ? (
             <img src={logo} alt="" className="size-full object-cover" onError={() => setBrokenLogo(logo)} />
           ) : (
@@ -726,24 +756,24 @@ function ShareKit({ slug, shopName, tagline }: { slug: string; shopName: string;
     copied === key ? 'Copied' : copied === `${key}:failed` ? 'Copy failed — select the link' : idle
 
   return (
-    <Section title="Share kit" description="Your shop is live. Put the link everywhere your buyers already are.">
-      <div className="grid gap-6 md:grid-cols-[1fr_auto]">
-        <div className="min-w-0 space-y-4">
-          <div className="rounded-2xl bg-brand-soft p-4">
-            <p className="text-xs font-medium text-ink-2">Your shop link</p>
-            <p className="font-display mt-1 text-xl font-semibold tracking-tight break-all text-ink select-all sm:text-2xl">{link.replace(/^https?:\/\//, '')}</p>
+    <SettingsBlock title="Share kit" description="Your shop is live. Put the link everywhere your buyers already are.">
+      <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="min-w-0 space-y-5">
+          <div>
+            <p className="text-xs text-ink-3">Your shop link</p>
+            <p className="mt-1 font-mono text-[15px] break-all text-ink select-all">{link.replace(/^https?:\/\//, '')}</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button variant="brand" icon={copied === 'link' ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />} onClick={() => copy('link', link)}>
+              <Button variant="secondary" size="sm" className="h-10" icon={copied === 'link' ? <Check className="size-4 text-pos" aria-hidden /> : <Copy className="size-4" aria-hidden />} onClick={() => copy('link', link)}>
                 {copyLabel('link', 'Copy link')}
               </Button>
-              <a href={waHref} target="_blank" rel="noreferrer" className={buttonClass('secondary', 'md')}>
-                <MessageCircle className="size-4 text-[#25D366]" aria-hidden />
+              <a href={waHref} target="_blank" rel="noreferrer" className={buttonClass('secondary', 'sm', 'h-10')}>
+                <MessageCircle className="size-4 text-ink-3" aria-hidden />
                 Share on WhatsApp
               </a>
-              <Button variant="secondary" icon={<AtSign className="size-4" aria-hidden />} onClick={() => copy('ig', link)}>
+              <Button variant="secondary" size="sm" className="h-10" icon={<AtSign className="size-4 text-ink-3" aria-hidden />} onClick={() => copy('ig', link)}>
                 {copyLabel('ig', 'Copy Instagram bio link')}
               </Button>
-              <a href={`/s/${slug}`} target="_blank" rel="noreferrer" className={buttonClass('ghost', 'md')}>
+              <a href={`/s/${slug}`} target="_blank" rel="noreferrer" className={buttonClass('ghost', 'sm', 'h-10')}>
                 <Store className="size-4" aria-hidden />
                 Preview shop
               </a>
@@ -752,12 +782,14 @@ function ShareKit({ slug, shopName, tagline }: { slug: string; shopName: string;
               {copied && !copied.endsWith(':failed') ? 'Copied to clipboard' : ''}
             </span>
           </div>
-          <ShareTip title="WhatsApp Status">Download the QR below, post it to your Status, and paste your link as the caption. Status posts last 24 hours — re-post when you add new stock.</ShareTip>
-          <ShareTip title="Instagram & TikTok">Paste the link in your bio, then say “link in bio” on posts. Tap “Copy Instagram bio link” above.</ShareTip>
-          <ShareTip title="In person">Print the QR for your stall, packaging or receipts. Buyers scan it with their phone camera.</ShareTip>
+          <dl className="divide-y divide-line border-y border-line">
+            <ShareTip title="WhatsApp Status">Download the QR, post it to your Status, and paste your link as the caption. Status posts last 24 hours — re-post when you add new stock.</ShareTip>
+            <ShareTip title="Instagram & TikTok">Paste the link in your bio, then say “link in bio” on posts. Tap “Copy Instagram bio link” above.</ShareTip>
+            <ShareTip title="In person">Print the QR for your stall, packaging or receipts. Buyers scan it with their phone camera.</ShareTip>
+          </dl>
         </div>
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex size-48 items-center justify-center rounded-2xl border border-line bg-white p-2">
+        <div className="flex flex-col items-center gap-3 md:items-end">
+          <div className="flex size-44 items-center justify-center rounded-[var(--radius-card)] border border-line bg-white p-2">
             {qrUrl ? (
               <img src={qrUrl} alt={`QR code for ${link}`} className="size-full" />
             ) : qrError ? (
@@ -774,15 +806,15 @@ function ShareKit({ slug, shopName, tagline }: { slug: string; shopName: string;
           )}
         </div>
       </div>
-    </Section>
+    </SettingsBlock>
   )
 }
 
 function ShareTip({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="border-l-2 border-brand pl-3">
-      <p className="text-sm font-semibold text-ink">{title}</p>
-      <p className="text-sm text-ink-2">{children}</p>
+    <div className="grid gap-1 py-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-4">
+      <dt className="text-[13px] font-medium text-ink">{title}</dt>
+      <dd className="text-[13px] leading-relaxed text-ink-2">{children}</dd>
     </div>
   )
 }

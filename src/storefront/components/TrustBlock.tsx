@@ -11,9 +11,9 @@ import { WhatsAppGlyph } from './WhatsAppGlyph'
 function Row({ icon, title, children }: { icon: ReactNode; title: string; children?: ReactNode }) {
   return (
     <li className="flex gap-3 py-3">
-      <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-sunken text-ink-2">{icon}</span>
+      <span className="mt-0.5 shrink-0 text-ink-3">{icon}</span>
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-ink">{title}</p>
+        <p className="text-sm font-medium break-words text-ink">{title}</p>
         {children && <div className="mt-0.5 text-sm text-ink-2">{children}</div>}
       </div>
     </li>
@@ -41,16 +41,16 @@ export function TrustBlock({ shop, className, contextText }: { shop: PublicShop;
   const nameChecked = !!facts?.mpesaName
 
   return (
-    <section aria-label="About this seller" className={cn('rounded-[var(--radius-card)] border border-line bg-panel p-4 sm:p-5', className)}>
-      <h2 className="text-lg font-semibold tracking-tight text-ink">Buying from {shop.name}</h2>
+    <section aria-label="About this seller" className={cn('border-t border-line pt-6', className)}>
+      <h2 className="text-base font-semibold tracking-tight text-ink">Buying from {shop.name}</h2>
 
       {badges.length > 0 && (
-        <ul className="mt-3 flex flex-col gap-2" aria-label="Checks this shop passed">
+        <ul className="mt-2 divide-y divide-line" aria-label="Checks this shop passed">
           {badges.map((b) => (
-            <li key={b.id} className="flex gap-3 rounded-xl bg-pos-soft px-3 py-2.5">
-              <ShieldCheck className="mt-0.5 size-5 shrink-0 text-pos" aria-hidden />
+            <li key={b.id} className="flex gap-3 py-3">
+              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-pos" aria-hidden />
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-ink">{b.title}</p>
+                <p className="text-sm font-medium text-ink">{b.title}</p>
                 <p className="mt-0.5 text-sm text-ink-2">{b.explanation}</p>
               </div>
             </li>
@@ -58,7 +58,7 @@ export function TrustBlock({ shop, className, contextText }: { shop: PublicShop;
         </ul>
       )}
 
-      <ul className="mt-1 divide-y divide-line">
+      <ul className={cn('divide-y divide-line', badges.length > 0 ? 'border-t border-line' : 'mt-1')}>
         {facts && (
           <Row icon={<CalendarDays className="size-4" aria-hidden />} title={`On Fungua since ${onPlatformSinceLabel(facts.onPlatformSince, shop.locale, shop.timezone)}`}>
             <span className="inline-flex items-center gap-1.5">
@@ -106,13 +106,13 @@ export function TrustBlock({ shop, className, contextText }: { shop: PublicShop;
           <li className="py-3">
             <details className="group">
               <summary className="flex min-h-8 cursor-pointer list-none items-center gap-3 [&::-webkit-details-marker]:hidden">
-                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-sunken text-ink-2">
+                <span className="shrink-0 text-ink-3">
                   <RotateCcw className="size-4" aria-hidden />
                 </span>
-                <span className="flex-1 text-sm font-semibold text-ink">Returns</span>
+                <span className="flex-1 text-sm font-medium text-ink">Returns</span>
                 <ChevronDown className="size-4 text-ink-3 transition-transform group-open:rotate-180" aria-hidden />
               </summary>
-              <p className="mt-2 pl-11 text-sm leading-relaxed whitespace-pre-line text-ink-2">{shop.returnPolicy}</p>
+              <p className="mt-2 pl-7 text-sm leading-relaxed whitespace-pre-line text-ink-2">{shop.returnPolicy}</p>
             </details>
           </li>
         )}
@@ -122,7 +122,7 @@ export function TrustBlock({ shop, className, contextText }: { shop: PublicShop;
           href={whatsappChatLink(wa, contextText ?? `Hi ${shop.name}, I have a question.`)}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-2 flex h-11 items-center justify-center gap-2 rounded-xl border border-line-strong bg-panel text-sm font-semibold text-ink transition-colors hover:bg-sunken"
+          className="mt-2 flex h-11 items-center justify-center gap-2 rounded-lg border border-line-strong bg-panel text-sm font-medium text-ink transition-colors hover:bg-sunken sm:inline-flex sm:px-4"
         >
           <WhatsAppGlyph className="size-[18px] text-[#25D366]" />
           Chat with the seller
@@ -157,7 +157,7 @@ function ReportShop({ slug, shopName }: { slug: string; shopName: string }) {
 
   if (report.isSuccess) {
     return (
-      <p role="status" className="mt-4 rounded-xl bg-sunken px-3 py-3 text-sm text-ink-2">
+      <p role="status" className="mt-4 rounded-lg border border-line px-3 py-3 text-sm text-ink-2">
         Thank you. A Fungua reviewer will look at this report. {shopName} is not told who sent it.
       </p>
     )
@@ -176,7 +176,7 @@ function ReportShop({ slug, shopName }: { slug: string; shopName: string }) {
         Report this shop
       </button>
       {open && (
-        <form id={`${formId}-form`} onSubmit={submit} className="mt-2 flex flex-col gap-3 rounded-xl border border-line p-3" noValidate>
+        <form id={`${formId}-form`} onSubmit={submit} className="mt-2 flex flex-col gap-3 rounded-lg border border-line bg-panel p-3.5" noValidate>
           <fieldset aria-describedby={missingReason ? `${formId}-reason-err` : undefined}>
             <legend className="text-sm font-semibold text-ink">What went wrong?</legend>
             <p className="mt-0.5 text-xs text-ink-3">Your report is anonymous. Only Fungua reviewers see it.</p>
@@ -189,7 +189,7 @@ function ReportShop({ slug, shopName }: { slug: string; shopName: string }) {
                     value={r}
                     checked={reason === r}
                     onChange={() => setReason(r)}
-                    className="mt-0.5 size-4 shrink-0 accent-[var(--ak-brand)]"
+                    className="mt-0.5 size-4 shrink-0 accent-[var(--ak-ink)]"
                   />
                   {REPORT_REASON_LABEL[r]}
                 </label>
@@ -212,7 +212,7 @@ function ReportShop({ slug, shopName }: { slug: string; shopName: string }) {
               rows={3}
               aria-invalid={missingDetails || undefined}
               placeholder="What happened, and when? Don't include your phone number or PIN."
-              className="rounded-xl border border-line-strong bg-panel px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus-visible:outline-2"
+              className="rounded-lg border border-line-strong bg-panel px-3 py-2 text-sm text-ink placeholder:text-ink-3 focus-visible:outline-2"
             />
             {missingDetails && <span className="text-xs font-medium text-neg">Tell us briefly what happened.</span>}
           </label>
@@ -225,11 +225,11 @@ function ReportShop({ slug, shopName }: { slug: string; shopName: string }) {
             <button
               type="submit"
               disabled={report.isPending}
-              className="inline-flex h-11 items-center rounded-xl bg-ink px-4 text-sm font-semibold text-panel hover:opacity-90 disabled:opacity-60"
+              className="inline-flex h-11 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-on-primary hover:opacity-90 disabled:opacity-60"
             >
               {report.isPending ? 'Sending…' : 'Send report'}
             </button>
-            <button type="button" onClick={() => setOpen(false)} className="inline-flex h-11 items-center rounded-xl px-3 text-sm font-medium text-ink-2 hover:bg-sunken">
+            <button type="button" onClick={() => setOpen(false)} className="inline-flex h-11 items-center rounded-lg px-3 text-sm font-medium text-ink-2 hover:bg-sunken">
               Cancel
             </button>
           </div>

@@ -36,3 +36,6 @@ bash.exe.stackdump
 
 # Agent worktrees
 .claude/worktrees/
+
+# Visual QA screenshots (scripts/visual-qa.mjs)
+visual-qa/

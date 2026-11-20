@@ -144,17 +144,17 @@ export function CustomerFormSheet({
         {save.isError && <ErrorNotice error={save.error} />}
 
         {showDuplicates && (
-          <div role="alert" className="rounded-lg bg-warn-soft px-4 py-3 text-sm text-warn">
-            <p className="font-medium">
+          <div role="alert" className="rounded-lg border border-warn/25 bg-warn-soft px-4 py-3 text-sm leading-relaxed text-ink-2">
+            <p className="font-medium text-ink">
               {matches.length === 1 ? 'A customer with this phone or email already exists.' : `${matches.length} customers already use this phone or email.`}
             </p>
             <ul className="mt-2 flex flex-col gap-1">
               {matches.map((m) => (
                 <li key={m.id}>
-                  <Link to={`/app/customers/${m.id}`} onClick={onClose} className="font-medium underline underline-offset-2">
+                  <Link to={`/app/customers/${m.id}`} onClick={onClose} className="font-medium text-ink underline underline-offset-2">
                     {m.name}
                   </Link>
-                  <span className="text-warn/80">
+                  <span className="tnum text-ink-3">
                     {' '}
                     · {[m.phoneE164 ? formatPhone(m.phoneE164) : null, m.email].filter(Boolean).join(' · ')}
                   </span>

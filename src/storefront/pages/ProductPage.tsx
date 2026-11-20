@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { BadgeCheck, Check, Heart, MapPin, Minus, Plus, ShoppingBag, Truck } from 'lucide-react'
+import { BadgeCheck, Check, Heart, MapPin, Minus, Plus, ShoppingBag, Truck, Wallet } from 'lucide-react'
 import type { PublicProduct, PublicShop, PublicVariant, StorefrontData } from '@/gateway/storefront'
 import { isE164, whatsappChatLink } from '@/integrations/whatsapp-link'
 import { cn } from '@/lib/utils'
@@ -105,6 +105,7 @@ function ProductView({
   const wa = shop.whatsappE164 && isE164(shop.whatsappE164) ? shop.whatsappE164 : null
   const waHref = wa ? whatsappChatLink(wa, productWhatsappText(shop, product, variant, quantity, url)) : null
   const fee = lowestDeliveryFee(shop)
+  const hasMpesa = Boolean(shop.mpesaTill || shop.mpesaPaybill)
   const hasSwatches = product.variants.some((v) => v.swatch)
 
   const related = useMemo(
@@ -147,16 +148,16 @@ function ProductView({
       disabled={!canBuy}
       whileTap={reduce || !canBuy ? undefined : { scale: 0.96 }}
       className={cn(
-        'inline-flex h-12 items-center justify-center gap-2 rounded-xl px-5 text-[15px] font-semibold whitespace-nowrap transition-colors select-none disabled:cursor-not-allowed',
-        added ? 'bg-pos text-white' : 'bg-brand text-on-brand shadow-[0_6px_20px_-6px_var(--ak-brand)] hover:bg-brand-strong',
-        !canBuy && 'bg-sunken text-ink-3 shadow-none hover:bg-sunken',
+        'inline-flex h-12 min-w-0 items-center justify-center gap-2 overflow-hidden rounded-lg px-5 text-[15px] font-semibold whitespace-nowrap transition-colors select-none disabled:cursor-not-allowed',
+        added ? 'bg-pos text-white' : 'bg-primary text-on-primary hover:opacity-90',
+        !canBuy && 'bg-sunken text-ink-3 hover:bg-sunken hover:opacity-100',
         className,
       )}
     >
-      {added ? <Check className="size-5" aria-hidden /> : <ShoppingBag className="size-5" aria-hidden />}
-      {addLabel}
+      {added ? <Check className="size-[18px] shrink-0" aria-hidden /> : <ShoppingBag className="size-[18px] shrink-0" aria-hidden />}
+      <span className="truncate">{addLabel}</span>
       {canBuy && !added && variant && (
-        <span className="font-display font-semibold tnum opacity-90">· {fmtMoney(variant.priceMinor * quantity, variant.currency, shop.locale)}</span>
+        <span className="shrink-0 font-medium tnum opacity-80">· {fmtMoney(variant.priceMinor * quantity, variant.currency, shop.locale)}</span>
       )}
     </motion.button>
   )
@@ -169,7 +170,7 @@ function ProductView({
         rel="noopener noreferrer"
         aria-label="Order on WhatsApp"
         className={cn(
-          'inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-line-strong bg-panel px-4 text-[15px] font-semibold text-ink transition-colors hover:bg-sunken',
+          'inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-line-strong bg-panel px-4 text-[15px] font-medium text-ink transition-colors hover:bg-sunken',
           className,
         )}
       >
@@ -183,8 +184,8 @@ function ProductView({
       <ShopHeader slug={slug} shop={shop} products={products} showBack />
 
       <main className="mx-auto max-w-7xl pb-28 sm:px-6 sm:pt-6 sm:pb-8">
-        <div className="lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start lg:gap-10">
-          <div className="lg:sticky lg:top-20">
+        <div className="lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-start lg:gap-12">
+          <div className="lg:sticky lg:top-22">
             <Gallery
               images={product.images}
               name={product.name}
@@ -200,11 +201,11 @@ function ProductView({
             />
           </div>
 
-          <div className="ak-rise flex flex-col gap-5 px-4 pt-5 sm:px-0 lg:pt-0">
+          <div className="flex min-w-0 flex-col gap-5 px-4 pt-5 sm:px-0 lg:pt-0">
             <div>
-              {product.category && <p className="text-sm font-medium text-ink-3">{product.category}</p>}
+              {product.category && <p className="text-[13px] text-ink-3">{product.category}</p>}
               <div className="mt-1 flex items-start gap-3">
-                <h1 className="flex-1 font-display text-[1.75rem] leading-tight font-semibold tracking-tight text-ink sm:text-4xl">
+                <h1 className="min-w-0 flex-1 font-display text-2xl leading-tight font-semibold tracking-tight break-words text-ink sm:text-3xl">
                   {product.name}
                 </h1>
                 <div className="flex shrink-0 gap-2">
@@ -214,8 +215,8 @@ function ProductView({
                     aria-pressed={saved}
                     aria-label={saved ? 'Remove from saved' : 'Save for later'}
                     className={cn(
-                      'grid size-11 place-items-center rounded-full border border-line bg-panel transition-colors hover:bg-sunken',
-                      saved ? 'text-brand' : 'text-ink',
+                      'grid size-11 place-items-center rounded-lg border border-line-strong bg-panel transition-colors hover:bg-sunken',
+                      saved ? 'text-ink' : 'text-ink-2',
                     )}
                   >
                     <Heart key={String(saved)} className={cn('size-[18px]', saved && 'ak-pop fill-current')} aria-hidden />
@@ -244,12 +245,12 @@ function ProductView({
             {upcoming && <DropBadge availableFrom={product.availableFrom} shop={shop} variant="block" />}
 
             {!isDefaultOnly(product) && (
-              <fieldset>
-                <legend className="mb-2 text-sm font-semibold text-ink">
+              <fieldset className="min-w-0 border-t border-line pt-5">
+                <legend className="float-left mb-2.5 w-full text-[13px] font-semibold text-ink">
                   {hasSwatches ? 'Colour' : 'Option'}
                   {variant && <span className="ml-1.5 font-normal text-ink-2">{variant.name}</span>}
                 </legend>
-                <div className="flex flex-wrap gap-2">
+                <div className="clear-both flex flex-wrap gap-2">
                   {product.variants.map((v) => {
                     const out = !variantInStock(v)
                     const on = v.id === variantId
@@ -264,9 +265,9 @@ function ProductView({
                         aria-pressed={on}
                         aria-label={`${v.name}${out ? ', sold out' : ''}`}
                         className={cn(
-                          'relative inline-flex h-11 min-w-11 items-center gap-2 rounded-xl border-2 px-3 text-sm font-semibold transition-colors',
-                          on ? 'border-ink bg-panel text-ink' : 'border-line bg-panel text-ink-2 hover:border-line-strong',
-                          out && 'text-ink-3 line-through decoration-ink-3/70',
+                          'relative inline-flex h-11 max-w-full min-w-11 items-center gap-2 rounded-lg border px-3.5 text-sm transition-colors',
+                          on ? 'border-ink text-ink shadow-[inset_0_0_0_1px_var(--ak-ink)]' : 'border-line-strong text-ink-2 hover:border-ink-3 hover:text-ink',
+                          out ? 'bg-sunken text-ink-3 line-through decoration-ink-3/70' : 'bg-panel',
                         )}
                       >
                         {v.swatch && (
@@ -287,19 +288,19 @@ function ProductView({
             {variant && <StockLine available={variant.available} lowStockThreshold={variant.lowStockThreshold} />}
 
             {canBuy && (
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-semibold text-ink">Quantity</span>
-                <div className="flex h-11 items-center rounded-full border border-line-strong bg-panel">
+              <div className="flex items-center justify-between gap-4 sm:justify-start">
+                <span className="text-[13px] font-semibold text-ink">Quantity</span>
+                <div className="flex h-11 items-center rounded-lg border border-line-strong bg-panel">
                   <button
                     type="button"
                     onClick={() => setQty(Math.max(1, quantity - 1))}
                     disabled={quantity <= 1}
                     aria-label="Decrease quantity"
-                    className="grid size-11 place-items-center rounded-full text-ink hover:bg-sunken disabled:opacity-35"
+                    className="grid size-11 place-items-center rounded-l-lg text-ink-2 hover:bg-sunken hover:text-ink disabled:opacity-35"
                   >
                     <Minus className="size-4" aria-hidden />
                   </button>
-                  <span className="w-8 text-center font-semibold tnum" aria-live="polite">
+                  <span className="w-9 text-center text-[15px] font-medium tnum" aria-live="polite">
                     {quantity}
                   </span>
                   <button
@@ -307,7 +308,7 @@ function ProductView({
                     onClick={() => setQty(Math.min(qtyCap, quantity + 1))}
                     disabled={quantity >= qtyCap}
                     aria-label="Increase quantity"
-                    className="grid size-11 place-items-center rounded-full text-ink hover:bg-sunken disabled:opacity-35"
+                    className="grid size-11 place-items-center rounded-r-lg text-ink-2 hover:bg-sunken hover:text-ink disabled:opacity-35"
                   >
                     <Plus className="size-4" aria-hidden />
                   </button>
@@ -342,13 +343,20 @@ function ProductView({
               )}
             </AnimatePresence>
 
-            {(shop.deliveryEnabled || shop.pickupEnabled) && (
-              <div className="flex flex-col gap-3 rounded-[var(--radius-card)] bg-sunken/70 p-4">
+            {waHref && (
+              <p className="-mt-2 text-xs leading-relaxed text-ink-3">
+                {upcoming || soldOut ? 'Ask on WhatsApp' : 'Order on WhatsApp'} opens your own WhatsApp with the message typed out. Nothing
+                is sent until you press send.
+              </p>
+            )}
+
+            {(shop.deliveryEnabled || shop.pickupEnabled || hasMpesa || shop.codEnabled) && (
+              <ul className="divide-y divide-line border-y border-line text-sm" aria-label="Delivery and payment">
                 {shop.deliveryEnabled && (
-                  <div className="flex gap-3">
-                    <Truck className="mt-0.5 size-5 shrink-0 text-pos" aria-hidden />
-                    <div className="text-sm">
-                      <p className="font-semibold text-ink">{shop.deliveryPromise ?? 'Delivery available'}</p>
+                  <li className="flex gap-3 py-3">
+                    <Truck className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
+                    <div className="min-w-0">
+                      <p className="font-medium text-ink">{shop.deliveryPromise ?? 'Delivery available'}</p>
                       {fee !== null && (
                         <p className="text-ink-2">
                           {fee === 0 ? 'Free delivery nearby' : `Delivery from ${fmtMoney(fee, shop.currency, shop.locale)}`} · exact fee shown
@@ -356,47 +364,61 @@ function ProductView({
                         </p>
                       )}
                     </div>
-                  </div>
+                  </li>
                 )}
                 {shop.pickupEnabled && (
-                  <div className="flex gap-3">
-                    <MapPin className="mt-0.5 size-5 shrink-0 text-ink-2" aria-hidden />
-                    <p className="text-sm">
-                      <span className="font-semibold text-ink">Pickup</span>
+                  <li className="flex gap-3 py-3">
+                    <MapPin className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
+                    <p className="min-w-0">
+                      <span className="font-medium text-ink">Pickup</span>
                       <span className="text-ink-2">{shop.locationLabel ? ` at ${shop.locationLabel}` : ' available'}</span>
                     </p>
-                  </div>
+                  </li>
                 )}
-              </div>
+                {(hasMpesa || shop.codEnabled) && (
+                  <li className="flex gap-3 py-3">
+                    <Wallet className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
+                    <p className="min-w-0">
+                      <span className="font-medium text-ink">Payment</span>
+                      <span className="text-ink-2">
+                        {' '}
+                        {[hasMpesa ? `M-Pesa ${shop.mpesaTill ? 'Till' : 'Paybill'}` : null, shop.codEnabled ? 'pay on delivery' : null]
+                          .filter(Boolean)
+                          .join(' or ')}
+                      </span>
+                    </p>
+                  </li>
+                )}
+              </ul>
             )}
 
             {product.description && (
               <section aria-labelledby="fungua-desc">
-                <h2 id="fungua-desc" className="text-lg font-semibold tracking-tight text-ink">
+                <h2 id="fungua-desc" className="text-[15px] font-semibold tracking-tight text-ink">
                   Details
                 </h2>
-                <p className="mt-1.5 text-[15px] leading-relaxed whitespace-pre-line text-ink-2">{product.description}</p>
+                <p className="mt-1.5 text-[15px] leading-relaxed break-words whitespace-pre-line text-ink-2">{product.description}</p>
               </section>
             )}
 
             <TrustBlock shop={shop} contextText={`Hi ${shop.name}, a question about ${product.name}: ${url}`} />
 
-            <section aria-labelledby="rafu-reviews">
+            <section aria-labelledby="rafu-reviews" className="border-t border-line pt-6">
               <div className="flex items-baseline justify-between gap-3">
-                <h2 id="rafu-reviews" className="text-lg font-semibold tracking-tight text-ink">
+                <h2 id="rafu-reviews" className="text-base font-semibold tracking-tight text-ink">
                   Reviews
                 </h2>
                 {product.rating && <RatingStars rating={product.rating.average} count={product.rating.count} />}
               </div>
               {reviews.isPending ? (
                 <div className="mt-3 space-y-2" aria-hidden>
-                  <div className="h-16 animate-pulse rounded-xl bg-sunken" />
-                  <div className="h-16 animate-pulse rounded-xl bg-sunken" />
+                  <div className="h-16 animate-pulse rounded-lg bg-sunken" />
+                  <div className="h-16 animate-pulse rounded-lg bg-sunken" />
                 </div>
               ) : reviews.isError ? (
                 <p className="mt-2 text-sm text-ink-3">
                   Reviews couldn't load.{' '}
-                  <button type="button" className="font-semibold text-brand underline" onClick={() => void reviews.refetch()}>
+                  <button type="button" className="font-medium text-ink underline underline-offset-4" onClick={() => void reviews.refetch()}>
                     Try again
                   </button>
                 </p>
@@ -405,12 +427,12 @@ function ProductView({
                   No reviews yet. Only buyers whose order was delivered can review, so every review here is real.
                 </p>
               ) : (
-                <ul className="mt-3 flex flex-col gap-3">
+                <ul className="mt-2 divide-y divide-line">
                   {reviews.data.map((r, i) => (
-                    <li key={`${r.createdAt}-${i}`} className="rounded-2xl border border-line bg-panel p-4">
+                    <li key={`${r.createdAt}-${i}`} className="py-4">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <RatingStars rating={r.rating} />
-                        <span className="text-sm font-semibold text-ink">{r.author}</span>
+                        <span className="text-sm font-medium text-ink">{r.author}</span>
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-pos">
                           <BadgeCheck className="size-3.5" aria-hidden />
                           Verified purchase
@@ -433,8 +455,8 @@ function ProductView({
       <PoweredBy />
 
       {/* Sticky bottom bar on phones */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-canvas/95 px-3 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:hidden">
-        <div className="flex gap-2">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-canvas px-3 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:hidden">
+        <div className="flex min-w-0 gap-2">
           {renderWa('w-12 shrink-0 px-0', true)}
           {renderAdd('min-w-0 flex-1 px-3')}
         </div>
@@ -447,7 +469,7 @@ function ProductView({
             src={product.images[0].url}
             alt=""
             aria-hidden
-            className="pointer-events-none fixed top-0 left-0 z-[60] size-14 rounded-xl object-cover shadow-[var(--shadow-lift)]"
+            className="pointer-events-none fixed top-0 left-0 z-[60] size-14 rounded-lg object-cover shadow-[var(--shadow-lift)]"
             initial={{ x: fly.x, y: fly.y, scale: 1, opacity: 0.95 }}
             animate={{ x: fly.tx, y: fly.ty, scale: 0.35, opacity: 0.2 }}
             transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}

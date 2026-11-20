@@ -31,10 +31,23 @@ export default function OrderDetailPage() {
 
   if (order.isPending) {
     return (
-      <div className="flex flex-col gap-4">
-        <Skeleton className="h-10 w-48" />
-        <Skeleton className="h-40" />
-        <Skeleton className="h-40" />
+      <div aria-busy="true">
+        <div className="mb-8 flex flex-col gap-3 border-b border-line pb-6">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-9 w-56" />
+          <Skeleton className="h-4 w-72 max-w-full" />
+        </div>
+        <div className="grid gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-40 rounded-[var(--radius-card)]" />
+            <Skeleton className="ml-auto h-20 w-full sm:w-72" />
+          </div>
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-32" />
+          </div>
+        </div>
       </div>
     )
   }
@@ -86,9 +99,9 @@ function OrderView({ order }: { order: OrderDetail }) {
         actions={<StatusActions order={order} />}
       />
 
-      <div className="grid gap-x-12 lg:grid-cols-[1fr_340px]">
+      <div className="grid gap-x-12 lg:grid-cols-[minmax(0,1fr)_320px] xl:gap-x-16">
         <div className="min-w-0">
-          <Section title="Items">
+          <Section title="Items" description={`${order.lines.length} ${order.lines.length === 1 ? 'line' : 'lines'} · ${order.currency}`}>
             <Table>
               <thead>
                 <tr>
@@ -124,18 +137,18 @@ function OrderView({ order }: { order: OrderDetail }) {
                 ))}
               </tbody>
             </Table>
-            <dl className="mt-2 ml-auto max-w-xs text-sm">
+            <dl className="mt-3 ml-auto w-full text-sm sm:max-w-xs">
               <TotalRow label="Subtotal" minor={order.subtotalMinor} currency={order.currency} />
               <TotalRow label={order.taxMode === 'inclusive' ? 'Tax included' : 'Tax'} minor={order.taxMinor} currency={order.currency} />
               {order.deliveryFeeMinor > 0 && <TotalRow label="Delivery" minor={order.deliveryFeeMinor} currency={order.currency} />}
-              <div className="flex justify-between border-t border-line pt-2 text-base font-semibold">
-                <dt>Total</dt>
-                <dd>
-                  <Money minor={order.totalMinor} currency={order.currency} />
+              <div className="mt-1 flex items-baseline justify-between gap-4 border-t border-line pt-2.5">
+                <dt className="font-semibold text-ink">Total</dt>
+                <dd className="text-right">
+                  <Money minor={order.totalMinor} currency={order.currency} className="font-display text-[17px] font-semibold tracking-tight text-ink" />
                 </dd>
               </div>
             </dl>
-            <p className="mt-2 text-xs text-ink-3">Line prices are a permanent snapshot of the sale and do not change if catalogue prices change.</p>
+            <p className="mt-3 text-xs text-ink-3">Line prices are a permanent snapshot of the sale and do not change if catalogue prices change.</p>
             <ReturnItems order={order} />
           </Section>
 
@@ -143,11 +156,11 @@ function OrderView({ order }: { order: OrderDetail }) {
           <FulfilmentSection order={order} />
           <OrderDeliveryPanel order={order} />
 
-          <Section title="Timeline">
+          <Section title="Timeline" className="border-t border-line pt-6">
             <ol className="relative ml-1.5 border-l border-line">
               {[...order.history].reverse().map((h, i) => (
                 <li key={i} className="relative pb-4 pl-5 last:pb-0">
-                  <span className="absolute top-1.5 -left-[5px] size-2.5 rounded-full border-2 border-canvas bg-ink-3" aria-hidden />
+                  <span className={`absolute top-1.5 -left-[5px] size-2.5 rounded-full border-2 border-canvas ${i === 0 ? 'bg-ink' : 'bg-line-strong'}`} aria-hidden />
                   <p className="text-sm">
                     <span className="font-medium">{ORDER_STATUS_LABEL[h.toStatus]}</span>
                     {h.fromStatus && h.fromStatus !== h.toStatus && <span className="text-ink-3"> from {ORDER_STATUS_LABEL[h.fromStatus].toLowerCase()}</span>}
@@ -164,10 +177,7 @@ function OrderView({ order }: { order: OrderDetail }) {
         </div>
 
         <aside className="min-w-0">
-          <Section title="Payment">
-            <div className="mb-3 flex items-center gap-2">
-              <PaymentStateBadge state={summary.state} />
-            </div>
+          <Section title="Payment" actions={<PaymentStateBadge state={summary.state} />} className="border-t border-line pt-6 lg:border-t-0 lg:pt-0">
             <DefinitionList
               items={[
                 { label: 'Order total', value: <Money minor={summary.totalMinor} currency={summary.currency} /> },
@@ -181,9 +191,9 @@ function OrderView({ order }: { order: OrderDetail }) {
             />
           </Section>
 
-          <Section title="Customer">
+          <Section title="Customer" className="border-t border-line pt-6">
             {order.customerName || order.customerPhone ? (
-              <div className="flex flex-col gap-2 text-sm">
+              <div className="flex flex-col items-start gap-2 text-sm">
                 {order.customerId ? (
                   <Link to={`/app/customers/${order.customerId}`} className="font-medium hover:underline">
                     {order.customerName}
@@ -197,12 +207,12 @@ function OrderView({ order }: { order: OrderDetail }) {
                     href={whatsappChatLink(order.customerPhone, waText)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:underline"
+                    className="inline-flex min-h-10 items-center gap-1.5 text-sm font-medium text-brand underline-offset-2 hover:underline"
                   >
                     <MessageCircle className="size-4" aria-hidden /> Open chat in WhatsApp
                   </a>
                 )}
-                <p className="text-xs text-ink-3">Opens your own WhatsApp with a prepared message. Nothing is sent automatically.</p>
+                <p className="text-xs leading-relaxed text-ink-3">Opens your own WhatsApp with a prepared message. Nothing is sent automatically.</p>
               </div>
             ) : (
               <p className="text-sm text-ink-3">Walk-in sale, no customer attached.</p>
@@ -210,10 +220,19 @@ function OrderView({ order }: { order: OrderDetail }) {
           </Section>
 
           {order.note && (
-            <Section title="Note">
-              <p className="text-sm whitespace-pre-wrap text-ink-2">{order.note}</p>
+            <Section title="Note" className="border-t border-line pt-6">
+              <p className="text-sm break-words whitespace-pre-wrap text-ink-2">{order.note}</p>
             </Section>
           )}
+
+          <section className="mb-8 border-t border-line pt-6" aria-labelledby="order-docs-h">
+            <h2 id="order-docs-h" className="font-display text-[16px] font-semibold tracking-[-0.02em] text-ink">
+              Documents
+            </h2>
+            <Link to={`/app/orders/${order.id}/invoice`} className="mt-3 inline-flex min-h-10 items-center text-sm font-medium text-brand underline-offset-2 hover:underline">
+              Tax invoice
+            </Link>
+          </section>
         </aside>
       </div>
     </>
@@ -222,9 +241,9 @@ function OrderView({ order }: { order: OrderDetail }) {
 
 function TotalRow({ label, minor, currency }: { label: string; minor: number; currency: string }) {
   return (
-    <div className="flex justify-between py-1">
+    <div className="flex items-baseline justify-between gap-4 py-1">
       <dt className="text-ink-3">{label}</dt>
-      <dd>
+      <dd className="text-right text-ink-2">
         <Money minor={minor} currency={currency} />
       </dd>
     </div>
@@ -262,7 +281,13 @@ function StatusActions({ order }: { order: OrderDetail }) {
         </Button>
       )}
       {forward.map((s, i) => (
-        <Button key={s} variant={i === 0 ? 'primary' : 'secondary'} loading={transition.isPending && transition.variables?.to === s} onClick={() => transition.mutate({ to: s, note: null })}>
+        <Button
+          key={s}
+          variant={i === 0 ? 'primary' : 'secondary'}
+          className="grow sm:grow-0"
+          loading={transition.isPending && transition.variables?.to === s}
+          onClick={() => transition.mutate({ to: s, note: null })}
+        >
           {label(s)}
         </Button>
       ))}
@@ -308,11 +333,12 @@ function PaymentsSection({ order }: { order: OrderDetail }) {
 
   return (
     <Section
+      className="border-t border-line pt-6"
       title="Payments"
       description="Payments you record are marked manual and unverified until a connected provider confirms them."
       actions={
         canRecord && (
-          <Button size="sm" variant="primary" onClick={() => setRecordOpen(true)}>
+          <Button size="sm" variant="secondary" onClick={() => setRecordOpen(true)}>
             Record payment
           </Button>
         )
@@ -321,7 +347,7 @@ function PaymentsSection({ order }: { order: OrderDetail }) {
       {order.payments.length === 0 ? (
         <EmptyState title="No payments recorded" body={order.status === 'draft' ? 'Confirm the order before recording payment.' : 'Record cash, transfer or mobile money once you have received it.'} />
       ) : (
-        <ul className="divide-y divide-line">
+        <ul className="divide-y divide-line border-y border-line">
           {order.payments.map((p) => {
             const refunds = order.refunds.filter((r) => r.paymentId === p.id)
             const refundable = refundableMinor(p, order.refunds)
@@ -333,7 +359,7 @@ function PaymentsSection({ order }: { order: OrderDetail }) {
                       <Money minor={p.amountMinor} currency={p.currency} className={p.status === 'reversed' ? 'text-ink-3 line-through' : ''} />
                       <span className="ml-2 text-sm font-normal text-ink-2">{PAYMENT_METHOD_LABEL[p.method]}</span>
                     </p>
-                    <p className="text-xs text-ink-3">
+                    <p className="mt-0.5 text-xs break-words text-ink-3">
                       <When iso={p.receivedAt} />
                       {p.externalRef && <> · Ref <span className="font-mono">{p.externalRef}</span></>}
                       {p.note && <> · {p.note}</>}
@@ -668,6 +694,7 @@ function FulfilmentSection({ order }: { order: OrderDetail }) {
 
   return (
     <Section
+      className="border-t border-line pt-6"
       title="Fulfilment"
       actions={
         can('fulfilment.update') &&

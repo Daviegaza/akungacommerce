@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ChevronLeft, Plus } from 'lucide-react'
 import type { OrderSummary } from '@/gateway/types'
@@ -6,7 +6,7 @@ import { COUNTRY_PRESETS } from '@/domain/locale'
 import { divRoundHalfUp } from '@/domain/money'
 import { whatsappChatLink } from '@/integrations/whatsapp-link'
 import { useCustomers, useOrders, useOrg } from '../context'
-import { DefinitionList, EmptyState, ErrorNotice, PageHeader, Section, Stat, Table, Td, Th } from '../ui/layout'
+import { DefinitionList, EmptyState, ErrorNotice, PageHeader, Section, Table, Td, Th } from '../ui/layout'
 import { Money, OrderStatusBadge, PaymentStateBadge, Phone, When, paymentStateOf } from '../ui/format'
 import { Badge, Button, Skeleton, buttonClass } from '../ui/primitives'
 import { CustomerFormSheet } from '../components/CustomerForm'
@@ -43,6 +43,17 @@ function countryName(code: string | null): string | null {
 
 function showsPayment(o: OrderSummary) {
   return o.status !== 'draft' && o.status !== 'cancelled'
+}
+
+/** One cell of the hairline stat strip. */
+function StripCell({ label, value, foot }: { label: string; value: ReactNode; foot?: ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col bg-panel px-4 py-3.5 sm:px-5">
+      <dt className="text-[13px] text-ink-2">{label}</dt>
+      <dd className="tnum mt-1 min-w-0 truncate font-display text-[clamp(1.05rem,4.6vw,1.375rem)] leading-tight font-semibold tracking-tight text-ink">{value}</dd>
+      {foot && <dd className="mt-1 text-xs text-ink-3">{foot}</dd>}
+    </div>
+  )
 }
 
 export default function CustomerDetailPage() {
@@ -114,6 +125,8 @@ export default function CustomerDetailPage() {
 
   const waLink = customer.phoneE164 ? safeWhatsappLink(customer.phoneE164, customer.name) : null
   const newOrderHref = `/app/orders/new?customer=${encodeURIComponent(customer.id)}`
+  // History is newest first; drafts and cancelled orders don't count as an order placed.
+  const lastOrderAt = history.find(showsPayment)?.createdAt ?? null
 
   return (
     <>
@@ -139,41 +152,57 @@ export default function CustomerDetailPage() {
         }
       />
 
+      {/* Lifetime value: hairline strip, one cell per currency (never added together). */}
+      <section aria-labelledby="ltv-h" className="mb-10">
+        <h2 id="ltv-h" className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-[13px] font-medium text-ink-3">
+          Lifetime value
+          <span className="text-xs font-normal">Excludes drafts and cancelled orders. Each currency is kept separate.</span>
+        </h2>
+        {orders.isPending ? (
+          <Skeleton className="h-[92px] rounded-[var(--radius-card)]" />
+        ) : orders.isError ? (
+          <ErrorNotice error={orders.error} onRetry={() => orders.refetch()} />
+        ) : (
+          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-line bg-line lg:grid-cols-4">
+            <StripCell
+              label="Orders"
+              value={countedOrders}
+              foot={history.length > countedOrders ? `${history.length - countedOrders} draft or cancelled` : undefined}
+            />
+            {totals.length === 0 ? (
+              <StripCell label="Spent" value={<span className="text-ink-3">—</span>} foot="No completed orders yet" />
+            ) : (
+              totals.map((t) => (
+                <StripCell
+                  key={t.currency}
+                  label={totals.length > 1 ? `Spent · ${t.currency}` : 'Spent'}
+                  value={<Money minor={t.totalMinor} currency={t.currency} />}
+                  foot={
+                    <>
+                      Average <Money minor={divRoundHalfUp(t.totalMinor, t.count)} currency={t.currency} /> over {t.count}{' '}
+                      {t.count === 1 ? 'order' : 'orders'}
+                    </>
+                  }
+                />
+              ))
+            )}
+            <StripCell
+              label="Last order"
+              value={lastOrderAt ? <When iso={lastOrderAt} dateOnly /> : <span className="text-ink-3">—</span>}
+              foot={lastOrderAt ? undefined : 'None yet'}
+            />
+            <StripCell
+              label="Offers"
+              value={customer.marketingConsent ? 'Agreed' : <span className="text-ink-2">Not agreed</span>}
+              foot={customer.marketingConsent ? 'May receive offers' : 'Order messages only'}
+            />
+          </dl>
+        )}
+      </section>
+
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-12">
         <div className="min-w-0">
-          <Section title="Lifetime value" description="Order totals excluding drafts and cancelled orders. Each currency is kept separate.">
-            {orders.isPending ? (
-              <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
-                <Skeleton className="h-14" />
-                <Skeleton className="h-14" />
-              </div>
-            ) : orders.isError ? (
-              <ErrorNotice error={orders.error} onRetry={() => orders.refetch()} />
-            ) : (
-              <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3">
-                <Stat label="Orders" value={countedOrders} foot={history.length > countedOrders ? `${history.length - countedOrders} draft or cancelled` : undefined} />
-                {totals.length === 0 ? (
-                  <Stat label="Spent" value={<span className="text-ink-3">—</span>} foot="No completed orders yet" />
-                ) : (
-                  totals.map((t) => (
-                    <Stat
-                      key={t.currency}
-                      label={totals.length > 1 ? `Spent · ${t.currency}` : 'Spent'}
-                      value={<Money minor={t.totalMinor} currency={t.currency} />}
-                      foot={
-                        <>
-                          Average <Money minor={divRoundHalfUp(t.totalMinor, t.count)} currency={t.currency} /> over {t.count}{' '}
-                          {t.count === 1 ? 'order' : 'orders'}
-                        </>
-                      }
-                    />
-                  ))
-                )}
-              </div>
-            )}
-          </Section>
-
-          <Section title="Orders">
+          <Section title="Orders" className="border-t border-line pt-5">
             {orders.isPending ? (
               <div className="flex flex-col gap-3">
                 {Array.from({ length: 3 }, (_, i) => (
@@ -255,7 +284,7 @@ export default function CustomerDetailPage() {
         </div>
 
         <div className="min-w-0">
-          <Section title="Contact">
+          <Section title="Contact" className="border-t border-line pt-5">
             <DefinitionList
               items={[
                 {
@@ -289,11 +318,11 @@ export default function CustomerDetailPage() {
             />
           </Section>
 
-          <Section title="Marketing consent">
+          <Section title="Marketing consent" className="border-t border-line pt-5">
             <MarketingConsentPanel customer={customer} />
           </Section>
 
-          <Section title="Tags">
+          <Section title="Tags" className="border-t border-line pt-5">
             {customer.tags.length ? (
               <div className="flex flex-wrap gap-1.5">
                 {customer.tags.map((t) => (
@@ -305,7 +334,7 @@ export default function CustomerDetailPage() {
             )}
           </Section>
 
-          <Section title="Notes">
+          <Section title="Notes" className="border-t border-line pt-5">
             {customer.notes ? (
               <p className="text-sm leading-relaxed break-words whitespace-pre-wrap text-ink-2">{customer.notes}</p>
             ) : (

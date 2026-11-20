@@ -4,9 +4,9 @@ import { Search } from 'lucide-react'
 import type { StockMovement } from '@/gateway/types'
 import { ADJUSTMENT_REASON_LABEL, available, stockHealth, type StockHealth, type StockMovementKind } from '@/domain/inventory'
 import { useMovements, useOrg, useProducts } from '../context'
-import { EmptyState, ErrorNotice, PageHeader, Section, Table, Td, Th } from '../ui/layout'
+import { EmptyState, ErrorNotice, Notice, PageHeader, Section, Table, Td, Th } from '../ui/layout'
 import { When } from '../ui/format'
-import { Badge, Button, Input, Skeleton, buttonClass } from '../ui/primitives'
+import { Badge, Button, Input, PillTabs, Skeleton, buttonClass } from '../ui/primitives'
 import { StockAdjustSheet, type StockTarget } from '../components/StockAdjustSheet'
 import { cn } from '@/lib/utils'
 
@@ -14,8 +14,8 @@ type HealthFilter = 'all' | 'low' | 'out'
 
 const FILTERS: { id: HealthFilter; label: string }[] = [
   { id: 'all', label: 'All' },
-  { id: 'low', label: 'Low' },
-  { id: 'out', label: 'Out' },
+  { id: 'low', label: 'Low stock' },
+  { id: 'out', label: 'Out of stock' },
 ]
 
 const KIND_LABEL: Record<StockMovementKind, string> = {
@@ -36,10 +36,11 @@ interface StockRow extends StockTarget {
   inactive: boolean
 }
 
+/** Stock state in words. Only problems get colour; healthy rows stay quiet. */
 function HealthBadge({ health }: { health: StockHealth }) {
-  if (health === 'out') return <Badge tone="neg">Out</Badge>
-  if (health === 'low') return <Badge tone="warn">Low</Badge>
-  return <Badge tone="pos">In stock</Badge>
+  if (health === 'out') return <Badge tone="neg">Out of stock</Badge>
+  if (health === 'low') return <Badge tone="warn">Low stock</Badge>
+  return <span className="text-[13px] whitespace-nowrap text-ink-3">In stock</span>
 }
 
 function Delta({ value }: { value: number }) {
@@ -137,39 +138,59 @@ export default function InventoryPage() {
       />
 
       <Section>
-        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div role="group" aria-label="Filter by stock level" className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0">
-            {FILTERS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                aria-pressed={filter === f.id}
-                onClick={() => setFilter(f.id)}
-                className={cn(
-                  'flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-medium transition-colors',
-                  filter === f.id ? 'bg-primary text-on-primary' : 'text-ink-2 hover:bg-sunken',
-                )}
-              >
-                {f.label}
-                <span className={cn('tnum text-xs', filter === f.id ? 'opacity-70' : 'text-ink-3')}>{counts[f.id]}</span>
-              </button>
-            ))}
-          </div>
-          <label className="relative block lg:w-72">
+        <div className="mb-5 flex flex-col gap-4">
+          <PillTabs
+            tabs={FILTERS.map((f) => ({ id: f.id, label: f.label, count: products.isPending ? undefined : counts[f.id] }))}
+            value={filter}
+            onChange={setFilter}
+            label="Filter by stock level"
+          />
+          <label className="relative block sm:max-w-sm">
             <span className="sr-only">Search stock</span>
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-3" aria-hidden />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Product, variant or SKU" className="pl-9" />
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-3" aria-hidden />
+            <Input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Product, variant or SKU" className="pl-10" />
           </label>
         </div>
+
+        {filter === 'all' && !q.trim() && products.isSuccess && counts.low + counts.out > 0 && (
+          <div className="mb-5">
+            <Notice tone="warn">
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="tnum">
+                  {[
+                    counts.out > 0 ? `${counts.out} ${counts.out === 1 ? 'variant is' : 'variants are'} out of stock` : null,
+                    counts.low > 0 ? `${counts.low} ${counts.low === 1 ? 'variant is' : 'variants are'} running low` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(', ')}
+                  .
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setFilter(counts.out > 0 ? 'out' : 'low')}
+                  className="font-medium text-ink underline underline-offset-2"
+                >
+                  Show {counts.out > 0 ? 'out of stock' : 'low stock'}
+                </button>
+              </span>
+            </Notice>
+          </div>
+        )}
 
         {!canAdjust && products.isSuccess && allRows.length > 0 && (
           <p className="mb-4 text-xs text-ink-3">Your role can view stock but not adjust it. Ask an owner, admin or manager to record changes.</p>
         )}
 
         {products.isPending ? (
-          <div className="flex flex-col gap-3" aria-busy="true">
+          <div className="divide-y divide-line border-y border-line" aria-busy="true">
             {Array.from({ length: 6 }, (_, i) => (
-              <Skeleton key={i} className="h-12" />
+              <div key={i} className="flex items-center justify-between gap-4 py-3.5">
+                <div className="min-w-0 flex-1">
+                  <Skeleton className="h-4 w-2/5" />
+                  <Skeleton className="mt-1.5 h-3 w-1/4" />
+                </div>
+                <Skeleton className="h-4 w-24" />
+              </div>
             ))}
           </div>
         ) : products.isError ? (
@@ -188,7 +209,13 @@ export default function InventoryPage() {
           ) : (
             <EmptyState
               title={filter === 'all' ? 'Nothing matches' : filter === 'low' ? 'Nothing is running low' : 'Nothing is out of stock'}
-              body={q.trim() ? `No variant matches “${q.trim()}” in this view.` : 'Every tracked variant is above its low-stock alert.'}
+              body={
+                q.trim()
+                  ? `No variant matches “${q.trim()}” in this view.`
+                  : filter === 'out'
+                    ? 'Every tracked variant has units available.'
+                    : 'Every tracked variant is above its low-stock alert.'
+              }
               action={
                 <Button
                   onClick={() => {
@@ -203,8 +230,9 @@ export default function InventoryPage() {
           )
         ) : (
           <>
-            <div className="hidden sm:block">
+            <div className="hidden md:block">
               <Table>
+                <caption className="sr-only">Stock by variant</caption>
                 <thead>
                   <tr>
                     <Th>Item</Th>
@@ -215,7 +243,7 @@ export default function InventoryPage() {
                     <Th align="right" className="hidden lg:table-cell">
                       Alert at
                     </Th>
-                    <Th>Status</Th>
+                    <Th>Stock level</Th>
                     {canAdjust && (
                       <Th>
                         <span className="sr-only">Actions</span>
@@ -226,19 +254,21 @@ export default function InventoryPage() {
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.variantId} className={cn(r.inactive && 'text-ink-3')}>
-                      <Td className="max-w-[280px]">
-                        <p className="truncate font-medium text-ink">{r.productName}</p>
+                      <Td className="max-w-[280px] py-2.5">
+                        <p className={cn('truncate font-medium', r.inactive ? 'text-ink-2' : 'text-ink')}>{r.productName}</p>
                         <p className="truncate text-xs text-ink-3">
                           {r.variantName}
                           {r.inactive && ' · not for sale'}
                         </p>
                       </Td>
-                      <Td className="tnum hidden text-ink-2 md:table-cell">{r.sku ?? <span className="text-ink-3">—</span>}</Td>
-                      <Td align="right">{r.onHand}</Td>
+                      <Td className="tnum hidden text-[13px] text-ink-2 md:table-cell">{r.sku ?? <span className="text-ink-3">—</span>}</Td>
                       <Td align="right" className="text-ink-2">
+                        {r.onHand}
+                      </Td>
+                      <Td align="right" className="text-ink-3">
                         {r.reserved}
                       </Td>
-                      <Td align="right" className="font-semibold text-ink">
+                      <Td align="right" className={cn('font-semibold', r.health === 'out' ? 'text-neg' : r.health === 'low' ? 'text-warn' : 'text-ink')}>
                         {r.available}
                       </Td>
                       <Td align="right" className="hidden text-ink-3 lg:table-cell">
@@ -260,23 +290,32 @@ export default function InventoryPage() {
               </Table>
             </div>
 
-            <ul className="divide-y divide-line border-y border-line sm:hidden">
+            <ul className="divide-y divide-line border-y border-line md:hidden">
               {rows.map((r) => (
                 <li key={r.variantId} className="flex items-start justify-between gap-3 py-3">
                   <div className="min-w-0">
-                    <p className="truncate text-[15px] font-medium text-ink">{r.productName}</p>
+                    <p className={cn('truncate text-[14px] font-medium', r.inactive ? 'text-ink-2' : 'text-ink')}>{r.productName}</p>
                     <p className="truncate text-xs text-ink-3">
                       {[r.variantName, r.sku, r.inactive ? 'not for sale' : null].filter(Boolean).join(' · ')}
                     </p>
-                    <p className="tnum mt-1.5 text-xs text-ink-2">
-                      <span className="font-semibold text-ink">{r.available}</span> available · {r.onHand} on hand · {r.reserved} reserved
+                    <p className="tnum mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-3">
+                      <span>
+                        <span className={cn('font-semibold', r.health === 'out' ? 'text-neg' : r.health === 'low' ? 'text-warn' : 'text-ink')}>{r.available}</span>{' '}
+                        available
+                      </span>
+                      <span aria-hidden>·</span>
+                      <span>{r.onHand} on hand</span>
+                      <span aria-hidden>·</span>
+                      <span>{r.reserved} reserved</span>
                     </p>
-                    <div className="mt-2">
-                      <HealthBadge health={r.health} />
-                    </div>
+                    {r.health !== 'ok' && (
+                      <div className="mt-2">
+                        <HealthBadge health={r.health} />
+                      </div>
+                    )}
                   </div>
                   {canAdjust && (
-                    <Button size="sm" onClick={() => setTarget(toTarget(r))} aria-label={`Adjust stock for ${r.productName}, ${r.variantName}`}>
+                    <Button size="sm" className="h-10 shrink-0" onClick={() => setTarget(toTarget(r))} aria-label={`Adjust stock for ${r.productName}, ${r.variantName}`}>
                       Adjust
                     </Button>
                   )}
@@ -287,11 +326,14 @@ export default function InventoryPage() {
         )}
       </Section>
 
-      <Section title="Stock movements" description="Every change to on-hand and reserved stock, newest first.">
+      <Section title="Stock movements" description="Every change to on-hand and reserved stock, newest first." className="border-t border-line pt-6">
         {movements.isPending ? (
-          <div className="flex flex-col gap-3" aria-busy="true">
+          <div className="divide-y divide-line border-y border-line" aria-busy="true">
             {Array.from({ length: 4 }, (_, i) => (
-              <Skeleton key={i} className="h-10" />
+              <div key={i} className="flex items-center justify-between gap-4 py-3">
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-4 w-12" />
+              </div>
             ))}
           </div>
         ) : movements.isError ? (
@@ -303,8 +345,9 @@ export default function InventoryPage() {
           />
         ) : (
           <>
-            <div className="hidden sm:block">
+            <div className="hidden md:block">
               <Table>
+                <caption className="sr-only">Stock movements</caption>
                 <thead>
                   <tr>
                     <Th>When</Th>
@@ -346,7 +389,7 @@ export default function InventoryPage() {
               </Table>
             </div>
 
-            <ul className="divide-y divide-line border-y border-line sm:hidden">
+            <ul className="divide-y divide-line border-y border-line md:hidden">
               {visibleMovements.map((m) => (
                 <li key={m.id} className="flex items-start justify-between gap-3 py-3">
                   <div className="min-w-0">

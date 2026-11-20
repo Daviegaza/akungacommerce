@@ -131,7 +131,7 @@ export function SearchBar({
         <label className="sr-only" htmlFor={`${listId}-input`}>
           Search {shop.name}
         </label>
-        <div className="flex h-11 items-center gap-2 rounded-full border border-line bg-panel px-3.5 transition-colors focus-within:border-ink-3 hover:border-line-strong">
+        <div className="flex h-10 items-center gap-2 rounded-lg border border-line-strong bg-panel px-3 transition-colors focus-within:border-ink-2 hover:border-ink-3">
           <Search className="size-[18px] shrink-0 text-ink-3" aria-hidden />
           <input
             ref={inputRef}
@@ -172,7 +172,7 @@ export function SearchBar({
                   go(next)
                 } else inputRef.current?.focus()
               }}
-              className="-mr-1.5 grid size-8 place-items-center rounded-full text-ink-3 hover:bg-sunken hover:text-ink"
+              className="-mr-1.5 grid size-8 place-items-center rounded-md text-ink-3 hover:bg-sunken hover:text-ink"
             >
               <X className="size-4" aria-hidden />
             </button>
@@ -182,12 +182,12 @@ export function SearchBar({
 
       {showPanel && (
         <div
-          className="ak-rise absolute inset-x-0 top-[calc(100%+6px)] z-40 overflow-hidden rounded-2xl border border-line bg-panel shadow-[var(--shadow-lift)]"
+          className="ak-rise absolute inset-x-0 top-[calc(100%+6px)] z-40 overflow-hidden rounded-[var(--radius-card)] border border-line bg-panel shadow-[var(--shadow-lift)]"
           onMouseDown={(e) => e.preventDefault()}
         >
           {!term && recent.items.length > 0 && (
             <div className="flex items-center justify-between px-4 pt-3 pb-1">
-              <span className="text-xs font-semibold text-ink-3">Recent</span>
+              <span className="text-xs font-medium text-ink-3">Recent</span>
               <button type="button" onClick={recent.clear} className="text-xs font-medium text-ink-3 hover:text-ink">
                 Clear
               </button>
@@ -206,18 +206,18 @@ export function SearchBar({
               >
                 {o.kind === 'product' ? (
                   <>
-                    <span className="size-10 shrink-0 overflow-hidden rounded-lg bg-sunken">
+                    <span className="size-10 shrink-0 overflow-hidden rounded-md bg-sunken">
                       <ProductImg src={o.product.images[0]?.url} name={o.product.name} className="size-full" initialClassName="text-base" />
                     </span>
-                    <span className="min-w-0 flex-1 truncate font-medium">{o.label}</span>
+                    <span className="min-w-0 flex-1 truncate">{o.label}</span>
                     {(() => {
                       const v = displayVariant(o.product)
-                      return v ? <span className="shrink-0 font-semibold tnum">{fmtMoney(v.priceMinor, v.currency, shop.locale)}</span> : null
+                      return v ? <span className="shrink-0 font-medium tnum">{fmtMoney(v.priceMinor, v.currency, shop.locale)}</span> : null
                     })()}
                   </>
                 ) : (
                   <>
-                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-sunken text-ink-3">
+                    <span className="grid size-10 shrink-0 place-items-center text-ink-3">
                       {o.kind === 'recent' ? <Clock className="size-4" aria-hidden /> : <Tag className="size-4" aria-hidden />}
                     </span>
                     <span className="min-w-0 flex-1 truncate">{o.label}</span>

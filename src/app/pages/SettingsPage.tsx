@@ -7,10 +7,12 @@ import { ROLES, ROLE_LABEL, can as roleCan, type Permission, type Role } from '@
 import type { AuditEntry, IntegrationKind, IntegrationLabel, IntegrationStatus, Member, OrganisationPatch } from '@/gateway/types'
 import { INTEGRATION_LABEL_TEXT } from '@/integrations/registry'
 import { useAction, useAudit, useGateway, useIntegrations, useMembers, useOrg, useSessionUser } from '../context'
-import { DefinitionList, EmptyState, ErrorNotice, PageHeader, Section, Sheet, Table, Td, Th } from '../ui/layout'
+import { Check, Minus } from 'lucide-react'
+import { DefinitionList, EmptyState, ErrorNotice, PageHeader, Sheet, Table, Td, Th } from '../ui/layout'
 import { When } from '../ui/format'
 import { Badge, Button, Field, Input, Select, Skeleton, type Tone } from '../ui/primitives'
 import { TeamInvites } from '../components/TeamInvites'
+import { SettingsBlock } from '../components/DeliveryRules'
 import { BRAND } from '@/brand/brand'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -178,13 +180,14 @@ function ProfileSection() {
   const [open, setOpen] = useState(false)
   const editable = can('org.manage')
   return (
-    <Section
+    <SettingsBlock
+      first
       title="Business profile"
-      description={editable ? undefined : 'Only owners and admins can change these details.'}
+      description={editable ? 'Shown on receipts and used for dates and number formats.' : 'Only owners and admins can change these details.'}
       actions={
         editable && (
-          <Button size="sm" onClick={() => setOpen(true)}>
-            Edit
+          <Button size="sm" className="h-10" onClick={() => setOpen(true)}>
+            Edit profile
           </Button>
         )
       }
@@ -210,7 +213,7 @@ function ProfileSection() {
         figures. Amounts are never converted between currencies.
       </p>
       {open && <ProfileSheet open={open} onOpenChange={setOpen} />}
-    </Section>
+    </SettingsBlock>
   )
 }
 
@@ -241,10 +244,10 @@ const ROLE_SHORT: Record<Role, string> = {
 
 function RoleMatrix() {
   return (
-    <details className="mt-6">
-      <summary className="cursor-pointer text-sm font-medium text-ink-2 hover:text-ink">What each role can do</summary>
-      <p className="mt-2 text-xs text-ink-3">Everyone can view orders, products and reports. Analysts can only view.</p>
-      <div className="mt-2">
+    <details className="mt-8 border-t border-line pt-4">
+      <summary className="flex min-h-10 cursor-pointer items-center text-sm font-medium text-ink-2 hover:text-ink">What each role can do</summary>
+      <p className="mt-1 text-xs text-ink-3">Everyone can view orders, products and reports. Analysts can only view.</p>
+      <div className="mt-3">
         <Table>
           <caption className="sr-only">Permissions by role</caption>
           <thead>
@@ -268,13 +271,13 @@ function RoleMatrix() {
                 {ROLES.map((r) => (
                   <Td key={r} align="right" className="py-2">
                     {roleCan(r, row.permission) ? (
-                      <span className="text-ink">
-                        <span aria-hidden>✓</span>
+                      <span className="inline-flex text-ink">
+                        <Check className="size-4" aria-hidden />
                         <span className="sr-only">Yes</span>
                       </span>
                     ) : (
-                      <span className="text-ink-3">
-                        <span aria-hidden>—</span>
+                      <span className="inline-flex text-ink-3">
+                        <Minus className="size-4" aria-hidden />
                         <span className="sr-only">No</span>
                       </span>
                     )}
@@ -378,35 +381,45 @@ function MemberActions({ m, isSelf, manage }: { m: Member; isSelf: boolean; mana
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-        <label className="sr-only" htmlFor={`role-${m.userId}`}>
-          Role for {memberName(m)}
-        </label>
-        <Select
-          id={`role-${m.userId}`}
-          value={m.role}
-          disabled={!canTouch || setRole.isPending}
-          onChange={(e) => setRole.mutate(e.target.value as Role)}
-          className="h-9 w-auto min-w-[150px]"
-          title={isSelf ? 'You cannot change your own role' : !canTouch ? 'You cannot change this role' : undefined}
-        >
-          {options.map((r) => (
-            <option key={r} value={r}>
-              {ROLE_LABEL[r]}
-            </option>
-          ))}
-        </Select>
+        {canTouch ? (
+          <>
+            <label className="sr-only" htmlFor={`role-${m.userId}`}>
+              Role for {memberName(m)}
+            </label>
+            <Select
+              id={`role-${m.userId}`}
+              value={m.role}
+              disabled={setRole.isPending}
+              onChange={(e) => setRole.mutate(e.target.value as Role)}
+              className="h-10 w-auto min-w-[150px]"
+            >
+              {options.map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABEL[r]}
+                </option>
+              ))}
+            </Select>
+          </>
+        ) : (
+          <span title={isSelf ? 'You cannot change your own role' : 'You cannot change this role'}>
+            <Badge>
+              <span className="sr-only">Role: </span>
+              {ROLE_LABEL[m.role]}
+            </Badge>
+          </span>
+        )}
         {canTouch &&
           (confirming ? (
             <span className="flex items-center gap-1" role="group" aria-label={`Confirm removing ${memberName(m)}`}>
-              <Button size="sm" variant="danger" loading={remove.isPending} onClick={() => remove.mutate(undefined)}>
+              <Button size="sm" variant="danger" className="h-10" loading={remove.isPending} onClick={() => remove.mutate(undefined)}>
                 Remove
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setConfirming(false)} disabled={remove.isPending}>
+              <Button size="sm" variant="ghost" className="h-10" onClick={() => setConfirming(false)} disabled={remove.isPending}>
                 Keep
               </Button>
             </span>
           ) : (
-            <Button size="sm" variant="ghost" onClick={() => setConfirming(true)} aria-label={`Remove ${memberName(m)}`}>
+            <Button size="sm" variant="ghost" className="h-10 text-ink-3 hover:text-neg" onClick={() => setConfirming(true)} aria-label={`Remove ${memberName(m)}`}>
               Remove
             </Button>
           ))}
@@ -426,21 +439,30 @@ function TeamSection() {
   const selfId = session.data?.id
 
   return (
-    <Section
-      title="Team"
+    <SettingsBlock
+      wide
+      title="Team and permissions"
       description={manage ? 'Who can work in this business and what they can do.' : 'Only owners and admins can add people or change roles.'}
       actions={
         manage && (
-          <Button size="sm" variant="ghost" onClick={() => setAdding(true)}>
+          <Button size="sm" variant="secondary" className="h-10" onClick={() => setAdding(true)}>
             Add existing account
           </Button>
         )
       }
     >
+      <h3 className="mb-2 text-[13px] font-semibold text-ink">Members</h3>
       {members.isPending ? (
-        <div className="flex flex-col gap-3">
-          <Skeleton className="h-10" />
-          <Skeleton className="h-10" />
+        <div className="divide-y divide-line rounded-[var(--radius-card)] border border-line" aria-busy>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center justify-between gap-4 px-4 py-3.5">
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-56" />
+              </div>
+              <Skeleton className="h-9 w-36" />
+            </div>
+          ))}
         </div>
       ) : members.isError ? (
         <ErrorNotice error={members.error} onRetry={() => void members.refetch()} />
@@ -460,9 +482,9 @@ function TeamSection() {
               <tbody>
                 {members.data.map((m) => (
                   <tr key={m.userId}>
-                    <Td>
-                      <p className="font-medium text-ink">{memberName(m)}</p>
-                      {m.displayName && m.email && <p className="text-xs text-ink-3">{m.email}</p>}
+                    <Td className="max-w-[320px]">
+                      <p className="truncate font-medium text-ink">{memberName(m)}</p>
+                      {m.displayName && m.email && <p className="truncate text-xs text-ink-3">{m.email}</p>}
                     </Td>
                     <Td className="text-ink-2">
                       <When iso={m.createdAt} dateOnly />
@@ -479,7 +501,7 @@ function TeamSection() {
             {members.data.map((m) => (
               <li key={m.userId} className="py-3">
                 <p className="truncate text-[15px] font-medium text-ink">{memberName(m)}</p>
-                <p className="mb-2 text-xs text-ink-3">
+                <p className="mb-2 text-xs break-words text-ink-3">
                   {m.displayName && m.email && <>{m.email} · </>}
                   Joined <When iso={m.createdAt} dateOnly />
                 </p>
@@ -492,7 +514,7 @@ function TeamSection() {
       <TeamInvites />
       <RoleMatrix />
       {adding && <AddMemberSheet open={adding} onOpenChange={setAdding} />}
-    </Section>
+    </SettingsBlock>
   )
 }
 
@@ -522,7 +544,7 @@ function IntegrationsSection() {
   }, [integrations.data])
 
   return (
-    <Section title="Integrations" description="Honest status: nothing is shown as connected until a live end-to-end test has passed.">
+    <SettingsBlock title="Integrations" description="Honest status: nothing is shown as connected until a live end-to-end test has passed.">
       {integrations.isPending ? (
         <div className="flex flex-col gap-3">
           <Skeleton className="h-12" />
@@ -536,7 +558,7 @@ function IntegrationsSection() {
         <div className="flex flex-col gap-6">
           {groups.map((g) => (
             <div key={g.kind}>
-              <h3 className="mb-1 text-xs font-medium tracking-wide text-ink-3 uppercase">{KIND_LABEL[g.kind]}</h3>
+              <h3 className="mb-1 text-xs font-medium text-ink-3">{KIND_LABEL[g.kind]}</h3>
               <ul className="divide-y divide-line border-t border-line">
                 {g.items.map((i: IntegrationStatus) => (
                   <li key={i.provider} className="flex flex-col gap-1.5 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
@@ -563,7 +585,7 @@ function IntegrationsSection() {
           </p>
         </div>
       )}
-    </Section>
+    </SettingsBlock>
   )
 }
 
@@ -606,7 +628,7 @@ function AuditSection() {
     [audit.data],
   )
   return (
-    <Section title="Audit log" description="Newest 100 changes to orders, stock, payments and settings.">
+    <SettingsBlock wide title="Audit log" description="Newest 100 changes to orders, stock, payments and settings.">
       {audit.isPending ? (
         <div className="flex flex-col gap-3">
           <Skeleton className="h-10" />
@@ -660,7 +682,7 @@ function AuditSection() {
           </ul>
         </>
       )}
-    </Section>
+    </SettingsBlock>
   )
 }
 
@@ -691,7 +713,7 @@ function DemoSection() {
   }
 
   return (
-    <Section title="Demo data" description="This workspace runs on fictional data stored only in this browser.">
+    <SettingsBlock title="Demo data" description="This workspace runs on fictional data stored only in this browser.">
       <div className="flex flex-col gap-3">
         {error != null && <ErrorNotice error={error} />}
         {done && !confirming && (
@@ -723,7 +745,7 @@ function DemoSection() {
           </div>
         )}
       </div>
-    </Section>
+    </SettingsBlock>
   )
 }
 

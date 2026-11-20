@@ -31,7 +31,7 @@ export function RatingStars({
           ))}
         </span>
       </span>
-      <span className={cn('font-semibold text-ink tnum', text)} aria-hidden>
+      <span className={cn('font-medium text-ink tnum', text)} aria-hidden>
         {r.toFixed(1)}
       </span>
       {count !== undefined && (

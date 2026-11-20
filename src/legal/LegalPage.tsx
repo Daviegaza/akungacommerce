@@ -78,12 +78,12 @@ function LegalLayout({
       </header>
 
       <main id="legal-main" className="mx-auto max-w-3xl px-4 pt-10 pb-20 sm:px-6 sm:pt-14">
-        <article className="max-w-[65ch]">
+        <article className="max-w-[68ch]">
           <p role="note" className="border-l-2 border-warn pl-4 text-sm leading-relaxed text-ink">
             <strong className="font-semibold">Draft — not yet reviewed by a lawyer.</strong> Do not rely on this until it is approved.
           </p>
 
-          <h1 className="mt-8 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">{title}</h1>
+          <h1 className="mt-8 text-[28px] font-semibold leading-tight tracking-tight text-ink sm:text-4xl">{title}</h1>
           <p className="mt-3 text-sm text-ink-3">
             Last updated <time dateTime={LAST_UPDATED_ISO}>{LAST_UPDATED_LABEL}</time>
           </p>
@@ -106,8 +106,8 @@ function LegalLayout({
           </nav>
 
           {sections.map((s, i) => (
-            <section key={s.id} aria-labelledby={s.id} className="mt-12 text-[15px] sm:text-base">
-              <h2 id={s.id} className="scroll-mt-6 text-xl font-bold tracking-tight text-ink sm:text-2xl">
+            <section key={s.id} aria-labelledby={s.id} className="mt-10 text-[15px] sm:text-base">
+              <h2 id={s.id} className="scroll-mt-6 border-t border-line pt-6 text-lg font-semibold tracking-tight text-ink sm:text-xl">
                 <span className="tnum mr-2 text-ink-3">{i + 1}.</span>
                 {s.title}
               </h2>

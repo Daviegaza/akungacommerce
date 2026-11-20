@@ -46,7 +46,12 @@ export function WhereIsMyMoney() {
   }
 
   return (
-    <Section title="Where’s my money?" description="Where M-Pesa payments go, and when they reach you." icon={<Wallet className="size-4" aria-hidden />} variant="card">
+    <Section
+      title="Where’s my money?"
+      description="For M-Pesa: where those payments go, and when they reach you."
+      icon={<Wallet className="size-[18px]" aria-hidden />}
+      className="border-t border-line pt-6"
+    >
       {loading ? (
         <div className="flex flex-col gap-2">
           <Skeleton className="h-6 w-full max-w-md" />
@@ -62,14 +67,14 @@ export function WhereIsMyMoney() {
           }}
         />
       ) : flow ? (
-        <div className="flex flex-col gap-4 text-sm">
+        <div className="flex max-w-3xl flex-col gap-4 text-sm">
           {flow.kind === 'direct' ? <DirectFlow flow={flow} /> : <AggregatorFlow flow={flow} label={aggregatorLabel} />}
-          <details className="group rounded-xl ring-1 ring-line">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 text-[13px] font-semibold text-ink [&::-webkit-details-marker]:hidden">
+          <details className="group border-y border-line">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-[13px] font-medium text-ink [&::-webkit-details-marker]:hidden">
               The rules, in plain words
-              <ArrowRight className="size-4 text-ink-3 transition-transform group-open:rotate-90" aria-hidden />
+              <ArrowRight className="size-4 text-ink-3 transition-transform group-open:rotate-90 motion-reduce:transition-none" aria-hidden />
             </summary>
-            <ul className="flex list-disc flex-col gap-1.5 px-3 pb-3 pl-7 text-ink-2">
+            <ul className="flex list-disc flex-col gap-1.5 pb-3 pl-5 text-ink-2">
               {PAYOUT_RULES.map((r) => (
                 <li key={r}>{r}</li>
               ))}
@@ -84,11 +89,11 @@ export function WhereIsMyMoney() {
 function DirectFlow({ flow }: { flow: Extract<MoneyFlow, { kind: 'direct' }> }) {
   return (
     <>
-      <div className="flex items-start gap-3 rounded-2xl bg-pos-soft px-4 py-3">
-        <ShieldCheck className="mt-0.5 size-5 shrink-0 text-pos" aria-hidden />
+      <div className="flex items-start gap-3">
+        <ShieldCheck className="mt-0.5 size-[18px] shrink-0 text-pos" aria-hidden />
         <div className="min-w-0">
           <p className="font-semibold text-ink">Fungua never holds your money.</p>
-          <p className="mt-0.5 text-ink-2">
+          <p className="mt-0.5 leading-relaxed text-ink-2">
             {flow.destination ? (
               <>
                 Buyers pay your own M-Pesa {flow.destination.type === 'till' ? 'Till' : 'Paybill'}{' '}
@@ -97,7 +102,7 @@ function DirectFlow({ flow }: { flow: Extract<MoneyFlow, { kind: 'direct' }> }) 
                 for and nothing to settle.
               </>
             ) : (
-              <>Buyers pay your own M-Pesa Till or Paybill, straight to you. Add the number in My shop so buyers know where to pay.</>
+              <>Buyers pay your own M-Pesa Till or Paybill, straight to you. Add the number in Storefront settings so buyers know where to pay.</>
             )}
           </p>
         </div>
@@ -107,7 +112,7 @@ function DirectFlow({ flow }: { flow: Extract<MoneyFlow, { kind: 'direct' }> }) 
           Add your Till or Paybill
         </Link>
       )}
-      <p className="text-ink-3">
+      <p className="leading-relaxed text-ink-3">
         {flow.provider === 'daraja'
           ? 'Fungua only listens for M-Pesa’s confirmation so it can mark orders paid. To see your balance, use the M-Pesa app or your Safaricom statement.'
           : 'You confirm each payment yourself from your M-Pesa messages. Fungua cannot see your M-Pesa balance.'}
@@ -120,11 +125,11 @@ function AggregatorFlow({ flow, label }: { flow: Extract<MoneyFlow, { kind: 'agg
   const totals = totalsByState(flow.settlements)
   return (
     <>
-      <div className="flex items-start gap-3 rounded-2xl bg-warn-soft px-4 py-3">
-        <Landmark className="mt-0.5 size-5 shrink-0 text-warn" aria-hidden />
+      <div className="flex items-start gap-3">
+        <Landmark className="mt-0.5 size-[18px] shrink-0 text-warn" aria-hidden />
         <div className="min-w-0">
           <p className="font-semibold text-ink">The aggregator{flow.aggregator ? ` (${flow.aggregator})` : ''} holds payments until it pays you out.</p>
-          <p className="mt-0.5 text-ink-2">Fungua itself never holds your money. The aggregator’s payout timing and fees apply.</p>
+          <p className="mt-0.5 leading-relaxed text-ink-2">Fungua itself never holds your money. The aggregator’s payout timing and fees apply.</p>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -148,19 +153,19 @@ function AggregatorFlow({ flow, label }: { flow: Extract<MoneyFlow, { kind: 'agg
           ))}
         </ul>
       )}
-      <dl className="grid gap-2 sm:grid-cols-3">
+      <dl className="grid gap-px overflow-hidden rounded-[var(--radius-card)] border border-line bg-line sm:grid-cols-3">
         {SETTLEMENT_STATES.map((s) => (
-          <div key={s} className="rounded-xl bg-sunken px-3 py-2.5">
-            <dt className="text-[13px] font-semibold text-ink">{SETTLEMENT_STATE_TEXT[s].label}</dt>
-            <dd className="mt-0.5 text-xs text-ink-2">{SETTLEMENT_STATE_TEXT[s].meaning}</dd>
+          <div key={s} className="bg-panel px-3.5 py-3">
+            <dt className="text-[13px] font-medium text-ink">{SETTLEMENT_STATE_TEXT[s].label}</dt>
+            <dd className="mt-0.5 text-xs leading-relaxed text-ink-3">{SETTLEMENT_STATE_TEXT[s].meaning}</dd>
           </div>
         ))}
       </dl>
-      <details className="rounded-xl ring-1 ring-line">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center px-3 text-[13px] font-semibold text-ink [&::-webkit-details-marker]:hidden">
+      <details className="border-t border-line">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center text-[13px] font-medium text-ink [&::-webkit-details-marker]:hidden">
           Reasons money can be held
         </summary>
-        <ul className="flex flex-col gap-2 px-3 pb-3">
+        <ul className="flex flex-col gap-2 pb-3">
           {Object.values(HOLD_REASON_TEXT).map((h) => (
             <li key={h.label}>
               <p className="font-medium text-ink">{h.label}</p>

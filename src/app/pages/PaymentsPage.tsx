@@ -6,7 +6,7 @@ import type { PaymentStatus } from '@/domain/payments'
 import { PAYMENT_METHOD_LABEL, type Payment, type Refund } from '@/gateway/types'
 import { downloadCsv, ordersCsv, paymentsCsv, refundsCsv } from '@/integrations/csv'
 import { useIntegrations, useOrders, useOrg, usePayments, useRefunds } from '../context'
-import { EmptyState, ErrorNotice, Notice, PageHeader, Section, Table, Td, Th } from '../ui/layout'
+import { EmptyState, ErrorNotice, Notice, PageHeader, Table, Td, Th } from '../ui/layout'
 import { Money, VerificationBadge, When } from '../ui/format'
 import { Badge, Button, Select, Skeleton } from '../ui/primitives'
 import { cn } from '@/lib/utils'
@@ -93,13 +93,13 @@ function ThirtyDaySummary({ payments, refunds, since }: { payments: Payment[]; r
   }, [payments, refunds, since])
 
   if (rows.length === 0) {
-    return <p className="text-sm text-ink-3">No payments or refunds recorded in the last 30 days.</p>
+    return <p className="border-y border-line py-3 text-sm text-ink-3">No payments or refunds recorded in the last 30 days.</p>
   }
   return (
-    <ul className="divide-y divide-line">
+    <ul className="tnum divide-y divide-line border-y border-line">
       {rows.map((r) => (
         <li key={r.currency} className="flex flex-col gap-x-8 gap-y-1 py-3 sm:flex-row sm:items-baseline">
-          <span className="w-12 shrink-0 text-xs font-semibold tracking-wide text-ink-3">{r.currency}</span>
+          <span className="w-12 shrink-0 text-xs font-medium tracking-wide text-ink-3">{r.currency}</span>
           <span className="text-sm text-ink-2">
             Received <Money minor={r.received} currency={r.currency} className="font-semibold text-ink" />
           </span>
@@ -151,7 +151,7 @@ function PaymentsPanel({ payments }: { payments: Payment[] }) {
     <>
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div className="flex min-w-[150px] flex-1 flex-col gap-1 sm:max-w-[220px] sm:flex-none">
-          <label htmlFor={verificationId} className="text-xs font-medium text-ink-3">
+          <label htmlFor={verificationId} className="text-[13px] font-medium text-ink-2">
             Verification
           </label>
           <Select id={verificationId} value={verification} onChange={(e) => setVerification(e.target.value as VerificationFilter)} className="h-9">
@@ -161,7 +161,7 @@ function PaymentsPanel({ payments }: { payments: Payment[] }) {
           </Select>
         </div>
         <div className="flex min-w-[150px] flex-1 flex-col gap-1 sm:max-w-[180px] sm:flex-none">
-          <label htmlFor={statusId} className="text-xs font-medium text-ink-3">
+          <label htmlFor={statusId} className="text-[13px] font-medium text-ink-2">
             Status
           </label>
           <Select id={statusId} value={status} onChange={(e) => setStatus(e.target.value as StatusFilter)} className="h-9">
@@ -196,14 +196,14 @@ function PaymentsPanel({ payments }: { payments: Payment[] }) {
         />
       ) : (
         <>
-          <div className="hidden sm:block">
+          <div className="hidden md:block">
             <Table>
               <thead>
                 <tr>
                   <Th>Received</Th>
                   <Th>Order</Th>
                   <Th>Method</Th>
-                  <Th>Reference</Th>
+                  <Th className="hidden lg:table-cell">Reference</Th>
                   <Th>Verification</Th>
                   <Th>Status</Th>
                   <Th align="right">Amount</Th>
@@ -212,14 +212,14 @@ function PaymentsPanel({ payments }: { payments: Payment[] }) {
               <tbody>
                 {rows.map((p) => (
                   <tr key={p.id}>
-                    <Td className="text-ink-2">
+                    <Td className="tnum whitespace-nowrap text-ink-2">
                       <When iso={p.receivedAt} />
                     </Td>
                     <Td>
                       <OrderLink id={p.orderId} number={p.orderNumber} />
                     </Td>
-                    <Td className="text-ink-2">{PAYMENT_METHOD_LABEL[p.method]}</Td>
-                    <Td className="max-w-[160px] truncate text-ink-2">{p.externalRef ?? <span className="text-ink-3">—</span>}</Td>
+                    <Td className="whitespace-nowrap text-ink-2">{PAYMENT_METHOD_LABEL[p.method]}</Td>
+                    <Td className="hidden max-w-[160px] truncate font-mono text-[12.5px] text-ink-2 lg:table-cell">{p.externalRef ?? <span className="font-sans text-ink-3">—</span>}</Td>
                     <Td>
                       <VerificationBadge verification={p.verification} />
                     </Td>
@@ -234,7 +234,7 @@ function PaymentsPanel({ payments }: { payments: Payment[] }) {
               </tbody>
             </Table>
           </div>
-          <ul className="divide-y divide-line border-y border-line sm:hidden">
+          <ul className="-mx-4 divide-y divide-line border-y border-line px-4 sm:mx-0 sm:px-0 md:hidden">
             {rows.map((p) => (
               <li key={p.id} className="flex items-start justify-between gap-3 py-3">
                 <div className="min-w-0">
@@ -242,7 +242,7 @@ function PaymentsPanel({ payments }: { payments: Payment[] }) {
                     <OrderLink id={p.orderId} number={p.orderNumber} />
                     <span className="text-ink-2"> · {PAYMENT_METHOD_LABEL[p.method]}</span>
                   </p>
-                  <p className="mt-0.5 truncate text-xs text-ink-3">
+                  <p className="tnum mt-0.5 truncate text-xs text-ink-3">
                     <When iso={p.receivedAt} />
                     {p.externalRef && <> · {p.externalRef}</>}
                   </p>
@@ -283,7 +283,7 @@ function RefundsPanel({ refunds }: { refunds: Refund[] }) {
       <p className="mb-4 max-w-2xl text-sm text-ink-3">
         A refund here is a record. {BRAND.name} does not move money: pay the customer back through your usual channel, then record it.
       </p>
-      <div className="hidden sm:block">
+      <div className="hidden md:block">
         <Table>
           <thead>
             <tr>
@@ -297,7 +297,7 @@ function RefundsPanel({ refunds }: { refunds: Refund[] }) {
           <tbody>
             {rows.map((r) => (
               <tr key={r.id}>
-                <Td className="text-ink-2">
+                <Td className="tnum whitespace-nowrap text-ink-2">
                   <When iso={r.createdAt} />
                 </Td>
                 <Td>
@@ -320,7 +320,7 @@ function RefundsPanel({ refunds }: { refunds: Refund[] }) {
           </tbody>
         </Table>
       </div>
-      <ul className="divide-y divide-line border-y border-line sm:hidden">
+      <ul className="-mx-4 divide-y divide-line border-y border-line px-4 sm:mx-0 sm:px-0 md:hidden">
         {rows.map((r) => (
           <li key={r.id} className="flex items-start justify-between gap-3 py-3">
             <div className="min-w-0">
@@ -396,7 +396,7 @@ export default function PaymentsPage() {
     <>
       <PageHeader
         title="Payments"
-        description="Money recorded against orders, and refunds paid back. Amounts stay in their own currency."
+        description="Every payment recorded against an order, whatever the method, and refunds paid back. Amounts stay in their own currency."
         actions={
           <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Export CSV">
             <span className="text-xs text-ink-3">Export CSV</span>
@@ -419,22 +419,18 @@ export default function PaymentsPage() {
         </div>
       )}
 
-      <div className="mb-8">
-        <Notice>
-          Payments you record are marked manual and unverified. Provider verification appears only after a verified callback from a connected payment
-          provider{integrations.isSuccess && !providerConnected ? ' — none is connected yet.' : '.'}
-        </Notice>
-      </div>
-
-      <WhereIsMyMoney />
-
-      <MpesaReconciliation />
-
-      <Section title="Last 30 days" description="Grouped by currency. Different currencies are never added together.">
+      {/* ───── Ledger first ───── */}
+      <section aria-labelledby={`${baseId}-sum-h`} className="mb-8">
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h2 id={`${baseId}-sum-h`} className="text-[13px] font-medium text-ink-3">
+            Last 30 days
+          </h2>
+          <p className="text-xs text-ink-3">Grouped by currency. Different currencies are never added together.</p>
+        </div>
         {payments.isPending || refunds.isPending ? (
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-6 w-full max-w-lg" />
-            <Skeleton className="h-6 w-full max-w-md" />
+          <div className="flex flex-col gap-2 border-y border-line py-3">
+            <Skeleton className="h-5 w-full max-w-lg" />
+            <Skeleton className="h-5 w-full max-w-md" />
           </div>
         ) : payments.isError || refunds.isError ? (
           <ErrorNotice
@@ -447,9 +443,16 @@ export default function PaymentsPage() {
         ) : (
           <ThirtyDaySummary payments={payments.data ?? []} refunds={refunds.data ?? []} since={since} />
         )}
-      </Section>
+      </section>
 
-      <div role="tablist" aria-label="Payments and refunds" className="mb-5 flex gap-6 border-b border-line">
+      <div className="mb-6">
+        <Notice>
+          Payments you record are marked manual and unverified. Provider verification appears only after a verified callback from a connected payment
+          provider{integrations.isSuccess && !providerConnected ? ' — none is connected yet.' : '.'}
+        </Notice>
+      </div>
+
+      <div role="tablist" aria-label="Payments and refunds" className="no-scrollbar -mx-4 mb-4 flex gap-5 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0">
         {TABS.map((t) => {
           const selected = tab === t.id
           const n = count(t.id)
@@ -468,12 +471,21 @@ export default function PaymentsPage() {
               onClick={() => setTab(t.id)}
               onKeyDown={onTabKey}
               className={cn(
-                '-mb-px flex h-10 items-center gap-1.5 border-b-2 text-sm font-medium transition-colors',
-                selected ? 'border-ink text-ink' : 'border-transparent text-ink-3 hover:text-ink-2',
+                '-mb-px flex h-10 shrink-0 items-center gap-1.5 border-b-2 text-[13.5px] font-medium transition-colors duration-150',
+                selected ? 'border-ink text-ink' : 'border-transparent text-ink-3 hover:border-line-strong hover:text-ink',
               )}
             >
               {t.label}
-              {n !== undefined && <span className="tnum text-xs text-ink-3">{n}</span>}
+              {n !== undefined && (
+                <span
+                  className={cn(
+                    'tnum inline-flex h-5 min-w-5 items-center justify-center rounded-md px-1.5 text-[11px] font-medium',
+                    selected ? 'bg-ink text-canvas' : n > 0 ? 'bg-sunken text-ink-2' : 'text-ink-3',
+                  )}
+                >
+                  {n}
+                </span>
+              )}
             </button>
           )
         })}
@@ -499,6 +511,20 @@ export default function PaymentsPage() {
           </div>
         )
       })}
+
+      {/* ───── Settings: how money reaches you ───── */}
+      <div className="mt-14 border-t border-line-strong pt-8">
+        <div className="mb-8 max-w-2xl">
+          <h2 className="font-display text-[20px] font-semibold tracking-[-0.025em] text-ink">How you get paid</h2>
+          <p className="mt-1.5 text-sm leading-relaxed text-ink-2">
+            Customers can pay by cash, bank transfer, mobile money or card, depending on what you accept. Every payment is kept on its order and shows
+            in the ledger above, either typed in by your team (manual, unverified) or confirmed by a connected provider. The sections below cover mobile
+            money (M-Pesa) and, where available, bank transfers: where the money goes, how it is set up, and matching payments to orders.
+          </p>
+        </div>
+        <WhereIsMyMoney />
+        <MpesaReconciliation />
+      </div>
     </>
   )
 }

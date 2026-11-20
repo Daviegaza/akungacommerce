@@ -100,19 +100,19 @@ function CartPill({ slug, shop }: { slug: string; shop: PublicShop }) {
           <button
             type="button"
             onClick={cart.open}
-            className="flex h-14 w-full items-center gap-3 rounded-2xl bg-brand pr-4 pl-2 text-on-brand shadow-[0_12px_32px_-10px_var(--ak-brand)] active:scale-[0.99]"
+            className="flex h-14 w-full items-center gap-3 rounded-xl bg-primary pr-4 pl-4 text-on-primary shadow-[var(--shadow-lift)] active:scale-[0.99]"
           >
-            <span className="relative grid size-10 place-items-center rounded-xl bg-white/20">
+            <span className="relative grid size-8 place-items-center">
               <ShoppingBag className="size-5" aria-hidden />
               <span
                 key={cart.count}
-                className="ak-pop absolute -top-1 -right-1 grid h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-[11px] font-bold text-brand tnum"
+                className="ak-pop absolute -top-1 -right-1.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-on-primary px-1 text-[11px] font-medium text-primary tnum"
               >
                 {cart.count}
               </span>
             </span>
             <span className="flex-1 text-left text-[15px] font-semibold">View cart</span>
-            <span className="font-display text-lg font-semibold tnum">
+            <span className="text-[15px] font-semibold tnum">
               {fmtMoney(cart.subtotalMinor, cart.currency ?? shop.currency, shop.locale)}
             </span>
           </button>

@@ -41,18 +41,18 @@ export function LocationPreview({
   }
   const km = shopLoc && dropLoc ? haversine(shopLoc, dropLoc) : null
   return (
-    <div className="flex flex-col gap-3 rounded-2xl bg-sunken p-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-lg bg-sunken p-3 sm:flex-row sm:items-center sm:justify-between">
       <ol className="flex min-w-0 flex-col gap-1.5 text-sm" aria-label="Route">
         {shopLoc && (
           <li className="flex items-start gap-2">
-            <Store className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
-            <span className="min-w-0 text-ink">{shopLabel}</span>
+            <Store className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
+            <span className="min-w-0 break-words text-ink">{shopLabel}</span>
           </li>
         )}
         {dropLoc && (
           <li className="flex items-start gap-2">
             <MapPin className="mt-0.5 size-4 shrink-0 text-ink" aria-hidden />
-            <span className="min-w-0 text-ink">
+            <span className="min-w-0 break-words text-ink">
               {dropLabel ?? 'Your drop-off pin'}
               {km != null && <span className="text-ink-3 tnum"> · about {km.toFixed(1)} km away</span>}
             </span>
@@ -75,10 +75,10 @@ function haversine(a: LatLng, b: LatLng): number {
 /** Deposit received, balance due on delivery. */
 export function DepositPaidNotice({ delivery, money, pickup }: { delivery: TrackedDelivery; money(minor: number): string; pickup: boolean }) {
   return (
-    <div className="flex items-start gap-3 rounded-2xl bg-pos-soft px-4 py-3 text-sm ak-rise" role="status">
+    <div className="flex items-start gap-3 text-sm" role="status">
       <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-pos" aria-hidden />
-      <div>
-        <p className="font-semibold text-ink">Deposit of {money(delivery.depositPaidMinor)} received</p>
+      <div className="min-w-0">
+        <p className="text-[15px] font-semibold text-ink">Deposit of {money(delivery.depositPaidMinor)} received</p>
         <p className="text-ink-2">
           Pay the balance of <span className="font-semibold text-ink tnum">{money(delivery.balanceDueMinor)}</span>{' '}
           {pickup ? 'when you collect.' : 'when your order arrives.'}
@@ -102,7 +102,7 @@ export function DeliveryUpdates({ order, money }: { order: TrackedOrder; money(m
     const p = d.handoff.pickupPoint
     items.push(
       <li key="pp" className="flex items-start gap-2.5">
-        <Package className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
+        <Package className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
         <div>
           <p className="font-semibold text-ink">Collect from {p.name}</p>
           {p.area && <p className="text-ink-2">{p.area}</p>}
@@ -119,7 +119,7 @@ export function DeliveryUpdates({ order, money }: { order: TrackedOrder; money(m
   if (d.handoff.kind === 'courier' && d.handoff.carrier) {
     items.push(
       <li key="courier" className="flex items-start gap-2.5">
-        <Truck className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
+        <Truck className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
         <p className="text-ink">
           Sent with <span className="font-semibold">{d.handoff.carrier}</span>
           {order.fulfilment.trackingRef ? `, tracking number ${order.fulfilment.trackingRef}` : ''}.
@@ -149,7 +149,7 @@ export function DeliveryUpdates({ order, money }: { order: TrackedOrder; money(m
   if (d.returnedAt) {
     const text = returnedToShopBuyerText({ attempts: d.attempts, forfeitedMinor: d.forfeitedMinor, refund: d.refund ?? null }, money)
     items.push(
-      <li key="returned" className="flex items-start gap-2.5 rounded-xl bg-sunken p-3">
+      <li key="returned" className="flex items-start gap-2.5 border-l-2 border-line-strong py-0.5 pl-3">
         <Undo2 className="mt-0.5 size-4 shrink-0 text-ink-2" aria-hidden />
         <div>
           <p className="font-semibold text-ink">{text.title}</p>
@@ -167,7 +167,7 @@ export function DeliveryUpdates({ order, money }: { order: TrackedOrder; money(m
   }
   if (failed.length > 0 && order.status === 'dispatched') {
     items.push(
-      <li key="next" className="rounded-xl bg-sunken p-3 text-ink-2">
+      <li key="next" className="border-l-2 border-line-strong py-0.5 pl-3 text-ink-2">
         {outOfAttempts
           ? 'No more delivery attempts will be made. Message the shop to collect your order or to sort out the rest of your payment.'
           : 'The shop will contact you to arrange another try. Keep your phone close.'}
@@ -177,14 +177,14 @@ export function DeliveryUpdates({ order, money }: { order: TrackedOrder; money(m
 
   if (items.length === 0 && policyLines.length === 0) return null
   return (
-    <section className="rounded-[var(--radius-card)] bg-panel p-4 shadow-[var(--shadow-card)] sm:p-5 ak-rise" aria-labelledby="delivery-updates">
-      <h2 id="delivery-updates" className="mb-3 text-lg font-semibold tracking-tight">
+    <section className="border-t border-line pt-5" aria-labelledby="delivery-updates">
+      <h2 id="delivery-updates" className="mb-3 text-base font-semibold tracking-tight text-ink">
         {failed.length > 0 || d.returnedAt ? 'Delivery updates' : 'How your order reaches you'}
       </h2>
       {items.length > 0 && <ul className="flex flex-col gap-3 text-sm">{items}</ul>}
       {policyLines.length > 0 && (
-        <details className="mt-3 rounded-xl border border-line p-3 text-sm">
-          <summary className="min-h-6 cursor-pointer font-semibold text-ink">The shop policy you agreed to</summary>
+        <details className="mt-3 border-t border-line pt-1 text-sm">
+          <summary className="flex min-h-11 cursor-pointer items-center font-medium text-ink">The shop policy you agreed to</summary>
           <ul className="mt-2 flex list-disc flex-col gap-1 pl-4 text-xs text-ink-2">
             {policyLines.map((l) => (
               <li key={l}>{l}</li>

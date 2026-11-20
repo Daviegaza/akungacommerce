@@ -1,6 +1,4 @@
-import { LayoutGrid } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { ProductImg } from './ProductImg'
 
 export interface CategoryChip {
   name: string
@@ -8,7 +6,10 @@ export interface CategoryChip {
   count: number
 }
 
-/** Horizontally scrolling category chips with a real product photo each. */
+const TAB =
+  'relative -mb-px flex h-11 shrink-0 items-center gap-1.5 border-b-2 text-sm font-medium whitespace-nowrap transition-colors'
+
+/** Calm, horizontally scrolling text tabs for the shop's categories (underlined when active). */
 export function CategoryChips({
   categories,
   active,
@@ -23,20 +24,14 @@ export function CategoryChips({
   if (categories.length < 2) return null
   return (
     <nav aria-label="Categories" className={className}>
-      <ul className="no-scrollbar flex gap-2 overflow-x-auto px-4 py-1 sm:px-6">
+      <ul className="no-scrollbar flex gap-6 overflow-x-auto border-b border-line">
         <li className="shrink-0">
           <button
             type="button"
             onClick={() => onSelect(null)}
             aria-pressed={active === null}
-            className={cn(
-              'flex h-12 items-center gap-2 rounded-full border pr-4 pl-1.5 text-sm font-semibold transition-colors',
-              active === null ? 'border-brand bg-brand text-on-brand' : 'border-line bg-panel text-ink hover:border-line-strong',
-            )}
+            className={cn(TAB, active === null ? 'border-ink text-ink' : 'border-transparent text-ink-3 hover:border-line-strong hover:text-ink')}
           >
-            <span className={cn('grid size-9 place-items-center rounded-full', active === null ? 'bg-white/20' : 'bg-sunken')}>
-              <LayoutGrid className="size-4" aria-hidden />
-            </span>
             All
           </button>
         </li>
@@ -48,16 +43,10 @@ export function CategoryChips({
                 type="button"
                 onClick={() => onSelect(on ? null : c.name)}
                 aria-pressed={on}
-                className={cn(
-                  'flex h-12 items-center gap-2 rounded-full border pr-4 pl-1.5 text-sm font-semibold transition-colors',
-                  on ? 'border-brand bg-brand text-on-brand' : 'border-line bg-panel text-ink hover:border-line-strong',
-                )}
+                className={cn(TAB, on ? 'border-ink text-ink' : 'border-transparent text-ink-3 hover:border-line-strong hover:text-ink')}
               >
-                <span className="size-9 overflow-hidden rounded-full bg-sunken">
-                  <ProductImg src={c.image} name={c.name} className="size-full" initialClassName="text-sm" />
-                </span>
-                <span className="max-w-[10rem] truncate">{c.name}</span>
-                <span className={cn('text-xs font-medium tnum', on ? 'text-on-brand/80' : 'text-ink-3')}>{c.count}</span>
+                <span className="max-w-[12rem] truncate">{c.name}</span>
+                <span className="text-xs font-normal text-ink-3 tnum">{c.count}</span>
               </button>
             </li>
           )

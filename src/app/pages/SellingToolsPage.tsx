@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { Copy, Download, FileSpreadsheet, Globe, Landmark, LineChart, ReceiptText } from 'lucide-react'
+import { ArrowRight, Copy, Download } from 'lucide-react'
 import { normaliseGa4Id, normaliseMetaPixelId } from '@/domain/tracking'
 import { DOMAIN_STATUS_LABEL, dnsInstructions, dnsTargetsFromEnv, normaliseHostname, type DomainStatus } from '@/domain/custom-domain'
 import { BANK_TRANSFER_DESCRIPTORS, bankTransferEligible, type BankTransferProviderId } from '@/domain/bank-transfer'
@@ -9,7 +9,8 @@ import { downloadCsv } from '@/integrations/csv'
 import { INTEGRATION_LABEL_TEXT } from '@/integrations/registry'
 import type { DomainCheckResult, ShopExtras } from '@/gateway/expansion'
 import { useAction, useGateway, useOrg, useOrgQuery } from '../context'
-import { ErrorNotice, Notice, PageHeader, Section, Table, Td, Th } from '../ui/layout'
+import { ErrorNotice, Notice, PageHeader, Table, Td, Th } from '../ui/layout'
+import { SettingsBlock } from '../components/DeliveryRules'
 import { Money, When } from '../ui/format'
 import { Badge, Button, Field, Input, Skeleton, buttonClass, type Tone } from '../ui/primitives'
 
@@ -62,7 +63,7 @@ function TrackingForm({ extras, editable }: { extras: ShopExtras; editable: bool
       </p>
       {editable && (
         <div className="flex items-center gap-3">
-          <Button type="submit" variant="primary" loading={save.isPending}>
+          <Button type="submit" variant="secondary" loading={save.isPending}>
             Save IDs
           </Button>
           <SavedNote show={saved} />
@@ -87,7 +88,7 @@ function CopyButton({ value }: { value: string }) {
           setTimeout(() => setCopied(false), 1500)
         })
       }}
-      className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-ink-2 hover:bg-sunken"
+      className="inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-xs font-medium text-ink-2 hover:bg-sunken hover:text-ink"
       aria-label={`Copy ${value}`}
     >
       <Copy className="size-3.5" aria-hidden /> {copied ? 'Copied' : 'Copy'}
@@ -123,8 +124,7 @@ function DomainSection({ editable }: { editable: boolean }) {
   }
 
   return (
-    <Section
-      icon={<Globe className="size-4" aria-hidden />}
+    <SettingsBlock
       title="Custom domain"
       description="Use your own address, like shop.yourbrand.com, instead of the Fungua link."
       actions={<Badge tone="info">Not connected</Badge>}
@@ -135,20 +135,23 @@ function DomainSection({ editable }: { editable: boolean }) {
       </Notice>
       <div className="mt-4">
         {domain.isPending ? (
-          <Skeleton className="h-20" />
+          <div className="space-y-2" aria-busy>
+            <Skeleton className="h-6 w-56" />
+            <Skeleton className="h-24 w-full" />
+          </div>
         ) : domain.isError ? (
           <ErrorNotice error={domain.error} onRetry={() => void domain.refetch()} />
         ) : domain.data ? (
           <div className="flex flex-col gap-4">
             <div className="flex flex-wrap items-center gap-3">
-              <p className="font-display text-lg font-bold break-all text-ink">{domain.data.hostname}</p>
+              <p className="min-w-0 font-mono text-[15px] font-medium break-all text-ink">{domain.data.hostname}</p>
               <Badge tone={DOMAIN_TONE[domain.data.status]} dot>
                 {DOMAIN_STATUS_LABEL[domain.data.status]}
               </Badge>
             </div>
             {domain.data.status === 'verified' ? (
               <p className="text-sm text-ink-2">
-                DNS is set up correctly. <span className="font-semibold text-ink">Certificate and hosting are not set up yet</span>, so this domain does not
+                DNS is set up correctly. <span className="font-medium text-ink">Certificate and hosting are not set up yet</span>, so this domain does not
                 serve your shop yet.
               </p>
             ) : (
@@ -175,14 +178,14 @@ function DomainSection({ editable }: { editable: boolean }) {
                 <tbody>
                   {dnsInstructions(domain.data.hostname, domain.data.verificationToken, targets).map((r) => (
                     <tr key={r.type}>
-                      <Td className="font-semibold">{r.type}</Td>
-                      <Td className="text-xs break-all">
+                      <Td className="font-medium">{r.type}</Td>
+                      <Td className="font-mono text-xs break-all">
                         {r.host} <CopyButton value={r.host} />
                       </Td>
                       <Td className="text-xs break-all">
                         {r.value ? (
                           <>
-                            {r.value} <CopyButton value={r.value} />
+                            <span className="font-mono">{r.value}</span> <CopyButton value={r.value} />
                           </>
                         ) : (
                           <span className="text-ink-3">Shown when domain hosting is switched on</span>
@@ -196,18 +199,18 @@ function DomainSection({ editable }: { editable: boolean }) {
             </div>
             {editable && (
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="primary" loading={check.isPending} onClick={() => check.mutate()}>
+                <Button size="sm" variant="secondary" className="h-10" loading={check.isPending} onClick={() => check.mutate()}>
                   Check now
                 </Button>
-                <Button size="sm" variant="ghost" loading={remove.isPending} onClick={() => remove.mutate(undefined)}>
+                <Button size="sm" variant="ghost" className="h-10" loading={remove.isPending} onClick={() => remove.mutate(undefined)}>
                   Remove domain
                 </Button>
                 {gateway.simulateDomainCheck && (
                   <>
-                    <Button size="sm" loading={simulate.isPending} onClick={() => simulate.mutate('verified')}>
+                    <Button size="sm" className="h-10" loading={simulate.isPending} onClick={() => simulate.mutate('verified')}>
                       Simulate verified (demo)
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => simulate.mutate('failed')}>
+                    <Button size="sm" variant="ghost" className="h-10" onClick={() => simulate.mutate('failed')}>
                       Simulate failed (demo)
                     </Button>
                   </>
@@ -223,7 +226,7 @@ function DomainSection({ editable }: { editable: boolean }) {
               {(p) => <Input {...p} autoComplete="off" autoCapitalize="none" spellCheck={false} value={host} onChange={(e) => setHost(e.target.value)} placeholder="shop.yourbrand.com" />}
             </Field>
             <div>
-              <Button type="submit" variant="primary" loading={add.isPending}>
+              <Button type="submit" variant="secondary" loading={add.isPending}>
                 Save domain
               </Button>
             </div>
@@ -232,7 +235,7 @@ function DomainSection({ editable }: { editable: boolean }) {
           <p className="text-sm text-ink-3">No custom domain. Only owners and admins can add one.</p>
         )}
       </div>
-    </Section>
+    </SettingsBlock>
   )
 }
 
@@ -245,8 +248,7 @@ function BankTransferSection({ extras }: { extras: ShopExtras }) {
   const editable = can('integrations.manage') && eligible
 
   return (
-    <Section
-      icon={<Landmark className="size-4" aria-hidden />}
+    <SettingsBlock
       title="Bank transfer (Nigeria)"
       description="Buyers pay into a dedicated bank account and the payment is matched to their order."
       actions={<Badge tone="info">{INTEGRATION_LABEL_TEXT.adapter_only}</Badge>}
@@ -254,32 +256,36 @@ function BankTransferSection({ extras }: { extras: ShopExtras }) {
       {!eligible ? (
         <p className="text-sm text-ink-3">Available for businesses that sell in NGN. This business uses {org.baseCurrency}.</p>
       ) : (
-        <fieldset className="flex max-w-2xl flex-col gap-2" disabled={!editable || save.isPending}>
+        <fieldset className="flex min-w-0 max-w-2xl flex-col gap-3" disabled={!editable || save.isPending}>
           <legend className="sr-only">Bank-transfer provider</legend>
           {save.isError && <ErrorNotice error={save.error} />}
-          {[{ id: 'none' as const, name: 'Off', note: 'Buyers will not see bank transfer at checkout.', readiness: null }, ...BANK_TRANSFER_DESCRIPTORS].map((d) => (
-            <label key={d.id} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl p-2 hover:bg-sunken">
-              <input
-                type="radio"
-                name="bank-provider"
-                checked={extras.bankTransferProvider === d.id}
-                onChange={() => save.mutate(d.id)}
-                className="mt-1 size-4 shrink-0 accent-[var(--ak-brand)]"
-              />
-              <span className="text-sm">
-                <span className="font-semibold text-ink">{d.name}</span>
-                {d.readiness && <Badge className="ml-2" tone="info">{INTEGRATION_LABEL_TEXT[d.readiness]}</Badge>}
-                <span className="mt-0.5 block text-xs leading-relaxed text-ink-3">{d.note}</span>
-              </span>
-            </label>
-          ))}
-          <p className="mt-1 text-xs text-ink-3">
+          <div className="divide-y divide-line overflow-hidden rounded-[var(--radius-card)] border border-line">
+            {[{ id: 'none' as const, name: 'Off', note: 'Buyers will not see bank transfer at checkout.', readiness: null }, ...BANK_TRANSFER_DESCRIPTORS].map((d) => (
+              <label key={d.id} className={`flex min-h-11 cursor-pointer items-start gap-3 px-3.5 py-3 transition-colors ${extras.bankTransferProvider === d.id ? 'bg-sunken/70' : 'hover:bg-sunken/40'}`}>
+                <input
+                  type="radio"
+                  name="bank-provider"
+                  checked={extras.bankTransferProvider === d.id}
+                  onChange={() => save.mutate(d.id)}
+                  className="mt-0.5 size-4 shrink-0 accent-[var(--ak-brand)]"
+                />
+                <span className="min-w-0 text-sm">
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="font-medium text-ink">{d.name}</span>
+                    {d.readiness && <Badge tone="info">{INTEGRATION_LABEL_TEXT[d.readiness]}</Badge>}
+                  </span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-ink-3">{d.note}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-ink-3">
             Checkout only offers bank transfer once the chosen provider is connected and tested end to end. Until then nothing changes for buyers.
             {!can('integrations.manage') && ' Only owners and admins can change this.'}
           </p>
         </fieldset>
       )}
-    </Section>
+    </SettingsBlock>
   )
 }
 
@@ -318,7 +324,7 @@ function KraPinForm({ extras, editable }: { extras: ShopExtras; editable: boolea
       </Field>
       {editable && (
         <div className="flex items-center gap-3">
-          <Button type="submit" variant="primary" loading={save.isPending}>
+          <Button type="submit" variant="secondary" loading={save.isPending}>
             Save KRA PIN
           </Button>
           <SavedNote show={saved} />
@@ -333,8 +339,7 @@ function EtimsSection({ extras }: { extras: ShopExtras }) {
   const invoices = useOrgQuery('tax-invoices', (g, o) => g.listTaxInvoices(o))
   const list = invoices.data ?? []
   return (
-    <Section
-      icon={<ReceiptText className="size-4" aria-hidden />}
+    <SettingsBlock
       title="Tax invoices (KRA eTIMS)"
       description="Numbered tax invoices per order, ready to enter in eTIMS Lite."
       actions={<Badge tone="neutral">{KRA_SUBMISSION.label}</Badge>}
@@ -342,13 +347,14 @@ function EtimsSection({ extras }: { extras: ShopExtras }) {
       <div className="flex flex-col gap-5">
         <Notice tone="info">{KRA_SUBMISSION.detail}</Notice>
         <KraPinForm extras={extras} editable={can('org.manage')} />
-        <div>
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="border-t border-line pt-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <p className="text-[13px] font-semibold text-ink">
-              Issued invoices <span className="font-normal text-ink-3">· next number {formatInvoiceNumber(extras.nextInvoiceNumber)}</span>
+              Issued invoices <span className="tnum font-normal text-ink-3">· next number {formatInvoiceNumber(extras.nextInvoiceNumber)}</span>
             </p>
             <Button
               size="sm"
+              className="h-10"
               icon={<Download className="size-4" aria-hidden />}
               disabled={list.length === 0}
               onClick={() => downloadCsv(`etims-invoices-${new Date().toISOString().slice(0, 10)}.csv`, invoicesCsv(list, org.timezone))}
@@ -357,32 +363,68 @@ function EtimsSection({ extras }: { extras: ShopExtras }) {
             </Button>
           </div>
           {invoices.isPending ? (
-            <Skeleton className="h-16" />
+            <div className="space-y-2" aria-busy>
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
           ) : invoices.isError ? (
             <ErrorNotice error={invoices.error} onRetry={() => void invoices.refetch()} />
           ) : list.length === 0 ? (
             <p className="text-sm text-ink-3">No invoices yet. Open an order and choose “Tax invoice”.</p>
           ) : (
-            <ul className="divide-y divide-line border-y border-line">
-              {list.slice(0, 50).map((inv) => (
-                <li key={inv.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                  <Link to={`/app/orders/${inv.orderId}/invoice`} className="min-w-0 font-semibold text-ink hover:underline">
-                    {formatInvoiceNumber(inv.invoiceNumber)}
-                    <span className="ml-2 font-normal text-ink-3">Order #{inv.orderNumber ?? '—'}</span>
-                  </Link>
-                  <span className="shrink-0 text-right text-ink-2">
-                    <Money minor={inv.totalMinor} currency={inv.currency} />
-                    <span className="block text-xs text-ink-3">
-                      <When iso={inv.issuedAt} dateOnly />
+            <>
+              <div className="hidden md:block">
+                <Table>
+                  <caption className="sr-only">Issued tax invoices</caption>
+                  <thead>
+                    <tr>
+                      <Th>Invoice</Th>
+                      <Th>Order</Th>
+                      <Th>Issued</Th>
+                      <Th align="right">Total</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {list.slice(0, 50).map((inv) => (
+                      <tr key={inv.id}>
+                        <Td>
+                          <Link to={`/app/orders/${inv.orderId}/invoice`} className="tnum font-medium text-ink hover:underline">
+                            {formatInvoiceNumber(inv.invoiceNumber)}
+                          </Link>
+                        </Td>
+                        <Td className="tnum text-ink-2">#{inv.orderNumber ?? '—'}</Td>
+                        <Td className="tnum text-ink-2">
+                          <When iso={inv.issuedAt} dateOnly />
+                        </Td>
+                        <Td align="right" className="text-ink">
+                          <Money minor={inv.totalMinor} currency={inv.currency} />
+                        </Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+              <ul className="divide-y divide-line border-y border-line md:hidden">
+                {list.slice(0, 50).map((inv) => (
+                  <li key={inv.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                    <Link to={`/app/orders/${inv.orderId}/invoice`} className="min-w-0 truncate font-medium text-ink hover:underline">
+                      <span className="tnum">{formatInvoiceNumber(inv.invoiceNumber)}</span>
+                      <span className="tnum ml-2 font-normal text-ink-3">Order #{inv.orderNumber ?? '—'}</span>
+                    </Link>
+                    <span className="tnum shrink-0 text-right text-ink-2">
+                      <Money minor={inv.totalMinor} currency={inv.currency} />
+                      <span className="block text-xs text-ink-3">
+                        <When iso={inv.issuedAt} dateOnly />
+                      </span>
                     </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </div>
       </div>
-    </Section>
+    </SettingsBlock>
   )
 }
 
@@ -397,24 +439,34 @@ export default function SellingToolsPage() {
     <>
       <PageHeader title="Selling tools" description="Import products, measure your ads, use your own domain, take bank transfers and prepare tax invoices." />
 
-      <Section icon={<FileSpreadsheet className="size-4" aria-hidden />} title="Import products from CSV" description="Bring your catalogue over from a spreadsheet or another shop in one go.">
-        <Link to="/app/products/import" className={buttonClass('secondary', 'sm')}>
-          Open import
+      <SettingsBlock first title="Import products from CSV" description="Bring your catalogue over from a spreadsheet or another shop in one go.">
+        <Link to="/app/products/import" className={buttonClass('secondary', 'sm', 'h-10')}>
+          Open import <ArrowRight className="size-4" aria-hidden />
         </Link>
-      </Section>
+      </SettingsBlock>
 
       {extras.isPending ? (
-        <div className="flex flex-col gap-3">
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
+        <div aria-busy>
+          {[0, 1].map((i) => (
+            <div key={i} className="grid gap-4 border-t border-line py-7 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-10">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-3 w-52" />
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-11 w-full max-w-xl" />
+                <Skeleton className="h-11 w-full max-w-xl" />
+              </div>
+            </div>
+          ))}
         </div>
       ) : extras.isError ? (
         <ErrorNotice error={extras.error} onRetry={() => void extras.refetch()} />
       ) : (
         <>
-          <Section icon={<LineChart className="size-4" aria-hidden />} title="Ads and analytics" description="Measure Facebook / Instagram ads and Google Analytics on your shop.">
+          <SettingsBlock title="Ads and analytics" description="Measure Facebook / Instagram ads and Google Analytics on your shop.">
             <TrackingForm key={`${extras.data.metaPixelId}-${extras.data.ga4Id}`} extras={extras.data} editable={can('org.manage')} />
-          </Section>
+          </SettingsBlock>
           <DomainSection editable={can('org.manage')} />
           {isKenya ? (
             <>

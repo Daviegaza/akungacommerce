@@ -4,7 +4,10 @@ import type { PublicProduct, PublicShop } from '@/gateway/storefront'
 import { cn } from '@/lib/utils'
 import { ProductCard } from './ProductCard'
 
-/** Horizontally scrolling, snap-aligned row of product cards. */
+const PAGE_BTN =
+  'grid size-10 place-items-center rounded-lg border border-line-strong bg-panel text-ink-2 transition-colors hover:bg-sunken hover:text-ink'
+
+/** Horizontally scrolling, snap-aligned row of product cards under a hairline. `quiet` = smaller title and cards. */
 export function ProductRail({
   title,
   subtitle,
@@ -13,6 +16,7 @@ export function ProductRail({
   shop,
   slug,
   className,
+  quiet,
 }: {
   title: string
   subtitle?: ReactNode
@@ -21,6 +25,7 @@ export function ProductRail({
   shop: PublicShop
   slug: string
   className?: string
+  quiet?: boolean
 }) {
   const scroller = useRef<HTMLDivElement>(null)
   if (products.length === 0) return null
@@ -32,42 +37,41 @@ export function ProductRail({
   }
 
   return (
-    <section className={cn('ak-rise', className)} aria-label={title}>
-      <div className="mb-3 flex items-end justify-between gap-3 px-4 sm:px-6">
+    <section className={className} aria-label={title}>
+      <div className="mx-4 flex items-end justify-between gap-3 border-t border-line pt-6 sm:mx-6">
         <div className="min-w-0">
-          <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight text-ink sm:text-2xl">
+          <h2 className={cn('flex items-center gap-2 font-semibold tracking-tight text-ink', quiet ? 'text-[15px]' : 'text-base sm:text-lg')}>
             {icon}
             {title}
           </h2>
-          {subtitle && <p className="mt-0.5 text-sm text-ink-3">{subtitle}</p>}
+          {subtitle && <p className="mt-0.5 text-[13px] text-ink-3">{subtitle}</p>}
         </div>
         {products.length > 3 && (
           <div className="hidden shrink-0 gap-1.5 sm:flex">
-            <button
-              type="button"
-              onClick={() => page(-1)}
-              aria-label={`Scroll ${title} back`}
-              className="grid size-10 place-items-center rounded-full border border-line-strong bg-panel text-ink-2 transition-colors hover:bg-sunken hover:text-ink"
-            >
-              <ChevronLeft className="size-5" aria-hidden />
+            <button type="button" onClick={() => page(-1)} aria-label={`Scroll ${title} back`} className={PAGE_BTN}>
+              <ChevronLeft className="size-[18px]" aria-hidden />
             </button>
-            <button
-              type="button"
-              onClick={() => page(1)}
-              aria-label={`Scroll ${title} forward`}
-              className="grid size-10 place-items-center rounded-full border border-line-strong bg-panel text-ink-2 transition-colors hover:bg-sunken hover:text-ink"
-            >
-              <ChevronRight className="size-5" aria-hidden />
+            <button type="button" onClick={() => page(1)} aria-label={`Scroll ${title} forward`} className={PAGE_BTN}>
+              <ChevronRight className="size-[18px]" aria-hidden />
             </button>
           </div>
         )}
       </div>
       <div
         ref={scroller}
-        className="no-scrollbar flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 sm:scroll-px-6 sm:gap-4 sm:px-6"
+        className="no-scrollbar mt-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 sm:scroll-px-6 sm:gap-4 sm:px-6"
       >
         {products.map((p) => (
-          <ProductCard key={p.id} product={p} shop={shop} slug={slug} className="w-[44vw] max-w-[220px] shrink-0 snap-start sm:w-[220px]" />
+          <ProductCard
+            key={p.id}
+            product={p}
+            shop={shop}
+            slug={slug}
+            className={cn(
+              'shrink-0 snap-start',
+              quiet ? 'w-[36vw] max-w-[168px] sm:w-[168px]' : 'w-[42vw] max-w-[216px] sm:w-[216px]',
+            )}
+          />
         ))}
       </div>
     </section>

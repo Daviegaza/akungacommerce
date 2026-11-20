@@ -49,8 +49,8 @@ export function SwatchPicker({
         disabled={disabled}
         onClick={() => onChange('')}
         className={cn(
-          'flex h-9 items-center rounded-full px-3 text-xs font-semibold ring-1 transition-shadow disabled:opacity-50',
-          !value ? 'bg-primary text-on-primary ring-primary' : 'bg-panel text-ink-2 ring-line-strong hover:ring-ink-3',
+          'flex h-9 items-center rounded-lg px-3 text-xs font-medium ring-1 transition-shadow disabled:opacity-50',
+          !value ? 'bg-sunken text-ink ring-ink' : 'bg-panel text-ink-2 ring-line-strong hover:ring-ink-3',
         )}
       >
         None
@@ -128,12 +128,12 @@ export function ProductMerchandising({
   const dropInvalid = dropAt.trim() !== '' && dropIso == null
 
   return (
-    <section aria-labelledby="merch-h" className="flex flex-col gap-5 rounded-[var(--radius-card)] bg-sunken/60 p-4 sm:p-5">
+    <section aria-labelledby="merch-h" className="flex min-w-0 flex-col gap-5 border-t border-line pt-6">
       <div>
-        <h3 id="merch-h" className="font-display text-[17px] font-bold tracking-tight text-ink">
+        <h3 id="merch-h" className="font-display text-[15px] font-semibold tracking-[-0.01em] text-ink">
           Storefront
         </h3>
-        <p className="text-xs text-ink-3">How this product looks in your online shop. The first photo is the cover.</p>
+        <p className="mt-0.5 text-xs text-ink-3">How this product looks in your online shop. The first photo is the cover.</p>
       </div>
 
       <ProductPhotos productName={productName} images={images} onImagesChange={onImagesChange} readOnly={readOnly} attempted={attempted} />
@@ -147,8 +147,8 @@ export function ProductMerchandising({
           description="Featured products appear first, marked with a star."
         />
         {featured && (
-          <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-warn">
-            <Star className="size-3.5 fill-current" aria-hidden /> Featured
+          <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-ink-2">
+            <Star className="size-3.5 text-ink-3" aria-hidden /> Featured
           </p>
         )}
       </div>
