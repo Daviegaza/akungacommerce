@@ -10,6 +10,7 @@ import { DefinitionList, EmptyState, ErrorNotice, PageHeader, Section, Stat, Tab
 import { Money, OrderStatusBadge, PaymentStateBadge, Phone, When, paymentStateOf } from '../ui/format'
 import { Badge, Button, Skeleton, buttonClass } from '../ui/primitives'
 import { CustomerFormSheet } from '../components/CustomerForm'
+import { MarketingConsentPanel } from '../components/MarketingConsentPanel'
 
 interface CurrencyTotal {
   currency: string
@@ -283,16 +284,13 @@ export default function CustomerDetailPage() {
                   ),
                 },
                 { label: 'Country', value: countryName(customer.countryCode) ?? <span className="text-ink-3">Not set</span> },
-                {
-                  label: 'Marketing',
-                  value: customer.marketingConsent ? <Badge tone="pos">Agreed</Badge> : <Badge>Not agreed</Badge>,
-                },
                 { label: 'Customer since', value: <When iso={customer.createdAt} dateOnly /> },
               ]}
             />
-            {!customer.marketingConsent && (
-              <p className="mt-2 text-xs text-ink-3">Don’t send promotions to this customer. Order updates are fine.</p>
-            )}
+          </Section>
+
+          <Section title="Marketing consent">
+            <MarketingConsentPanel customer={customer} />
           </Section>
 
           <Section title="Tags">

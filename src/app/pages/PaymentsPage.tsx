@@ -11,6 +11,7 @@ import { Money, VerificationBadge, When } from '../ui/format'
 import { Badge, Button, Select, Skeleton } from '../ui/primitives'
 import { cn } from '@/lib/utils'
 import { MpesaReconciliation } from '../components/MpesaReconciliation'
+import { WhereIsMyMoney } from '../components/WhereIsMyMoney'
 
 const DAY_MS = 86_400_000
 
@@ -423,6 +424,8 @@ export default function PaymentsPage() {
           provider{integrations.isSuccess && !providerConnected ? ' — none is connected yet.' : '.'}
         </Notice>
       </div>
+
+      <WhereIsMyMoney />
 
       <MpesaReconciliation />
 

@@ -6,6 +6,7 @@
  */
 import { GatewayError } from './gateway'
 import { PROMPT_STATUSES } from '@/domain/reconciliation'
+import { createSupabaseStorefrontTrust } from './trust-storefront-supabase'
 import type { PaymentOptions, PromptStatusResult } from './storefront'
 import type {
   DeliveryBand,
@@ -304,5 +305,7 @@ export function createSupabaseStorefront(url: string, anonKey: string, fetchImpl
       const status = PROMPT_STATUSES.find((x) => x === r?.status) ?? 'pending'
       return { status, resultCode: r?.result_code == null ? null : Number(r.result_code) }
     },
+
+    ...createSupabaseStorefrontTrust(rpc),
   }
 }

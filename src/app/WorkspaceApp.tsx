@@ -20,6 +20,9 @@ const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const ShopSettingsPage = lazy(() => import('./pages/ShopSettingsPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
+const ReengagePage = lazy(() => import('./pages/ReengagePage'))
+const TrustPage = lazy(() => import('./pages/TrustPage'))
+const PlatformReviewPage = lazy(() => import('./pages/PlatformReviewPage'))
 
 function FullPageLoader() {
   return (
@@ -60,11 +63,14 @@ function Gate() {
                   <Route path="products" element={<ProductsPage />} />
                   <Route path="inventory" element={<InventoryPage />} />
                   <Route path="customers" element={<CustomersPage />} />
+                  <Route path="customers/reach-out" element={<ReengagePage />} />
                   <Route path="customers/:customerId" element={<CustomerDetailPage />} />
                   <Route path="payments" element={<PaymentsPage />} />
                   <Route path="fulfilment" element={<FulfilmentPage />} />
                   <Route path="analytics" element={<AnalyticsPage />} />
                   <Route path="shop" element={<ShopSettingsPage />} />
+                  <Route path="trust" element={<TrustPage />} />
+                  <Route path="platform-review" element={<PlatformReviewPage />} />
                   <Route path="settings" element={<SettingsPage />} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>

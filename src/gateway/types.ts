@@ -2,6 +2,7 @@ import type { OrderStatus, TaxMode } from '@/domain/orders'
 import type { PaymentStatus, PaymentVerification } from '@/domain/payments'
 import type { Role } from '@/domain/permissions'
 import type { AdjustmentReason, StockMovementKind } from '@/domain/inventory'
+import type { ConsentSource } from '@/domain/marketing'
 
 /** Shapes the UI works with. Both gateways (Supabase and demo) return these. */
 
@@ -141,6 +142,10 @@ export interface Customer {
   email: string | null
   countryCode: string | null
   marketingConsent: boolean
+  /** When marketing consent was last given or withdrawn (server time). */
+  consentUpdatedAt: string | null
+  /** How the latest consent change happened. Null when never recorded. */
+  consentSource: ConsentSource | null
   tags: string[]
   notes: string | null
   createdAt: string

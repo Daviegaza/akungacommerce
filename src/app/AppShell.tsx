@@ -15,6 +15,7 @@ import {
   Plus,
   Receipt,
   Settings,
+  ShieldCheck,
   Store,
   Sun,
   Truck,
@@ -53,6 +54,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: '/app', label: 'Today', icon: Home, end: true },
   { to: '/app/shop', label: 'My shop', icon: Store },
+  { to: '/app/trust', label: 'Trust', icon: ShieldCheck },
   { to: '/app/orders', label: 'Orders', icon: Receipt },
   { to: '/app/fulfilment', label: 'Fulfilment', icon: Truck },
   { to: '/app/products', label: 'Products', icon: Package },

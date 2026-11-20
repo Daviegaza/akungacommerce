@@ -14,6 +14,7 @@ import { ShopAvatar, ShopHeader } from '../components/ShopHeader'
 import { PoweredBy } from '../components/States'
 import { RatingStars } from '../components/RatingStars'
 import { WhatsAppGlyph } from '../components/WhatsAppGlyph'
+import { TrustBlock } from '../components/TrustBlock'
 import {
   absoluteUrl,
   categoriesOf,
@@ -368,6 +369,7 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
             </section>
           </>
         )}
+        <TrustBlock shop={shop} className="mx-4 mt-12 max-w-2xl sm:mx-6" />
       </main>
       <PoweredBy />
     </>

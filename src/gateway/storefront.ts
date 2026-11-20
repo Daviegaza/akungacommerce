@@ -5,6 +5,7 @@
  */
 import type { ImageUploadOptions } from '@/media/upload'
 import type { PromptStatus } from '@/domain/reconciliation'
+import type { StorefrontTrustGateway } from './trust'
 
 export interface DeliveryBand {
   maxKm: number
@@ -212,7 +213,7 @@ export interface PromptStatusResult {
   resultCode: number | null
 }
 
-export interface StorefrontGateway {
+export interface StorefrontGateway extends StorefrontTrustGateway {
   readonly mode: 'supabase' | 'demo'
   getStorefront(slug: string): Promise<StorefrontData>
   listReviews(slug: string, productId: string): Promise<PublicReview[]>

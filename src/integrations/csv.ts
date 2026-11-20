@@ -1,5 +1,7 @@
 import { money, toMajorString } from '@/domain/money'
 import type { OrderSummary, Payment, Refund } from '@/gateway/types'
+import type { CustomerExportRow } from '@/gateway/trust'
+import { CONSENT_SOURCE_LABEL } from '@/domain/marketing'
 
 /**
  * Accounting CSV exports. RFC 4180 output (CRLF, quoted where needed) with
@@ -141,6 +143,48 @@ export function refundsCsv(refunds: Refund[]): string {
     orderId: r.orderId,
   }))
   return toCsv(rows, columns)
+}
+
+/**
+ * Customer list export (portability). One row per customer. Spend is per
+ * currency: with a single currency, "Total spent" is a plain amount; with
+ * several, each is listed as "<amount> <CUR>" separated by "; " (never summed).
+ */
+export function customersCsv(rows: CustomerExportRow[]): string {
+  const columns: CsvColumn[] = [
+    { key: 'name', header: 'Name' },
+    { key: 'phone', header: 'Phone (E.164)' },
+    { key: 'email', header: 'Email' },
+    { key: 'orderCount', header: 'Orders' },
+    { key: 'totalSpent', header: 'Total spent' },
+    { key: 'currency', header: 'Currency' },
+    { key: 'lastOrderAt', header: 'Last order (ISO 8601)' },
+    { key: 'consent', header: 'Marketing consent' },
+    { key: 'consentAt', header: 'Consent updated at (ISO 8601)' },
+    { key: 'consentSource', header: 'Consent source' },
+    { key: 'createdAt', header: 'Customer since (ISO 8601)' },
+    { key: 'id', header: 'Customer ID' },
+  ]
+  const out = rows.map((r) => ({
+    name: r.name,
+    phone: r.phoneE164,
+    email: r.email,
+    orderCount: r.orderCount,
+    totalSpent:
+      r.spent.length === 0
+        ? null
+        : r.spent.length === 1
+          ? major(r.spent[0].totalMinor, r.spent[0].currency)
+          : r.spent.map((x) => `${major(x.totalMinor, x.currency)} ${x.currency}`).join('; '),
+    currency: r.spent.map((x) => x.currency).join('; ') || null,
+    lastOrderAt: r.lastOrderAt,
+    consent: r.marketingConsent ? 'yes' : 'no',
+    consentAt: r.consentUpdatedAt,
+    consentSource: r.consentSource ? CONSENT_SOURCE_LABEL[r.consentSource] : null,
+    createdAt: r.createdAt,
+    id: r.id,
+  }))
+  return toCsv(out, columns)
 }
 
 /**
