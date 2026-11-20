@@ -71,7 +71,7 @@ import { createDemoExpansion, type DemoExpansionState } from './expansion-demo'
 export const DEMO_NOTICE = 'Demo workspace · fictional data · stored only in this browser'
 
 const STORAGE_KEY = 'akunga.demo.v2'
-const STATE_VERSION = 2
+const STATE_VERSION = 3
 
 export const DEMO_USER: SessionUser = { id: 'demo-user', email: 'owner@demo.akunga.test' }
 
@@ -2029,8 +2029,8 @@ const MTO_PRODUCTS: SeedProduct[] = [
       { name: 'Large', sku: 'MTO-BSK-L', price: 3400, cost: 1700, stock: 0, low: 2 },
     ],
     images: [
-      ['1524758631624-e2822e304c36', 'Bright room with plants and woven storage'],
-      ['1586023492125-27b2c045efd7', 'Living room styled with natural textures'],
+      ['1645542554266-b275c100103c', 'Woven basket holding folded blankets'],
+      ['1730405295633-9fa7df0144a5', 'Woven basket on a wooden shelf'],
     ],
   },
   {
@@ -2043,8 +2043,8 @@ const MTO_PRODUCTS: SeedProduct[] = [
       { name: 'Rust', sku: 'MTO-THR-RST', price: 6500, cost: 3200, stock: 4, low: 2, compareAt: 7800, swatch: '#B7410E' },
     ],
     images: [
-      ['1522771739844-6a9f6d5f14af', 'Linen bedding in soft daylight'],
       ['1505693416388-ac5ce068fe85', 'Bedroom styled with a linen throw'],
+      ['1522771739844-6a9f6d5f14af', 'Linen bedding in soft daylight'],
       ['1493663284031-b7e3aefcae8e', 'Sofa corner with layered textiles'],
     ],
     featured: true,
@@ -2071,8 +2071,8 @@ const MTO_PRODUCTS: SeedProduct[] = [
     taxRateBps: 1600,
     variants: [{ name: 'Default', sku: 'MTO-BRD-OLV', price: 4200, cost: 2100, stock: 5, low: 2 }],
     images: [
-      ['1556909114-f6e7ad7d3136', 'Kitchen counter with wooden boards'],
-      ['1484101403633-562f891dc89a', 'Table set for a shared meal'],
+      ['1721934081906-a92cdc010b75', 'Wooden serving boards on a kitchen counter'],
+      ['1690983322070-22861e13ce47', 'Round wooden board among fresh ingredients'],
     ],
   },
   {
@@ -2085,9 +2085,7 @@ const MTO_PRODUCTS: SeedProduct[] = [
       { name: 'Short', sku: 'MTO-VAS-S', price: 2900, cost: 1200, stock: 9, low: 2 },
     ],
     images: [
-      ['1578500494198-246f612d3b3d', 'Glazed ceramic vase'],
-      ['1485955900006-10f4d324d411', 'Potted plant beside ceramics'],
-      ['1565193566173-7a0ee3dbe261', 'Handmade ceramic pieces'],
+      ['1565193566173-7a0ee3dbe261', 'Glazed ceramic vases with dried stems'],
     ],
     featured: true,
   },
@@ -2108,7 +2106,7 @@ const MTO_PRODUCTS: SeedProduct[] = [
     description: 'Hammered brass holders in three heights.',
     taxRateBps: 1600,
     variants: [{ name: 'Default', sku: 'MTO-TLH-3', price: 2400, stock: 12, low: 3 }],
-    images: [['1602874801007-bd458bb1b8b6', 'Tea lights glowing in metal holders']],
+    images: [['1537948756265-406a522f1a45', 'Candle glowing in a brass holder']],
   },
   {
     name: 'Gift Wrapping',
@@ -2120,12 +2118,12 @@ const MTO_PRODUCTS: SeedProduct[] = [
     images: [['1513885535751-8b9238bd345a', 'Gift wrapped in kraft paper and twine']],
   },
   {
-    name: 'Banana-Fibre Pendant Shade',
+    name: 'Glass Globe Pendant Light',
     category: 'Lighting',
-    description: 'Hand-woven banana-fibre lampshade, 40 cm across, fits a standard E27 pendant. Small first batch.',
+    description: 'Hand-blown clear glass globe, 20 cm across, fits a standard E27 pendant. Small first batch.',
     taxRateBps: 1600,
-    variants: [{ name: 'Natural', sku: 'MTO-PND-BAN', price: 5400, cost: 2300, stock: 12, low: 3, swatch: '#C8A97E' }],
-    images: [['1507473885765-e6ed057f782c', 'Woven pendant lamp shade']],
+    variants: [{ name: 'Clear', sku: 'MTO-PND-GLS', price: 5400, cost: 2300, stock: 12, low: 3, swatch: '#D9E2E7' }],
+    images: [['1552575546-effa7c722ec9', 'Clear glass globe pendant light with a filament bulb']],
     dropInDays: 3,
   },
   {

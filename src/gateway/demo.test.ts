@@ -436,7 +436,7 @@ describe('demo storefront', () => {
   })
 
   it('refuses a scheduled drop before its time', async () => {
-    const { v } = await variantOf('Banana-Fibre Pendant Shade', 'Natural')
+    const { v } = await variantOf('Glass Globe Pendant Light', 'Clear')
     await expect(sf.quote('mto-home', { lines: [{ variantId: v.id, quantity: 1 }], method: 'pickup' })).rejects.toThrow(/not available yet/)
     await expect(sf.placeOrder('mto-home', guest(v.id), key())).rejects.toThrow(/not available yet/)
   })
