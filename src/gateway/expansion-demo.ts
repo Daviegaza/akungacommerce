@@ -13,7 +13,7 @@ import { invoiceLine, invoiceTotals, normaliseKraPin, type TaxInvoiceRecord } fr
 import type { Role } from '@/domain/permissions'
 import { GatewayError } from './gateway'
 import type { demoInternals as DemoInternalsValue, DemoState } from './demo'
-import type { CustomDomain, ExpansionAdminGateway, ImportResult, ShopExtras, StorefrontExtrasGateway, TeamInvite } from './expansion'
+import type { CustomDomain, DomainCheckResult, ExpansionAdminGateway, ImportResult, ShopExtras, StorefrontExtrasGateway, TeamInvite } from './expansion'
 
 type Internals = typeof DemoInternalsValue
 
@@ -261,6 +261,24 @@ export function createDemoExpansion(I: Internals): ExpansionAdminGateway {
         d.lastCheckedAt = I.nowIso()
         d.verifiedAt = outcome === 'verified' ? d.lastCheckedAt : null
         d.failureReason = outcome === 'failed' ? 'Simulated: the CNAME/A record was not found' : null
+      }),
+    checkCustomDomain: (orgId) =>
+      tx((s): DomainCheckResult => {
+        I.requirePermission(s, orgId, 'org.manage')
+        const d = s.customDomains?.[orgId] ?? fail('Add a domain first', 'not_found')
+        // Same server-side limit as request_custom_domain_check: 5 checks per 15 minutes per shop.
+        const key = `domain-check:${orgId}`
+        const now = I.now().getTime()
+        const rl = s.rateLimits[key]
+        if (!rl || Date.parse(rl.windowStart) < now - 15 * 60_000) s.rateLimits[key] = { windowStart: I.nowIso(), hits: 1 }
+        else if (rl.hits >= 5) fail('Too many attempts. Please wait a few minutes and try again.', 'rate_limited')
+        else rl.hits += 1
+        // Demo: no DNS lookup is made. The outcome is simulated as a pass and labelled as such.
+        d.status = 'verified'
+        d.lastCheckedAt = I.nowIso()
+        d.verifiedAt = d.lastCheckedAt
+        d.failureReason = null
+        return { status: 'verified', routing: 'ok', ownership: 'ok', reason: null, checkedAt: d.lastCheckedAt, simulated: true }
       }),
 
     listInvites: (orgId) =>

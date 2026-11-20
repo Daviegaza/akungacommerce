@@ -33,6 +33,27 @@ export function publicObjectUrl(baseUrl: string, bucket: string, path: string): 
   return `${baseUrl.replace(/\/+$/, '')}/storage/v1/object/public/${bucket}/${encoded}`
 }
 
+/**
+ * Object key of a photo in this org's folder of our public bucket, from its
+ * public URL. Returns null for anything else (pasted links, data URLs, other
+ * orgs' folders, other hosts, odd paths), so a delete can never reach beyond
+ * what this org uploaded.
+ */
+export function productImagePathFromUrl(baseUrl: string, orgId: string, url: string): string | null {
+  if (!UUID_RE.test(orgId)) return null
+  const prefix = `${baseUrl.replace(/\/+$/, '')}/storage/v1/object/public/${PRODUCT_IMAGES_BUCKET}/`
+  if (!url.startsWith(prefix)) return null
+  let rest: string
+  try {
+    rest = decodeURIComponent(url.slice(prefix.length))
+  } catch {
+    return null
+  }
+  const m = /^([0-9a-f-]{36})\/([A-Za-z0-9._-]+)$/i.exec(rest)
+  if (!m || m[1].toLowerCase() !== orgId.toLowerCase() || m[2].startsWith('.')) return null
+  return `${m[1].toLowerCase()}/${m[2]}`
+}
+
 /** Whether a stored image URL came from an upload (data URL or our public bucket) rather than a pasted link. */
 export function isUploadedImageUrl(url: string): boolean {
   return url.startsWith('data:image/') || url.includes(`/storage/v1/object/public/${PRODUCT_IMAGES_BUCKET}/`)

@@ -10,6 +10,7 @@ import { CurrencyMismatchError, MoneyError, assertCurrency } from '@/domain/mone
 import {
   ORDER_STATUS_LABEL,
   canTransition,
+  needsReturnFlow,
   computeOrderTotals,
   holdsReservation,
   type OrderStatus,
@@ -1115,6 +1116,7 @@ const ops = {
     if (!canTransition(from, to)) {
       fail(`An order cannot move from ${ORDER_STATUS_LABEL[from] ?? from} to ${ORDER_STATUS_LABEL[to] ?? to}`, 'invalid')
     }
+    if (needsReturnFlow(from, to)) fail('An order that is out for delivery is cancelled by marking it returned to the shop', 'invalid')
     if (!holdsReservation(from) && holdsReservation(to)) orderStock(s, order, 'reserve')
     else if (holdsReservation(from) && to === 'cancelled') orderStock(s, order, 'release')
     else if (holdsReservation(from) && (to === 'dispatched' || to === 'delivered')) orderStock(s, order, 'commit')
@@ -1584,6 +1586,11 @@ export function createDemoGateway(): CommerceGateway {
       opts?.onProgress?.(1)
       return url
     },
+    // Demo photos are data URLs held by the editor until the product is saved, and saving
+    // replaces the product's image list, so a removed or unsaved photo is never left in storage.
+    deleteProductImage: async (orgId) => {
+      await read((s) => requirePermission(s, orgId, 'catalogue.write'))
+    },
 
     ...createDemoCollections(demoInternals),
 
@@ -1618,6 +1625,8 @@ export const demoInternals = {
   saveProduct: ops.saveProduct,
   adjustStock: ops.adjustStock,
   setVariantMerchandising: ops.setVariantMerchandising,
+  returnItems: ops.returnItems,
+  recordRefund: ops.recordRefund,
 }
 export type {
   DemoState,

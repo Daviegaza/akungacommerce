@@ -1,8 +1,10 @@
 /**
- * Custom shop domains (pure). Model, validation and DNS instructions only:
- * Rafu does not yet check DNS or issue certificates, so a domain never becomes
- * 'verified' from the app. The database mirrors the hostname rule in
- * set_custom_domain and only resolves verified domains (storefront_resolve_host).
+ * Custom shop domains (pure). Model, validation and DNS instructions. The DNS
+ * check itself runs on the server (Edge Function verify-custom-domain, DNS over
+ * HTTPS); 'verified' means the DNS records are right, NOT that the domain is
+ * live: Rafu does not issue certificates or host custom domains yet. The
+ * database mirrors the hostname rule in set_custom_domain and only resolves
+ * verified domains (storefront_resolve_host).
  */
 
 export const DOMAIN_STATUSES = ['pending_dns', 'verified', 'failed'] as const
@@ -10,8 +12,8 @@ export type DomainStatus = (typeof DOMAIN_STATUSES)[number]
 
 export const DOMAIN_STATUS_LABEL: Record<DomainStatus, string> = {
   pending_dns: 'Waiting for DNS',
-  verified: 'Verified',
-  failed: 'Check failed',
+  verified: 'DNS verified',
+  failed: 'DNS check failed',
 }
 
 /** Hosts that can never be a merchant's own domain. */

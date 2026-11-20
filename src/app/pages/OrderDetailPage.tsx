@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, MessageCircle } from 'lucide-react'
-import { ORDER_STATUS_LABEL, ORDER_TRANSITIONS, type OrderStatus } from '@/domain/orders'
+import { ORDER_STATUS_LABEL, manualTransitions, type OrderStatus } from '@/domain/orders'
 import { summarisePayments, refundableMinor } from '@/domain/payments'
 import { parseMajor, toMajorString, money } from '@/domain/money'
 import { formatPhone, toE164 } from '@/domain/locale'
@@ -237,7 +237,8 @@ function StatusActions({ order }: { order: OrderDetail }) {
   const [reason, setReason] = useState('')
   const transition = useAction((g, o, input: { to: OrderStatus; note: string | null }) => g.transitionOrder(o, order.id, input.to, input.note))
 
-  const options = ORDER_TRANSITIONS[order.status]
+  // dispatched -> cancelled is the "returned to shop" flow (Deposit and delivery panel), never a plain cancel.
+  const options = manualTransitions(order.status)
   let forward = options.filter((s) => s !== 'cancelled')
   // For pickup orders "ready → delivered" means handed over; skip "dispatched".
   if (order.status === 'ready') forward = order.fulfilmentMethod === 'pickup' ? ['delivered'] : ['dispatched']

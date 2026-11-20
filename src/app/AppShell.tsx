@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { Suspense, lazy, useEffect, useState, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   BarChart3,
@@ -32,7 +32,6 @@ import { useGateway, useOrg } from './context'
 import { Sheet } from './ui/layout'
 import { IconButton, buttonClass } from './ui/primitives'
 import {
-  Celebration,
   LiveFeedSheet,
   playChime,
   shopUrl,
@@ -44,6 +43,9 @@ import {
   useSaleChime,
   useShopSettings,
 } from './live'
+
+// Loaded on the first milestone only, so framer-motion stays out of the workspace's first load.
+const Celebration = lazy(() => import('./live/Celebration').then((m) => ({ default: m.Celebration })))
 
 interface NavItem {
   to: string
@@ -322,6 +324,9 @@ export function AppShell() {
   const [chimeOn] = useChimeSetting()
   useSaleChime(orders.data, org.id, chimeOn)
   const { milestone, dismiss } = useMilestone(orders.data, org.id)
+  // The celebration (and framer-motion) loads the first time a milestone is reached, then stays mounted for its exit animation.
+  const [celebrationLoaded, setCelebrationLoaded] = useState(false)
+  if (milestone != null && !celebrationLoaded) setCelebrationLoaded(true)
 
   const feed = useLiveFeed(40)
   const [seen, setSeen] = useLocalString(`rafu.feedSeen.${org.id}`)
@@ -409,7 +414,11 @@ export function AppShell() {
       </div>
       <MobileNav toConfirm={toConfirm} slug={slug} />
       <LiveFeedSheet open={feedOpen} onOpenChange={setFeedOpen} items={feed.items} loading={feed.isPending} unreadAfter={openedAfter} />
-      <Celebration milestone={milestone} onDismiss={dismiss} />
+      {celebrationLoaded && (
+        <Suspense fallback={null}>
+          <Celebration milestone={milestone} onDismiss={dismiss} />
+        </Suspense>
+      )}
     </div>
   )
 }

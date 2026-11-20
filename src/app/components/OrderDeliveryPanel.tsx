@@ -1,8 +1,22 @@
 import { useState } from 'react'
-import { AlertTriangle, Check, Copy, Link2, Package, Truck, Bike } from 'lucide-react'
-import { FAILED_REASONS, FAILED_REASON_LABEL, RIDER_LINK_DEFAULT_HOURS, riderLinkState, type FailedReason } from '@/domain/delivery-policy'
+import { AlertTriangle, Check, Copy, Link2, Package, Truck, Bike, Undo2 } from 'lucide-react'
+import {
+  FAILED_REASONS,
+  FAILED_REASON_LABEL,
+  RIDER_LINK_DEFAULT_HOURS,
+  planReturnToShop,
+  riderLinkState,
+  type FailedReason,
+} from '@/domain/delivery-policy'
 import { newIdempotencyKey } from '@/gateway/gateway'
-import { HANDOFF_LABEL, type CreatedRiderLink, type HandoffKind, type OrderDelivery } from '@/gateway/delivery'
+import {
+  HANDOFF_LABEL,
+  type CreatedRiderLink,
+  type FailedDeliveryResult,
+  type HandoffKind,
+  type OrderDelivery,
+  type RefundSuggestion,
+} from '@/gateway/delivery'
 import type { OrderDetail } from '@/gateway/types'
 import { whatsappChatLink } from '@/integrations/whatsapp-link'
 import { useAction, useOrg, useOrgQuery } from '../context'
@@ -21,29 +35,43 @@ export function OrderDeliveryPanel({ order }: { order: OrderDetail }) {
 function PanelBody({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
   const { can } = useOrg()
   const canEdit = can('fulfilment.update') && !['delivered', 'cancelled', 'refunded'].includes(order.status)
+  const closed = order.status === 'cancelled' || order.status === 'refunded'
   const delivery = order.fulfilment.method === 'delivery'
   const [failOpen, setFailOpen] = useState(false)
+  const [returnOpen, setReturnOpen] = useState(false)
   const failedEvents = d.events.filter((e) => e.kind === 'failed')
   const outOfAttempts = d.attempts >= d.maxAttempts
+  // Returning stock and working out a refund needs the refunds permission (owner, admin, manager).
+  const canReturn = can('refunds.create') && delivery && order.status === 'dispatched'
 
   return (
     <Section
       title="Deposit and delivery"
       description={delivery ? 'Who carries the order, and what happens if a delivery fails.' : 'Deposit for this pickup order.'}
       actions={
-        canEdit &&
         delivery &&
-        order.status === 'dispatched' &&
-        !outOfAttempts && (
-          <Button size="sm" variant="ghost" icon={<AlertTriangle className="size-4" aria-hidden />} onClick={() => setFailOpen(true)}>
-            Delivery failed
-          </Button>
+        order.status === 'dispatched' && (
+          <div className="flex flex-wrap gap-1">
+            {canEdit && !outOfAttempts && (
+              <Button size="sm" variant="ghost" icon={<AlertTriangle className="size-4" aria-hidden />} onClick={() => setFailOpen(true)}>
+                Delivery failed
+              </Button>
+            )}
+            {canReturn && (
+              <Button size="sm" variant="ghost" icon={<Undo2 className="size-4" aria-hidden />} onClick={() => setReturnOpen(true)}>
+                Returned to shop
+              </Button>
+            )}
+          </div>
         )
       }
     >
       <DefinitionList
         items={[
-          ...(d.depositDueMinor > 0
+          // A closed order (cancelled, returned, refunded) owes nothing more: no deposit or balance to chase.
+          ...(closed
+            ? []
+            : d.depositDueMinor > 0
             ? [
                 {
                   label: d.depositDueMinor >= d.totalMinor ? 'Due before dispatch' : 'Deposit due',
@@ -56,7 +84,7 @@ function PanelBody({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
                 },
               ]
             : [{ label: 'Deposit', value: <span className="text-ink-3">None on this order</span> }]),
-          { label: 'Balance due', value: <Money minor={d.balanceDueMinor} currency={d.currency} /> },
+          ...(closed ? [] : [{ label: 'Balance due', value: <Money minor={d.balanceDueMinor} currency={d.currency} /> }]),
           ...(delivery ? [{ label: 'Delivery attempts', value: `${d.attempts} of ${d.maxAttempts}` }] : []),
           ...(d.forfeitedMinor > 0 ? [{ label: 'Kept for failed trips', value: <Money minor={d.forfeitedMinor} currency={d.currency} /> }] : []),
           ...(delivery && d.handoff.kind ? [{ label: 'Handoff', value: handoffText(d) }] : []),
@@ -90,18 +118,40 @@ function PanelBody({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
             </li>
           ))}
           {outOfAttempts && order.status === 'dispatched' && (
-            <li>
-              <Notice tone="warn">
-                No delivery attempts left. When the goods are back, use “Return items to stock”, then refund what is owed to the buyer
-                {d.forfeitedMinor > 0 ? ' (the kept delivery fee is yours)' : ''}.
-              </Notice>
+            <li className="rounded-2xl border border-line p-3">
+              <p className="font-semibold text-ink">No delivery attempts left</p>
+              <p className="mt-0.5 text-ink-2">
+                When the goods are back at the shop, mark the order returned. The items go back into stock, the order is closed and Rafu works out what
+                you owe the buyer{d.forfeitedMinor > 0 ? ' (the kept delivery fee stays with you)' : ''}.
+              </p>
+              {canReturn ? (
+                <Button className="mt-2" size="sm" variant="primary" icon={<Undo2 className="size-4" aria-hidden />} onClick={() => setReturnOpen(true)}>
+                  Mark returned to shop
+                </Button>
+              ) : (
+                <p className="mt-1 text-xs text-ink-3">Ask an owner or manager to mark it returned.</p>
+              )}
             </li>
           )}
         </ul>
       )}
 
+      {d.returnedAt && <ReturnedSummary order={order} d={d} />}
+
       {delivery && canEdit && <HandoffEditor order={order} d={d} />}
-      {failOpen && <FailedSheet order={order} d={d} onClose={() => setFailOpen(false)} />}
+      {failOpen && (
+        <FailedSheet
+          order={order}
+          d={d}
+          onClose={() => setFailOpen(false)}
+          onFinal={() => {
+            // Last attempt used: offer the end state straight away (the merchant still confirms it).
+            setFailOpen(false)
+            if (canReturn) setReturnOpen(true)
+          }}
+        />
+      )}
+      {returnOpen && <ReturnSheet order={order} d={d} onClose={() => setReturnOpen(false)} />}
     </Section>
   )
 }
@@ -297,11 +347,11 @@ function CourierForm({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
   )
 }
 
-function FailedSheet({ order, d, onClose }: { order: OrderDetail; d: OrderDelivery; onClose(): void }) {
+function FailedSheet({ order, d, onClose, onFinal }: { order: OrderDetail; d: OrderDelivery; onClose(): void; onFinal(): void }) {
   const [reason, setReason] = useState<FailedReason>('buyer_unreachable')
   const [note, setNote] = useState('')
   const [key] = useState(newIdempotencyKey)
-  const mark = useAction<void>((g, o) => g.markDeliveryFailed(o, order.id, { reason, note: note.trim() || null }, key))
+  const mark = useAction<void, FailedDeliveryResult>((g, o) => g.markDeliveryFailed(o, order.id, { reason, note: note.trim() || null }, key))
   const buyerFault = ['buyer_unreachable', 'buyer_refused', 'wrong_address', 'buyer_rescheduled'].includes(reason)
   const keeps = d.agreedPolicy?.failedDeliveryPayer === 'buyer' && buyerFault
   const remaining = Math.max(0, d.depositPaidMinor - d.forfeitedMinor)
@@ -319,8 +369,9 @@ function FailedSheet({ order, d, onClose }: { order: OrderDetail; d: OrderDelive
             Cancel
           </Button>
           <Button variant="danger" loading={mark.isPending} onClick={async () => {
-            await mark.mutateAsync()
-            onClose()
+            const result = await mark.mutateAsync()
+            if (result.final) onFinal()
+            else onClose()
           }}>
             Record failed delivery
           </Button>
@@ -355,9 +406,185 @@ function FailedSheet({ order, d, onClose }: { order: OrderDetail; d: OrderDelive
           ) : (
             'Not the buyer’s fault, so nothing is kept from their payment.'
           )}
-          {d.attempts + 1 >= d.maxAttempts && ' This is the last attempt; open rider links will be cancelled.'}
+          {d.attempts + 1 >= d.maxAttempts && ' This is the last attempt; open rider links will be cancelled and you can mark the order returned to the shop.'}
         </Notice>
       </div>
     </Sheet>
+  )
+}
+
+function netPaidOf(order: OrderDetail): number {
+  const paid = order.payments.filter((p) => p.status === 'succeeded').reduce((a, p) => a + p.amountMinor, 0)
+  const refunded = order.refunds.filter((r) => r.status === 'succeeded').reduce((a, r) => a + r.amountMinor, 0)
+  return Math.max(0, paid - refunded)
+}
+
+/** Out for delivery -> returned to shop. The merchant confirms; nothing moves money. */
+function ReturnSheet({ order, d, onClose }: { order: OrderDetail; d: OrderDelivery; onClose(): void }) {
+  const [note, setNote] = useState('')
+  const [key] = useState(newIdempotencyKey)
+  const run = useAction<void>((g, o) => g.returnToShop(o, order.id, { note: note.trim() || null }, key).then(() => undefined))
+  const plan = planReturnToShop({ netPaidMinor: netPaidOf(order), forfeitedMinor: d.forfeitedMinor })
+  const back = order.lines.filter((l) => l.quantity > l.returnedQuantity)
+
+  return (
+    <Sheet
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={`Returned to shop · order #${order.number}`}
+      description="Use this once the goods are physically back with you. The buyer sees “returned to the shop” on their tracking page."
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Not yet
+          </Button>
+          <Button
+            variant="primary"
+            loading={run.isPending}
+            onClick={async () => {
+              await run.mutateAsync()
+              onClose()
+            }}
+          >
+            Mark returned to shop
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4 text-sm">
+        {run.error && <ErrorNotice error={run.error} />}
+        <div>
+          <p className="font-semibold text-ink">Back into stock</p>
+          {back.length === 0 ? (
+            <p className="text-ink-2">Everything on this order was already returned to stock.</p>
+          ) : (
+            <ul className="mt-1 space-y-0.5 text-ink-2">
+              {back.map((l) => (
+                <li key={l.id}>
+                  {l.quantity - l.returnedQuantity} × {l.productName}
+                  {l.variantName !== 'Default' && ` (${l.variantName})`}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div>
+          <p className="font-semibold text-ink">Money</p>
+          <DefinitionList
+            items={[
+              { label: 'Buyer paid', value: <Money minor={plan.keptMinor + plan.refundMinor} currency={d.currency} /> },
+              ...(plan.keptMinor > 0 ? [{ label: 'Delivery fee you keep', value: <Money minor={plan.keptMinor} currency={d.currency} /> }] : []),
+              { label: 'To refund the buyer', value: <Money minor={plan.refundMinor} currency={d.currency} /> },
+            ]}
+          />
+          <p className="mt-2 text-xs text-ink-3">
+            {plan.refundMinor > 0
+              ? 'Rafu does not send money. This adds a refund to do: send it to the buyer yourself, then confirm it here to record it.'
+              : 'Nothing was paid beyond what you keep, so no refund is due.'}
+          </p>
+        </div>
+        <Field label="Note for your team" optional hint="Not shown to the buyer.">
+          {(p) => <Textarea {...p} rows={2} maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} />}
+        </Field>
+      </div>
+    </Sheet>
+  )
+}
+
+/** After a return: when it came back and the refund still to do (or done). */
+function ReturnedSummary({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
+  const s = d.refundSuggestion ?? null
+  return (
+    <div className="mt-4 rounded-2xl border border-line p-3 text-sm">
+      <p className="flex flex-wrap items-center gap-2 font-semibold text-ink">
+        <Undo2 className="size-4 text-ink-3" aria-hidden /> Returned to shop
+        <span className="text-xs font-normal text-ink-3">
+          <When iso={d.returnedAt as string} />
+        </span>
+      </p>
+      <p className="mt-0.5 text-ink-2">The items went back into stock and the order is closed.</p>
+      {s ? <RefundTodo order={order} s={s} /> : <p className="mt-2 text-ink-3">No refund is due on this order.</p>}
+    </div>
+  )
+}
+
+function RefundTodo({ order, s }: { order: OrderDetail; s: RefundSuggestion }) {
+  const { can } = useOrg()
+  const [key] = useState(newIdempotencyKey)
+  const [dismissing, setDismissing] = useState(false)
+  const [why, setWhy] = useState('')
+  const confirm = useAction<void>((g, o) => g.confirmRefundSuggestion(o, s.id, key))
+  const dismiss = useAction<void>((g, o) => g.dismissRefundSuggestion(o, s.id, why.trim()))
+  const allowed = can('refunds.create')
+
+  if (s.status === 'confirmed') {
+    return (
+      <p className="mt-2 flex items-center gap-2 text-ink">
+        <Badge tone="pos">Refund recorded</Badge> <Money minor={s.amountMinor} currency={s.currency} /> refunded to the buyer.
+      </p>
+    )
+  }
+  if (s.status === 'dismissed') {
+    return (
+      <p className="mt-2 text-ink-2">
+        <Badge tone="neutral">No refund</Badge> {s.resolutionNote}
+      </p>
+    )
+  }
+  return (
+    <div className="mt-3 rounded-xl bg-warn-soft p-3">
+      <p className="font-semibold text-ink">
+        Refund to do: <Money minor={s.amountMinor} currency={s.currency} />
+      </p>
+      <p className="mt-0.5 text-ink-2">
+        {s.keptMinor > 0 ? (
+          <>
+            You keep <Money minor={s.keptMinor} currency={s.currency} /> for the failed delivery trip, as the buyer agreed. The rest goes back to them.
+          </>
+        ) : (
+          'Everything the buyer paid goes back to them.'
+        )}{' '}
+        Send it yourself (for example M-Pesa), then record it here.
+      </p>
+      {(confirm.error || dismiss.error) && (
+        <div className="mt-2">
+          <ErrorNotice error={confirm.error ?? dismiss.error} />
+        </div>
+      )}
+      {!allowed ? (
+        <p className="mt-2 text-xs text-ink-3">An owner or manager records refunds.</p>
+      ) : dismissing ? (
+        <div className="mt-2 flex flex-wrap items-end gap-2">
+          <Field label="Why is no refund due?" className="min-w-48 flex-1">
+            {(p) => <Input {...p} value={why} maxLength={300} onChange={(e) => setWhy(e.target.value)} placeholder="e.g. Buyer took store credit" />}
+          </Field>
+          <Button variant="secondary" disabled={!why.trim()} loading={dismiss.isPending} onClick={() => dismiss.mutate()}>
+            Save
+          </Button>
+          <Button variant="ghost" onClick={() => setDismissing(false)}>
+            Back
+          </Button>
+        </div>
+      ) : (
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Button variant="primary" size="sm" loading={confirm.isPending} onClick={() => confirm.mutate()}>
+            I’ve refunded it, record it
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setDismissing(true)}>
+            No refund due
+          </Button>
+          {order.customerPhone && (
+            <a
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-ink-2 underline-offset-2 hover:underline"
+              href={whatsappChatLink(order.customerPhone, `Hi, your order #${order.number} came back to us. We are refunding you.`)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Message the buyer
+            </a>
+          )}
+        </div>
+      )}
+    </div>
   )
 }

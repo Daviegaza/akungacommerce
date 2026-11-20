@@ -22,7 +22,7 @@ import { businessDate } from '@/domain/locale'
 import { available, stockHealth } from '@/domain/inventory'
 import { divRoundHalfUp } from '@/domain/money'
 import type { Address, OrderSummary } from '@/gateway/types'
-import { MapFallback, StaticMap, type MapMarker } from '@/maps'
+import { MapFallback, StaticMap, WhenVisible, type MapMarker } from '@/maps'
 import { cn } from '@/lib/utils'
 import { useGateway, useMovements, useOrders, useOrg, useProducts } from '../context'
 import { ErrorNotice, KpiTile, PageHeader, Section } from '../ui/layout'
@@ -403,9 +403,12 @@ function DeliveriesCard({ orders }: { orders: OrderSummary[] | undefined }) {
       ) : markers.length > 0 ? (
         <>
           <div className="overflow-hidden rounded-2xl">
-            <Suspense fallback={<MapFallback height={240} />}>
-              <StaticMap markers={markers} height={240} fitToMarkers />
-            </Suspense>
+            {/* MapLibre (~450 KB gzipped with its worker) loads only when the map scrolls into view. */}
+            <WhenVisible fallback={<MapFallback height={240} />}>
+              <Suspense fallback={<MapFallback height={240} />}>
+                <StaticMap markers={markers} height={240} fitToMarkers />
+              </Suspense>
+            </WhenVisible>
           </div>
           <p className="mt-2 text-xs text-ink-3">
             {drops.length > 0 ? `${drops.length} drop-off ${drops.length === 1 ? 'pin' : 'pins'}` : 'No drop-off pins yet'}

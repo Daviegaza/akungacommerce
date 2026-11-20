@@ -18,6 +18,8 @@ Shared, runtime-agnostic code lives in `_shared/` (Web Crypto only) and is teste
 | `mpesa-callback` | Daraja STK result callback: shared-secret check, dedupe, then `reconcile_mpesa_stk` (auto-match, mismatch/late to review queue). | adapter_only |
 | `mpesa-c2b` | Daraja C2B confirmation (customer paid the Till/Paybill directly): shared-secret check, dedupe, then `reconcile_mpesa_c2b`. | adapter_only |
 | `mpesa-stk-query` | Scheduled fallback for lost STK callbacks: asks Daraja's STK Push Query API about prompts pending 2 min – 24 h, then `apply_mpesa_stk_query`. A "paid" answer never records money (no receipt/amount in the query). Service-role bearer only. | adapter_only, not scheduled |
+| `media-cleanup` | Deletes orphaned product photos (in `product-images`, referenced by no product or shop, older than 24 h) through the Storage API. For a scheduled run; see "Orphaned photo cleanup". | built, not deployed, not scheduled |
+| `verify-custom-domain` | Merchant "Check now" (rate-limited) or a scheduled run: resolves the CNAME/A and ownership TXT records over DNS-over-HTTPS and sets the domain status. DNS only, no certificate or hosting. See "Custom domain DNS check". | built, not deployed |
 
 ## Environment variables (placeholders only)
 
@@ -216,3 +218,64 @@ before trusting automatic matching.
 Before relabelling: Paystack secret set, DVA enabled on the Paystack account, a real `assignVirtualAccount`
 implemented against the official API, webhook URL registered, and one sandbox transfer recorded once against the
 right order (replay ignored).
+## Orphaned photo cleanup (`media-cleanup`, migration `20261120000071`)
+
+Product photos are uploaded to the public `product-images` bucket as soon as the merchant picks them, before the
+product is saved. The browser deletes a photo it uploaded in the same editing session when the merchant removes it
+or closes the editor without saving (best effort). Everything it misses, and photos removed from a saved product
+later, is handled here:
+
+- `list_orphan_product_images(min_age, limit)` (service role only) lists objects under an org-id folder that no
+  product of any organisation and no shop cover/logo references, older than `min_age` (default 24 h, never under 1 h).
+- `media-cleanup` calls it and deletes the objects through the Storage API with the service role, in batches of
+  100. A failed batch is skipped and retried on the next run. It logs counts only.
+
+Call it with `POST` and either `x-cleanup-secret: <MEDIA_CLEANUP_SECRET>` (at least 16 characters, set with
+`supabase secrets set`) or `Authorization: Bearer <service role key>`. Body (optional):
+`{ "dry_run": true, "min_age_hours": 24, "limit": 500 }`. Try a dry run first.
+
+```sh
+supabase functions deploy media-cleanup --no-verify-jwt   # the function checks its own secret
+```
+
+**Scheduling (not enabled).** On the hosted project, with the `pg_cron` and `pg_net` extensions enabled and the
+secret stored in Vault as `media_cleanup_secret`, a nightly run would be:
+
+```sql
+select cron.schedule('media-cleanup-nightly', '30 2 * * *', $$
+  select net.http_post(
+    url := 'https://<project-ref>.supabase.co/functions/v1/media-cleanup',
+    headers := jsonb_build_object('Content-Type', 'application/json',
+      'x-cleanup-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'media_cleanup_secret')),
+    body := '{}'::jsonb);
+$$);
+```
+
+Nothing above has been run against any project. Demo mode has nothing to clean: demo photos are data URLs that only
+reach browser storage when the product is saved, and saving replaces the product's image list.
+
+## Custom domain DNS check (`verify-custom-domain`, migration `20261120000072`)
+
+**Label: DNS check built, certificate and hosting not set up.** A domain can reach `verified`, but that only means
+its DNS records are right. No certificate is issued and nothing serves the domain yet; the merchant screen says so.
+
+- Records checked (same as the instructions shown to the merchant): a CNAME for a subdomain pointing at
+  `CUSTOM_DOMAIN_CNAME_TARGET`, or an A record for an apex domain equal to `CUSTOM_DOMAIN_A_RECORD`, plus the TXT
+  record `_rafu-verification.<host>` = `rafu-verify=<token>`. Without the target env set, a domain can never verify.
+  Keep `VITE_CUSTOM_DOMAIN_CNAME_TARGET` / `VITE_CUSTOM_DOMAIN_A_RECORD` (what the UI shows) equal to these.
+- DNS is resolved with Cloudflare's public DNS-over-HTTPS JSON API (`GET https://cloudflare-dns.com/dns-query?name=..&type=..`,
+  header `accept: application/dns-json`). Resolver errors leave the domain unchanged and return `status: "error"`.
+- Merchant "Check now": `POST { "org_id": "<uuid>" }` with the merchant's own JWT. `request_custom_domain_check` runs as
+  that user: owners/admins only, 5 checks per 15 minutes per shop (HTTP 429 after that).
+- Scheduled run: `POST { "scheduled": true, "limit": 25 }` with `x-cron-secret: <DOMAIN_CHECK_CRON_SECRET>` or the
+  service role key. It checks domains that are `pending_dns` or `failed` and were not checked in the last hour.
+  Scheduling works like the cleanup example above (not enabled).
+- The result is written with the existing service-role `mark_custom_domain_status`.
+
+```sh
+supabase secrets set CUSTOM_DOMAIN_CNAME_TARGET=<domains.your-host.example> CUSTOM_DOMAIN_A_RECORD=<203.0.113.10> DOMAIN_CHECK_CRON_SECRET=<long-random-string>
+supabase functions deploy verify-custom-domain   # JWT check on: merchants send their JWT; a cron call sends the anon key as Authorization plus x-cron-secret
+```
+
+The demo workspace simulates "Check now" (always a pass, labelled as simulated, same rate limit). Unit tests mock
+`fetch`; no test makes a real DNS request.

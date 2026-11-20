@@ -22,7 +22,7 @@ import type {
 } from './types'
 import type { ShopSettings } from './storefront'
 import { mapBands, mapImages } from './storefront-supabase'
-import { UploadError, uploadProductImageToStorage } from '@/media/upload'
+import { PRODUCT_IMAGES_BUCKET, UploadError, productImagePathFromUrl, uploadProductImageToStorage } from '@/media/upload'
 import { createSupabaseCollections } from './collections-supabase'
 import { createSupabaseDeliveryAdmin } from './delivery-supabase'
 import { createSupabaseTrust } from './trust-supabase'
@@ -643,6 +643,13 @@ export function createSupabaseGateway(url: string, anonKey: string): CommerceGat
         if (e instanceof UploadError) throw new GatewayError(e.message, e.status === 0 ? 'network' : 'upload_failed')
         throw e
       }
+    },
+    async deleteProductImage(orgId, imageUrl) {
+      // Only this org's own uploads; storage RLS (catalogue.write on the org folder) still decides.
+      const path = productImagePathFromUrl(url, orgId, imageUrl)
+      if (!path) return
+      const { error } = await sb.storage.from(PRODUCT_IMAGES_BUCKET).remove([path])
+      if (error) throw new GatewayError(error.message || 'The photo could not be removed', 'delete_failed')
     },
 
     ...createSupabaseCollections(sb),

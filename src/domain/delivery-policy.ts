@@ -187,6 +187,53 @@ export function applyFailedDelivery(i: FailedDeliveryInput): FailedDeliveryOutco
   return { attempt, forfeitMinor, final: attempt >= i.maxAttempts }
 }
 
+/* ───────────── Returned to shop ───────────── */
+
+export interface ReturnToShopPlan {
+  /** Delivery fee(s) kept under the agreed policy that the shop keeps (never more than was paid). */
+  keptMinor: number
+  /** What the buyer is owed back: a suggestion the merchant confirms after refunding them. */
+  refundMinor: number
+}
+
+/**
+ * Money when an order comes back to the shop after failed deliveries. Same rule
+ * as SQL return_order_to_shop: the forfeited delivery fee stays with the shop,
+ * the rest of what the buyer paid (payments minus refunds) is refundable.
+ */
+export function planReturnToShop(i: { netPaidMinor: number; forfeitedMinor: number }): ReturnToShopPlan {
+  const net = Math.max(0, isInt(i.netPaidMinor) ? i.netPaidMinor : 0)
+  const kept = Math.min(Math.max(0, isInt(i.forfeitedMinor) ? i.forfeitedMinor : 0), net)
+  return { keptMinor: kept, refundMinor: net - kept }
+}
+
+/** Buyer-facing words for a returned order (tracking page). `money` formats minor units. */
+export function returnedToShopBuyerText(
+  i: {
+    attempts: number
+    forfeitedMinor: number
+    refund: { amountMinor: number; keptMinor: number; status: 'pending' | 'confirmed' | 'dismissed' } | null
+  },
+  money: (minor: number) => string,
+): { title: string; lines: string[] } {
+  const lines: string[] = []
+  lines.push(
+    i.attempts > 0
+      ? `After ${i.attempts === 1 ? 'a delivery attempt' : `${i.attempts} delivery attempts`} didn’t go through, your order was taken back to the shop and closed.`
+      : 'Your order was taken back to the shop and closed.',
+  )
+  const kept = i.refund ? i.refund.keptMinor : i.forfeitedMinor
+  if (i.refund?.status === 'pending') {
+    lines.push(`The shop owes you ${money(i.refund.amountMinor)} and will send it back to you.`)
+  } else if (i.refund?.status === 'confirmed') {
+    lines.push(`The shop has recorded a refund of ${money(i.refund.amountMinor)} to you.`)
+  } else if (i.refund?.status === 'dismissed') {
+    lines.push('Message the shop if you have a question about your payment.')
+  }
+  if (kept > 0) lines.push(`The ${money(kept)} delivery fee was kept, as the shop policy you agreed to says.`)
+  return { title: 'Your order went back to the shop', lines }
+}
+
 /* ───────────── Plain-language policy text ───────────── */
 
 function fmt(minor: number, currency: string, locale: string): string {

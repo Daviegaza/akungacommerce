@@ -45,6 +45,17 @@ export interface CustomDomain {
   createdAt: string
 }
 
+export interface DomainCheckResult {
+  /** 'error' = the lookup itself failed; the domain was left unchanged. */
+  status: DomainStatus | 'error'
+  routing: 'ok' | 'missing' | 'wrong' | 'not_configured' | 'unknown'
+  ownership: 'ok' | 'missing' | 'wrong' | 'unknown'
+  reason: string | null
+  checkedAt: string
+  /** True in the demo workspace: no real DNS lookup was made. */
+  simulated: boolean
+}
+
 export interface TeamInvite {
   id: string
   email: string | null
@@ -90,6 +101,12 @@ export interface ExpansionAdminGateway {
   removeCustomDomain(orgId: string): Promise<void>
   /** Demo workspace only: pretend a DNS check ran. Absent in Supabase mode. */
   simulateDomainCheck?(orgId: string, outcome: 'verified' | 'failed'): Promise<void>
+  /**
+   * "Check now": look up the DNS records (Supabase: the verify-custom-domain Edge Function over
+   * DNS-over-HTTPS; demo: simulated, and says so). Rate-limited on the server (5 per 15 minutes).
+   * A pass means DNS only: certificates and hosting for custom domains are not set up.
+   */
+  checkCustomDomain(orgId: string): Promise<DomainCheckResult>
 
   listInvites(orgId: string): Promise<TeamInvite[]>
   createInvite(orgId: string, input: NewInviteInput): Promise<CreatedInvite>
