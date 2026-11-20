@@ -3,24 +3,25 @@
 //
 // Daraja does not sign callbacks, so the URL carries a long random shared
 // secret (set by mpesa-stk from MPESA_CALLBACK_SECRET) that is compared in
-// constant time. Order of operations (mirrors payment-webhook):
+// constant time. Order of operations:
 //   1. check secret  2. parse  3. insert into webhook_events (provider 'mpesa',
 //   event id = CheckoutRequestID; unique = replay protection)
-//   4. map CheckoutRequestID -> order via mpesa_requests and check the amount
-//   5. on ResultCode 0 only: record_verified_payment (refuses unless the org's
-//      'mpesa' connection is connected_verified)  6. set processed_at
-// Anything unexpected is left unprocessed in webhook_events for manual review.
+//   4. reconcile_mpesa_stk (one transaction): maps CheckoutRequestID -> order,
+//      dedupes on the M-Pesa receipt, records the payment ONLY when the amount
+//      equals the request and fits the balance due, confirms a fully paid new
+//      order, and puts mismatches / late payments in the merchant's review queue
+//   5. set processed_at (unknown requests and invalid bodies stay unprocessed)
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { timingSafeEqual } from '../_shared/signatures.ts'
-import { kesToMinor, parseStkCallback } from '../_shared/daraja.ts'
+import { normaliseStkCallback } from '../_shared/collections.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 // What Daraja expects back; it does not act on it, but a 200 stops noisy retries.
 const ack = (extra: Record<string, unknown> = {}) => json({ ResultCode: 0, ResultDesc: 'Accepted', ...extra })
 
-const PERMANENT_ERRORS = new Set(['P0002', '22023', '23503', '23514', '42501'])
 const enc = new TextEncoder()
+const PROCESSED = new Set(['recorded', 'not_paid', 'review', 'duplicate'])
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
@@ -36,7 +37,7 @@ Deno.serve(async (req) => {
   } catch {
     return json({ error: 'Invalid JSON' }, 400)
   }
-  const cb = parseStkCallback(payload)
+  const cb = normaliseStkCallback(payload)
   if (!cb) return json({ error: 'Not an STK callback' }, 400)
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
@@ -62,49 +63,27 @@ Deno.serve(async (req) => {
     if (!existing || existing.processed_at) return ack({ duplicate: true })
   }
 
-  const markProcessed = (orgId: string | null = null) =>
-    db
-      .from('webhook_events')
-      .update({ processed_at: new Date().toISOString(), ...(orgId ? { org_id: orgId } : {}) })
-      .eq('provider', 'mpesa')
-      .eq('event_id', cb.checkoutRequestId)
-
-  const { data: request } = await db
-    .from('mpesa_requests')
-    .select('org_id, order_id, amount_minor')
-    .eq('checkout_request_id', cb.checkoutRequestId)
-    .maybeSingle()
-  if (!request) {
-    // Not a prompt we sent (or its row failed to save): keep for manual review.
-    return ack({ recorded: false, reason: 'unknown_request' })
-  }
-
-  if (!cb.succeeded) {
-    // Cancelled, timed out, wrong PIN, insufficient funds...: nothing was paid.
-    await markProcessed(request.org_id)
-    return ack({ recorded: false, resultCode: cb.resultCode })
-  }
-
-  const amountMinor = kesToMinor(cb.amount)
-  if (amountMinor === null || !cb.mpesaReceipt || amountMinor !== Number(request.amount_minor)) {
-    // Amount differs from what we asked for, or the receipt is missing: manual review.
-    return ack({ recorded: false, reason: 'mismatch' })
-  }
-
-  const { data: paymentId, error: rpcError } = await db.rpc('record_verified_payment', {
-    p_order: request.order_id,
-    p_provider: 'mpesa',
-    p_method: 'mobile_money',
-    p_amount_minor: amountMinor,
-    p_currency: 'KES',
-    p_external_ref: cb.mpesaReceipt,
-    p_received_at: cb.transactionDate,
+  const { data: result, error: rpcError } = await db.rpc('reconcile_mpesa_stk', {
+    p_checkout_request_id: cb.checkoutRequestId,
+    p_result_code: cb.resultCode,
+    p_result_desc: cb.resultDesc,
+    p_amount_minor: cb.amountMinor,
+    p_receipt: cb.receipt,
+    p_phone_hint: cb.phoneHint,
+    p_transacted_at: cb.transactedAt,
   })
   if (rpcError) {
-    console.error('mpesa-callback: record_verified_payment failed', rpcError.code)
-    if (rpcError.code && PERMANENT_ERRORS.has(rpcError.code)) return ack({ recorded: false, reason: 'rejected' })
-    return json({ error: 'Could not record payment' }, 500)
+    console.error('mpesa-callback: reconcile failed', rpcError.code)
+    return json({ error: 'Could not reconcile' }, 500) // Daraja retries; the event is still unprocessed
   }
-  await markProcessed(request.org_id)
-  return ack({ recorded: true, paymentId })
+  const outcome = String((result as { outcome?: unknown } | null)?.outcome ?? '')
+  const orgId = (result as { org_id?: unknown } | null)?.org_id
+  if (PROCESSED.has(outcome)) {
+    await db
+      .from('webhook_events')
+      .update({ processed_at: new Date().toISOString(), ...(typeof orgId === 'string' ? { org_id: orgId } : {}) })
+      .eq('provider', 'mpesa')
+      .eq('event_id', cb.checkoutRequestId)
+  }
+  return ack({ outcome })
 })

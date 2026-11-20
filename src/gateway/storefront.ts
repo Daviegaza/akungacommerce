@@ -4,6 +4,7 @@
  * Supabase (anon RPCs) and demo (localStorage, same rules).
  */
 import type { ImageUploadOptions } from '@/media/upload'
+import type { PromptStatus } from '@/domain/reconciliation'
 
 export interface DeliveryBand {
   maxKm: number
@@ -195,6 +196,22 @@ export type StkResult =
   | { status: 'not_configured' }
   | { status: 'failed'; error: string }
 
+/** How the shop collects M-Pesa. `stk` = an automatic prompt can be attempted. */
+export interface PaymentOptions {
+  provider: 'manual' | 'daraja' | 'aggregator'
+  stk: boolean
+  /** Demo workspace: prompts are simulated, nothing is charged. */
+  simulated: boolean
+}
+
+/** Demo-only outcome for a simulated STK prompt. Ignored by the real gateway. */
+export type SimulatedOutcome = 'success' | 'cancelled' | 'timeout' | 'wrong_amount'
+
+export interface PromptStatusResult {
+  status: PromptStatus
+  resultCode: number | null
+}
+
 export interface StorefrontGateway {
   readonly mode: 'supabase' | 'demo'
   getStorefront(slug: string): Promise<StorefrontData>
@@ -204,7 +221,11 @@ export interface StorefrontGateway {
   track(token: string): Promise<TrackedOrder>
   submitReview(token: string, productId: string, rating: number, body: string | null): Promise<void>
   /** Ask the configured provider to send an STK push. Returns not_configured until Daraja is set up. */
-  requestMpesaPrompt(trackingToken: string, phoneE164: string): Promise<StkResult>
+  requestMpesaPrompt(trackingToken: string, phoneE164: string, opts?: { simulate?: SimulatedOutcome }): Promise<StkResult>
+  /** Whether this shop can send automatic prompts. */
+  getPaymentOptions(slug: string): Promise<PaymentOptions>
+  /** Status of a prompt, as reported by verified provider callbacks only. */
+  getMpesaPromptStatus(trackingToken: string, checkoutRequestId: string): Promise<PromptStatusResult>
 }
 
 /** Merchant-side additions (implemented on CommerceGateway). */

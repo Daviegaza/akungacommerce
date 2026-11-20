@@ -15,7 +15,8 @@ Shared, runtime-agnostic code lives in `_shared/` (Web Crypto only) and is teste
 | `payment-webhook` | `?provider=stripe` / `?provider=paystack`: verify signature, dedupe, record `provider_verified` payment via `record_verified_payment`. | adapter_only (Stripe, Paystack) |
 | `send-message` | Authenticated send over WhatsApp / email (Resend) / SMS (Twilio). Marketing requires recorded consent. Returns `not_configured` until secrets are set. | adapter_only |
 | `mpesa-stk` | Storefront asks M-Pesa (Daraja STK push) to show a payment prompt for a tracked order. Never marks anything paid. | adapter_only |
-| `mpesa-callback` | Daraja STK result callback: shared-secret check, dedupe, records a `provider_verified` payment on ResultCode 0. | adapter_only |
+| `mpesa-callback` | Daraja STK result callback: shared-secret check, dedupe, then `reconcile_mpesa_stk` (auto-match, mismatch/late to review queue). | adapter_only |
+| `mpesa-c2b` | Daraja C2B confirmation (customer paid the Till/Paybill directly): shared-secret check, dedupe, then `reconcile_mpesa_c2b`. | adapter_only |
 
 ## Environment variables (placeholders only)
 
@@ -39,6 +40,7 @@ supabase functions deploy payment-webhook --no-verify-jwt    # providers cannot 
 supabase functions deploy send-message                       # requires the caller's JWT
 supabase functions deploy mpesa-stk                          # storefront calls it with the anon key
 supabase functions deploy mpesa-callback --no-verify-jwt     # Safaricom cannot send a Supabase JWT
+supabase functions deploy mpesa-c2b --no-verify-jwt          # Safaricom cannot send a Supabase JWT
 ```
 
 ## Webhook URLs to register (after deploy)
@@ -97,3 +99,37 @@ Before relabelling M-Pesa as verified: run a sandbox STK push end to end, confir
 in `webhook_events` with `processed_at` set and a single `provider_verified` payment appears on the
 right order (a replayed callback must not add a second payment). Only then set the business's
 `integration_connections` row to `connected_verified`.
+
+## Collections providers and automatic reconciliation (migration `20261120000020`)
+
+Each shop picks how it gets paid by M-Pesa (`shop_settings.collections_provider`, changed only through
+`set_collections_provider`, owner/admin). Code: `_shared/collections.ts`.
+
+| Provider | Who it is for | Status |
+| --- | --- | --- |
+| `daraja` | Registered Till or Paybill (organisation KRA PIN). STK push + callback + C2B confirmation. | adapter_only |
+| `aggregator` | Pochi la Biashara / personal-number sellers, through a licensed aggregator. | **interface only**: `AggregatorAdapter` is defined, IntaSend and Pesapal are listed as `adapter_only`, and `AGGREGATOR_ADAPTERS` is empty. No aggregator API was verified against official docs, so no endpoint is called and prompts return `not_configured`. |
+| `manual` (default) | Anyone. The seller confirms payments by hand. | works; nothing verifiable automatically |
+
+Reconciliation rules (SQL in the migration, mirrored in `src/domain/reconciliation.ts` and unit-tested):
+
+- A payment is created **only** from a verified callback (`reconcile_mpesa_stk` / `reconcile_mpesa_c2b`, service role)
+  or by staff attaching a receipt that already arrived through such a callback (`attach_mpesa_receipt`).
+- Idempotent on the M-Pesa receipt (`mpesa_receipts.receipt` is unique) and on `CheckoutRequestID`
+  (`webhook_events` + the prompt's status). Duplicate callbacks return `duplicate` and change nothing.
+- STK amount must equal the amount requested **and** fit the balance due; otherwise the receipt goes to the
+  merchant's queue as `mismatch` (different amount) or `late` (order cancelled, or already paid). Never auto-accepted.
+- A success that arrives after the prompt was marked cancelled/timed out is still evaluated (money really moved).
+- C2B is auto-matched only when the account reference is a live KES order number and the amount equals its whole
+  balance; everything else (e.g. Till payments, which carry no reference) waits as `unmatched`.
+- The C2B shortcode must belong to exactly one shop whose `mpesa` connection is `connected_verified`; a shortcode typed
+  into shop settings alone never routes receipts to that shop.
+- A fully paid `pending_confirmation` order is moved to `confirmed` with the receipt in its status history.
+  (Orders already past confirmation, or partly paid, keep their status; the payment shows in payments + audit log.)
+- `verify_mpesa_receipt` lets a member check a pasted code against this shop's receipts only. In manual mode it
+  answers "not verifiable automatically".
+- Buyers poll `storefront_payment_status(token, checkout_request_id)` (rate-limited per order) and read
+  `storefront_payment_options(slug)` to decide whether to offer a prompt.
+
+Extra Daraja setup for C2B: register `https://<project-ref>.supabase.co/functions/v1/mpesa-c2b?secret=<MPESA_CALLBACK_SECRET>`
+as the ConfirmationURL with Daraja's C2B Register URL API (no ValidationURL), then set the shop's provider to Daraja.

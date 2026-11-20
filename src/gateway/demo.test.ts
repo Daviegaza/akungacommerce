@@ -520,7 +520,12 @@ describe('demo storefront', () => {
     expect(refreshed.soldCount).toBeNull() // 1 delivered unit: still hidden
   })
 
-  it('never claims an M-Pesa payment in the demo', async () => {
-    expect(await sf.requestMpesaPrompt('x'.repeat(24), '+254712345678')).toEqual({ status: 'not_configured' })
+  it('a simulated M-Pesa prompt never claims payment by itself', async () => {
+    await expect(sf.requestMpesaPrompt('x'.repeat(24), '+254712345678')).rejects.toThrow(/Order not found/)
+    const { v } = await variantOf('Soy Candle 200 g', 'Vanilla & Fig')
+    const placed = await sf.placeOrder('mto-home', guest(v.id), key())
+    const r = await sf.requestMpesaPrompt(placed.trackingToken, '+254712345678')
+    expect(r.status).toBe('prompt_sent')
+    expect((await sf.track(placed.trackingToken)).paidMinor).toBe(0)
   })
 })

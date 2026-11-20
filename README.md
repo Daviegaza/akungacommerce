@@ -38,7 +38,7 @@
   - photo-grid products with storefront settings (images, compare-at price, swatches, drops)
   - product photo upload from phone or computer (camera, picker, drag and drop): resized and re-encoded to WebP/JPEG in the browser, then stored in the public `product-images` bucket under the org's folder (Supabase) or as small data URLs in localStorage (demo, max 8 per product)
   - "My shop" settings with a delivery-zone map, QR code and WhatsApp share kit
-- **M-Pesa STK push:** Daraja adapter plus callback Edge Functions. It is **adapter only, not connected**, and payments are still confirmed by the merchant.
+- **M-Pesa STK push with automatic reconciliation:** per-shop collections provider (Daraja direct, aggregator interface for Pochi/personal numbers, or manual). Orders are marked paid only from verified callbacks; mismatched, late and unmatched payments wait in a queue on Payments; a "verify M-Pesa code" tool checks pasted SMS codes. Buyers get a prompt with a waiting countdown, resend and plain-language outcomes. It is **adapter only, not connected**; the demo simulates the full lifecycle and says so.
 
 
 Under the hood: a merchant operating system for businesses that sell through WhatsApp, Instagram, other social channels, direct links and in person. Merchants use it to run their catalogue, orders, stock, payments, fulfilment and customer history, in any country and currency.
@@ -149,7 +149,9 @@ Every integration carries exactly one of four labels: **connected and verified**
 | SMS (Twilio) | Adapter only | Not configured |
 | Stripe | Adapter only | Webhook signature verification and replay window. Akunga never creates charges. |
 | Paystack | Adapter only | Webhook signature verification |
-| M-Pesa Daraja, Flutterwave | Not implemented | |
+| M-Pesa Daraja (STK, callback, C2B) | Adapter only | Automatic reconciliation built and tested (unit + DB). Needs a registered Till/Paybill, Daraja keys and an end-to-end sandbox test. |
+| IntaSend, Pesapal (aggregators) | Adapter only | Interface only; no API verified or called. |
+| Flutterwave | Not implemented | |
 | Courier / delivery APIs | Not implemented | Manual assignee, tracking reference and proof of delivery are built in |
 | Xero, QuickBooks Online | Not implemented | |
 | CSV export (orders, payments, refunds) | Works locally | Exact decimal amounts with a currency column, protected against formula injection |

@@ -63,6 +63,7 @@ import {
 import type { DeliveryBand, PaymentChoice, ProductMerchandising, ShopSettings, VariantMerchandising } from './storefront'
 import { dataUrlBytes } from '@/media/compress'
 import { DEMO_DATA_URL_RE, DEMO_MAX_IMAGE_BYTES, DEMO_MAX_UPLOADED_IMAGES, blobToDataUrl } from '@/media/upload'
+import { createDemoCollections, type DemoCollectionsState } from './collections-demo'
 
 export const DEMO_NOTICE = 'Demo workspace · fictional data · stored only in this browser'
 
@@ -185,7 +186,8 @@ interface StoredReview {
   createdAt: string
 }
 
-interface DemoState {
+/** M-Pesa collections fields are optional so older saved demo states stay valid. */
+interface DemoState extends DemoCollectionsState {
   version: number
   signedIn: boolean
   orgs: StoredOrg[]
@@ -1566,6 +1568,8 @@ export function createDemoGateway(): CommerceGateway {
       opts?.onProgress?.(1)
       return url
     },
+
+    ...createDemoCollections(demoInternals),
   }
 }
 
@@ -1585,6 +1589,9 @@ export const demoInternals = {
   orderStock,
   createOrderCore,
   toSummary,
+  requireMember,
+  requirePermission,
+  writeAudit,
 }
 export type {
   DemoState,

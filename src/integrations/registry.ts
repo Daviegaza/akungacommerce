@@ -63,7 +63,25 @@ const STATUSES: readonly IntegrationStatus[] = [
     name: 'M-Pesa Daraja (STK push)',
     label: 'adapter_only',
     detail:
-      'STK push and callback adapters exist (mpesa-stk, mpesa-callback). Needs Daraja consumer key and secret, shortcode, passkey, a callback URL with its shared secret, then an end-to-end test. Until then M-Pesa payments are recorded manually and marked unverified.',
+      'STK push, STK callback and C2B confirmation adapters exist (mpesa-stk, mpesa-callback, mpesa-c2b) with automatic reconciliation. Needs a registered Till or Paybill, Daraja consumer key and secret, shortcode, passkey, a callback URL with its shared secret, then an end-to-end test. Until then M-Pesa payments are recorded manually and marked unverified.',
+    lastTestedAt: null,
+  },
+  {
+    provider: 'intasend',
+    kind: 'payment',
+    name: 'IntaSend (M-Pesa for Pochi / personal numbers)',
+    label: 'adapter_only',
+    detail:
+      'Aggregator interface only. Its API has not been verified against official documentation in this build, so no endpoint is called and no prompt can be sent.',
+    lastTestedAt: null,
+  },
+  {
+    provider: 'pesapal',
+    kind: 'payment',
+    name: 'Pesapal (M-Pesa for Pochi / personal numbers)',
+    label: 'adapter_only',
+    detail:
+      'Aggregator interface only. Its API has not been verified against official documentation in this build, so no endpoint is called and no prompt can be sent.',
     lastTestedAt: null,
   },
   {
