@@ -9,6 +9,7 @@ import { PROMPT_STATUSES } from '@/domain/reconciliation'
 import { createSupabaseStorefrontTrust } from './trust-storefront-supabase'
 import type { PaymentOptions, PromptStatusResult } from './storefront'
 import { createSupabaseStorefrontExtras } from './expansion-supabase'
+import { mapTrackBankTransfer, mapTrackPayments } from './payments-track'
 import type {
   DeliveryBand,
   PaymentChoice,
@@ -274,12 +275,20 @@ export function createSupabaseStorefront(url: string, anonKey: string, fetchImpl
     },
     async track(token) {
       // Deposit/handoff details come from a separate RPC; a server without that migration still tracks.
-      const [order, delivery] = await Promise.all([
+      // Payment events and bank-transfer details likewise (migrations 20261120000060/61).
+      const [order, delivery, payments, bank] = await Promise.all([
         rpc<Row>('storefront_track', { p_token: token }),
         rpc<Row>('storefront_track_delivery', { p_token: token }).catch(() => null),
+        rpc<unknown>('storefront_track_payments', { p_token: token }).catch(() => undefined),
+        rpc<unknown>('storefront_bank_transfer', { p_token: token }).catch(() => undefined),
       ])
       const tracked = mapTrackedOrder(order)
-      return delivery ? { ...tracked, delivery: mapTrackedDelivery(delivery) } : tracked
+      return {
+        ...tracked,
+        ...(delivery ? { delivery: mapTrackedDelivery(delivery) } : {}),
+        ...(payments !== undefined ? { payments: mapTrackPayments(payments) } : {}),
+        ...(bank !== undefined ? { bankTransfer: mapTrackBankTransfer(bank) } : {}),
+      }
     },
     async submitReview(token, productId, ratingValue, body) {
       await rpc('storefront_review', { p_token: token, p_product: productId, p_rating: ratingValue, p_body: body })

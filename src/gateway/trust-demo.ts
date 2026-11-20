@@ -390,7 +390,8 @@ export function createDemoStorefrontTrust(I: Internals): StorefrontTrustGateway 
         const f = factsFor(I, s, o.orgId)
         const paidToName = f.reported?.name ?? f.registeredName
         return s.payments
-          .filter((p) => p.orderId === o.id && p.status === 'succeeded' && p.verification === 'provider_verified' && p.externalRef)
+          // M-Pesa only: the card says "Confirmed by M-Pesa" (mirrors storefront_payment_receipts, 20261120000061).
+          .filter((p) => p.orderId === o.id && p.status === 'succeeded' && p.verification === 'provider_verified' && p.externalRef && p.method === 'mobile_money')
           .sort((a, b) => b.receivedAt.localeCompare(a.receivedAt))
           .slice(0, 5)
           .reverse()

@@ -32,7 +32,9 @@ export function useMpesaPrompt(token: string, onSettled: (status: PromptStatus) 
     settledRef.current = onSettled
   }, [onSettled])
 
-  const activeId = phase.kind === 'waiting' || phase.kind === 'stopped' ? phase.id : null
+  // awaiting_receipt (STK query said paid, no receipt yet) is shown as an outcome but keeps polling slowly.
+  const awaitingId = phase.kind === 'done' && phase.status === 'awaiting_receipt' ? phase.id : null
+  const activeId = phase.kind === 'waiting' || phase.kind === 'stopped' ? phase.id : awaitingId
   const statusQuery = useQuery({
     queryKey: ['mpesa-prompt', token, activeId],
     queryFn: async () => (await getStorefrontGateway()).getMpesaPromptStatus(token, activeId as string),
@@ -49,7 +51,11 @@ export function useMpesaPrompt(token: string, onSettled: (status: PromptStatus) 
     const status = data.status
     // Server state is the source of truth: adopt it once it stops being pending.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing external (server) state into local phase
-    setPhase((p) => (p.kind === 'waiting' || p.kind === 'stopped' ? { kind: 'done', id: p.id, status, resultCode: data.resultCode } : p))
+    setPhase((p) =>
+      p.kind === 'waiting' || p.kind === 'stopped' || (p.kind === 'done' && p.status === 'awaiting_receipt' && status !== 'awaiting_receipt')
+        ? { kind: 'done', id: p.id, status, resultCode: data.resultCode }
+        : p,
+    )
     settledRef.current(status)
   }, [data, activeId])
 

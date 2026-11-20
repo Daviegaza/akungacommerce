@@ -150,8 +150,8 @@ Every integration carries exactly one of four labels: **connected and verified**
 | Email (Resend) | Adapter only | Not configured |
 | SMS (Twilio) | Adapter only | Not configured |
 | Stripe | Adapter only | Webhook signature verification and replay window. Akunga never creates charges. |
-| Paystack | Adapter only | Webhook signature verification. NGN Dedicated Virtual Account credit parser (`_shared/bank-transfer.ts`), not yet wired into `payment-webhook` |
-| M-Pesa Daraja (STK, callback, C2B) | Adapter only | Automatic reconciliation built and tested (unit + DB). Needs a registered Till/Paybill, Daraja keys and an end-to-end sandbox test. |
+| Paystack | Adapter only | Webhook signature verification. NGN Dedicated Virtual Account credits are wired into `payment-webhook` → `reconcile_bank_transfer` (exact amount due → recorded and confirmed; anything else → unmatched queue). Account assignment (`assignVirtualAccount`) is not implemented and calls nothing; the kobo amount unit is unconfirmed in sandbox. |
+| M-Pesa Daraja (STK, callback, C2B, STK query) | Adapter only | Automatic reconciliation built and tested (unit + DB). `mpesa-stk-query` fallback for lost callbacks marks a query-only success as "awaiting receipt" and never records money; not scheduled. Needs a registered Till/Paybill, Daraja keys and an end-to-end sandbox test. |
 | IntaSend, Pesapal (aggregators) | Adapter only | Interface only; no API verified or called. |
 | Courier / delivery APIs | Not implemented | Built in without any API: rider links, your own pick-up point list, manual carrier + tracking number |
 | Pick Up Mtaani | Not implemented | Agents can be listed by hand as your own pick-up points; nothing is synced |

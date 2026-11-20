@@ -9,9 +9,17 @@
 //   5. record a provider_verified payment from the VERIFIED payload only
 //   6. set processed_at
 // Akunga never creates charges; it only records what a verified webhook proves.
+//
+// Paystack Dedicated Virtual Account credits (charge.success, channel
+// dedicated_nuban) take a different step 5: reconcile_bank_transfer maps the
+// receiving account to an order/customer (virtual_accounts), dedupes on the
+// Paystack reference and records the payment only for the exact amount due now
+// or the full balance; anything else waits in the merchant's unmatched queue.
+// A credit for an account we don't know stays unprocessed for manual review.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { sha256Hex, verifyPaystackSignature, verifyStripeSignature } from '../_shared/signatures.ts'
 import { parsePaystackEvent, parseStripeEvent, paystackEventKey, type NormalisedPaymentEvent } from '../_shared/providers.ts'
+import { BANK_TRANSFER_PROCESSED, bankTransferRpcArgs, paystackDvaAdapter } from '../_shared/bank-transfer.ts'
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -87,6 +95,20 @@ Deno.serve(async (req) => {
       .update({ processed_at: new Date().toISOString(), ...(orgId ? { org_id: orgId } : {}) })
       .eq('provider', provider)
       .eq('event_id', eventId)
+
+  // Bank transfer into a dedicated account (verified above; amounts assumed kobo, unconfirmed in sandbox).
+  const credit = provider === 'paystack' ? paystackDvaAdapter.parseWebhook(payload) : null
+  if (credit) {
+    const { data: result, error: btError } = await db.rpc('reconcile_bank_transfer', bankTransferRpcArgs(credit))
+    if (btError) {
+      console.error('payment-webhook: reconcile_bank_transfer failed', btError.code)
+      return json({ error: 'Could not reconcile' }, 500) // provider retries; the event stays unprocessed
+    }
+    const outcome = String((result as { outcome?: unknown } | null)?.outcome ?? '')
+    const orgId = (result as { org_id?: unknown } | null)?.org_id
+    if (BANK_TRANSFER_PROCESSED.has(outcome)) await markProcessed(typeof orgId === 'string' ? orgId : null)
+    return json({ received: true, outcome })
+  }
 
   if (!event || !event.succeeded || !event.orderId) {
     // Unsupported event type, or a payment not created for an Akunga order.

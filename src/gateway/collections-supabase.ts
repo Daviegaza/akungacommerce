@@ -6,7 +6,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { COLLECTIONS_PROVIDERS, PROMPT_STATUSES, RECEIPT_STATUSES, verdictFor, type ReceiptVerification } from '@/domain/reconciliation'
 import { GatewayError } from './gateway'
-import type { CollectionsAdminGateway, CollectionsSettings, MpesaPrompt, MpesaReceipt } from './collections'
+import type { CollectionsAdminGateway, CollectionsSettings, MpesaPrompt, MpesaReceipt, VirtualAccountRecord } from './collections'
 
 type Row = Record<string, unknown>
 const s = (v: unknown) => (v == null ? null : String(v))
@@ -41,7 +41,7 @@ export function mapPrompt(r: Row): MpesaPrompt {
 }
 
 export function mapReceipt(r: Row): MpesaReceipt {
-  const source = r.source === 'c2b' || r.source === 'aggregator' ? r.source : 'stk'
+  const source = r.source === 'c2b' || r.source === 'aggregator' || r.source === 'bank_transfer' ? r.source : 'stk'
   return {
     id: String(r.id),
     provider: String(r.provider),
@@ -59,6 +59,22 @@ export function mapReceipt(r: Row): MpesaReceipt {
     paymentId: s(r.payment_id),
     createdAt: String(r.created_at),
     resolvedAt: s(r.resolved_at),
+    simulated: false,
+  }
+}
+
+export function mapVirtualAccount(r: Row): VirtualAccountRecord {
+  return {
+    id: String(r.id),
+    provider: r.provider === 'flutterwave_va' ? 'flutterwave_va' : 'paystack_dva',
+    bankName: String(r.bank_name),
+    accountNumber: String(r.account_number),
+    accountName: s(r.account_name),
+    orderId: s(r.order_id),
+    orderNumber: orderNumberOf(r.orders),
+    customerId: s(r.customer_id),
+    status: r.status === 'retired' ? 'retired' : 'active',
+    createdAt: String(r.created_at),
     simulated: false,
   }
 }
@@ -82,7 +98,7 @@ export function mapVerification(code: string, r: Row | null): ReceiptVerificatio
           transactedAt: String(rec.transacted_at),
           orderNumber: nOrNull(rec.order_number),
           payerHint: s(rec.payer_hint),
-          source: rec.source === 'c2b' || rec.source === 'aggregator' ? rec.source : 'stk',
+          source: rec.source === 'c2b' || rec.source === 'aggregator' || rec.source === 'bank_transfer' ? rec.source : 'stk',
         }
       : null,
   })
@@ -127,6 +143,20 @@ export function createSupabaseCollections(sb: SupabaseClient): CollectionsAdminG
     async verifyMpesaReceipt(orgId, code) {
       const r = check(await sb.rpc('verify_mpesa_receipt', { p_org: orgId, p_code: code })) as Row | null
       return mapVerification(code, r)
+    },
+    async listVirtualAccounts(orgId) {
+      const rows = check(
+        await sb.from('virtual_accounts').select('*, orders(number)').eq('org_id', orgId).order('created_at', { ascending: false }).limit(200),
+      ) as Row[]
+      return (rows ?? []).map(mapVirtualAccount)
+    },
+    async assignVirtualAccount() {
+      // adapter_only: assignment needs the provider's API (Paystack DVA), which is not implemented.
+      // Nothing is called and nothing is stored; accounts appear only once a real adapter writes them.
+      return {
+        status: 'not_configured',
+        reason: 'Dedicated accounts are not connected yet (adapter only). Share your bank details with the buyer directly for now.',
+      }
     },
   }
 }

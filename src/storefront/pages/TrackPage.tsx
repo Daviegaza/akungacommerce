@@ -38,6 +38,8 @@ import { WhatsAppGlyph } from '@/storefront/components/WhatsAppGlyph'
 import { TrackTrust } from '@/storefront/components/TrackTrust'
 import { fmtMoney, isNotFoundError } from '@/storefront/components/storefront-utils'
 import { DeliveryUpdates, DepositPaidNotice, LocationPreview } from '@/storefront/components/TrackDelivery'
+import { BankTransferPanel } from '@/storefront/components/TrackPayments'
+import { attachPaymentEvents, paymentSourceText } from '@/storefront/components/track-payments'
 
 /** /t/:token is standalone (outside StorefrontApp), so it owns its query client. */
 const trackQueryClient = new QueryClient({
@@ -450,6 +452,9 @@ function PaymentPanel({ token, order, money }: { token: string; order: TrackedOr
     )
   }
 
+  // NGN bank transfer: dedicated account details, or "the shop will share details".
+  if (order.paymentPreference === 'bank_transfer' && order.bankTransfer) return <BankTransferPanel order={order} money={money} />
+
   if (order.paymentPreference !== 'mpesa' && !(depositOutstanding > 0 && (shop.mpesaTill || shop.mpesaPaybill))) {
     return (
       <Card className="border border-line">
@@ -542,7 +547,10 @@ function MpesaPanel({
         ) : !manual && (phase.kind === 'done' || phase.kind === 'stopped') ? (
           <motion.div key="outcome" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4 flex flex-col gap-3">
             <PromptOutcome phase={phase} />
-            {!(phase.kind === 'done' && (phase.status === 'paid' || phase.status === 'mismatch' || phase.status === 'late')) && (
+            {!(
+              phase.kind === 'done' &&
+              (phase.status === 'paid' || phase.status === 'mismatch' || phase.status === 'late' || phase.status === 'awaiting_receipt')
+            ) && (
               <div className="flex flex-wrap gap-2">
                 <Button variant="brand" onClick={reset} icon={<RefreshCw className="size-4" aria-hidden />}>
                   Send a new prompt
@@ -583,6 +591,7 @@ function MpesaPanel({
                   <option value="cancelled">Customer cancels the prompt</option>
                   <option value="timeout">Prompt times out</option>
                   <option value="wrong_amount">Wrong amount arrives</option>
+                  <option value="callback_lost">Customer pays, but the M-Pesa callback is lost</option>
                 </select>
                 <span className="text-xs text-ink-2">Nothing is charged. No phone is contacted.</span>
               </label>
@@ -762,7 +771,7 @@ function PromptOutcome({ phase }: { phase: Extract<PromptPhase, { kind: 'done' |
   }
   const msg = buyerPromptMessage(phase.status, phase.resultCode)
   const good = phase.status === 'paid'
-  const review = phase.status === 'mismatch' || phase.status === 'late'
+  const review = phase.status === 'mismatch' || phase.status === 'late' || phase.status === 'awaiting_receipt'
   return (
     <div
       className={cn('flex items-start gap-3 rounded-xl p-3 text-sm', good ? 'bg-pos-soft' : review ? 'bg-info-soft' : 'bg-neg-soft')}
@@ -921,6 +930,8 @@ const CURRENT_HINT: Record<string, string> = {
 function Timeline({ order }: { order: TrackedOrder }) {
   const steps = buildSteps(order)
   const { locale, timezone } = order.shop
+  // Payments sit under the step that was current when they arrived; status times are untouched.
+  const paymentsByStep = attachPaymentEvents(steps, order.payments ?? [])
   return (
     <ol className="relative flex flex-col" aria-label="Order progress">
       {steps.map((s, i) => {
@@ -967,6 +978,18 @@ function Timeline({ order }: { order: TrackedOrder }) {
                   <time dateTime={s.at}>{formatDateTime(s.at, locale || 'en', timezone)}</time>
                 </p>
               )}
+              {(paymentsByStep.get(s.key) ?? []).map((p, j) => (
+                <p key={`${p.receivedAt}-${j}`} className="mt-1.5 flex items-start gap-1.5 text-sm text-ink-2">
+                  <Banknote className="mt-0.5 size-3.5 shrink-0 text-pos" aria-hidden />
+                  <span>
+                    Payment of <strong className="font-semibold text-ink tnum">{fmtMoney(p.amountMinor, p.currency, locale || 'en')}</strong> received,{' '}
+                    {paymentSourceText(p)}
+                    <span className="block text-xs text-ink-3 tnum">
+                      <time dateTime={p.receivedAt}>{formatDateTime(p.receivedAt, locale || 'en', timezone)}</time>
+                    </span>
+                  </span>
+                </p>
+              ))}
             </div>
           </li>
         )

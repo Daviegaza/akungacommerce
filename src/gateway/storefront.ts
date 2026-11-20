@@ -204,6 +204,30 @@ export interface TrackedOrder {
   reviewedProductIds: string[]
   /** Deposit, balance, failed attempts and handoff; absent on servers without the deposits migration. */
   delivery?: TrackedDelivery
+  /** Every succeeded payment (amount and time only); absent on servers without migration 20261120000061. */
+  payments?: TrackedPaymentEvent[]
+  /** NGN bank-transfer orders only: dedicated account details, or null when none is assigned yet. */
+  bankTransfer?: TrackedBankTransfer | null
+}
+
+export interface TrackedPaymentEvent {
+  amountMinor: number
+  currency: string
+  method: string
+  /** Confirmed by the payment provider (M-Pesa, Paystack, ...) rather than typed in by the shop. */
+  verified: boolean
+  receivedAt: string
+}
+
+export interface TrackedBankTransfer {
+  provider: string | null
+  /** null = no dedicated account assigned yet: the shop will share details. */
+  account: { bankName: string; accountNumber: string; accountName: string | null } | null
+  dueNowMinor: number
+  /** Order number to quote as the transfer reference / narration. */
+  reference: number
+  /** Demo workspace: simulated account, nothing can be paid into it. */
+  simulated: boolean
 }
 
 /** Result of asking the payment adapter to push an M-Pesa prompt. Never "paid" here. */
@@ -221,7 +245,7 @@ export interface PaymentOptions {
 }
 
 /** Demo-only outcome for a simulated STK prompt. Ignored by the real gateway. */
-export type SimulatedOutcome = 'success' | 'cancelled' | 'timeout' | 'wrong_amount'
+export type SimulatedOutcome = 'success' | 'cancelled' | 'timeout' | 'wrong_amount' | 'callback_lost'
 
 export interface PromptStatusResult {
   status: PromptStatus

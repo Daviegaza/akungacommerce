@@ -25,7 +25,7 @@ import {
   type TrackedOrder,
 } from './storefront'
 import type { Address } from './types'
-import { demoPaymentOptions, demoPromptStatus, demoRequestPrompt, settleDemoPrompts } from './collections-demo'
+import { demoPaymentOptions, demoPromptStatus, demoRequestPrompt, demoTrackPayments, settleDemoPrompts } from './collections-demo'
 import type { PickupPointSnapshot } from './delivery'
 import {
   demoActivePickupPoints,
@@ -416,6 +416,7 @@ function trackIn(s: DemoState, token: string): TrackedOrder {
     },
     reviewedProductIds: s.reviews.filter((r) => r.orderId === o.id).map((r) => r.productId),
     delivery: demoTrackedDelivery(s, o),
+    ...demoTrackPayments(s, o),
   }
 }
 
