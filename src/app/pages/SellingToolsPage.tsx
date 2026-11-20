@@ -373,7 +373,7 @@ function EtimsSection({ extras }: { extras: ShopExtras }) {
             <p className="text-sm text-ink-3">No invoices yet. Open an order and choose “Tax invoice”.</p>
           ) : (
             <>
-              <div className="hidden md:block">
+              <div className="hidden lg:block">
                 <Table>
                   <caption className="sr-only">Issued tax invoices</caption>
                   <thead>
@@ -404,7 +404,7 @@ function EtimsSection({ extras }: { extras: ShopExtras }) {
                   </tbody>
                 </Table>
               </div>
-              <ul className="divide-y divide-line border-y border-line md:hidden">
+              <ul className="divide-y divide-line border-y border-line lg:hidden">
                 {list.slice(0, 50).map((inv) => (
                   <li key={inv.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                     <Link to={`/app/orders/${inv.orderId}/invoice`} className="min-w-0 truncate font-medium text-ink hover:underline">

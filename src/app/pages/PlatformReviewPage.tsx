@@ -99,7 +99,7 @@ function DocumentQueue() {
         <p className="border-y border-line py-4 text-sm text-ink-3">Nothing is waiting for review.</p>
       ) : (
         <>
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             <Table>
               <caption className="sr-only">Business documents waiting for review</caption>
               <thead>
@@ -117,7 +117,7 @@ function DocumentQueue() {
               </tbody>
             </Table>
           </div>
-          <ul className="divide-y divide-line border-y border-line md:hidden">
+          <ul className="divide-y divide-line border-y border-line lg:hidden">
             {queue.data.map((item) => (
               <QueueRow key={item.orgId} item={item} layout="item" reason={reasons[item.orgId] ?? ''} onReason={(v) => setReason(item.orgId, v)} onDone={onDone} />
             ))}
@@ -269,7 +269,7 @@ function Reports() {
         <p className="border-y border-line py-4 text-sm text-ink-3">No reports.</p>
       ) : (
         <>
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             <Table>
               <caption className="sr-only">Reports from buyers</caption>
               <thead>
@@ -319,7 +319,7 @@ function Reports() {
               </tbody>
             </Table>
           </div>
-          <ul className="divide-y divide-line border-y border-line md:hidden">
+          <ul className="divide-y divide-line border-y border-line lg:hidden">
             {reports.data.map((r) => {
               const s = REPORT_STATUS[r.status]
               return (

@@ -205,7 +205,7 @@ export default function CustomersPage() {
         )
       ) : (
         <>
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             <Table>
               <thead>
                 <tr>
@@ -258,7 +258,7 @@ export default function CustomersPage() {
             </Table>
           </div>
 
-          <ul className="-mx-4 divide-y divide-line border-y border-line px-4 sm:mx-0 sm:px-0 md:hidden">
+          <ul className="-mx-4 divide-y divide-line border-y border-line px-4 sm:mx-0 sm:px-0 lg:hidden">
             {rows.map((c) => {
               const s = statFor(c.id)
               return (

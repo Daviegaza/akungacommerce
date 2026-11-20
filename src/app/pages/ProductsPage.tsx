@@ -237,7 +237,7 @@ function ProductTable({ rows, dropLabel, onOpen }: { rows: Row[]; dropLabel: (p:
       <thead>
         <tr>
           <Th>Product</Th>
-          <Th>SKU · category</Th>
+          <Th className="hidden xl:table-cell">SKU · category</Th>
           <Th align="right">Price</Th>
           <Th>Stock</Th>
           <Th>Status</Th>
@@ -249,7 +249,7 @@ function ProductTable({ rows, dropLabel, onOpen }: { rows: Row[]; dropLabel: (p:
           const drop = dropLabel(p)
           return (
             <tr key={p.id} onClick={() => onOpen(p)} className="cursor-pointer transition-colors hover:bg-sunken/50">
-              <Td className="max-w-[340px] py-2.5">
+              <Td className="py-2.5">
                 <span className="flex min-w-0 items-center gap-3">
                   <Thumb src={r.cover} alt={r.coverAlt} rounded="rounded-md" className="size-10 shrink-0 border border-line" />
                   <span className="min-w-0">
@@ -260,7 +260,7 @@ function ProductTable({ rows, dropLabel, onOpen }: { rows: Row[]; dropLabel: (p:
                         onOpen(p)
                       }}
                       aria-label={`${p.name}, edit`}
-                      className="block max-w-full truncate rounded-sm text-left font-medium text-ink hover:underline hover:underline-offset-2"
+                      className="block max-w-64 truncate rounded-sm text-left font-medium text-ink hover:underline hover:underline-offset-2"
                     >
                       {p.name}
                     </button>
@@ -272,9 +272,9 @@ function ProductTable({ rows, dropLabel, onOpen }: { rows: Row[]; dropLabel: (p:
                   </span>
                 </span>
               </Td>
-              <Td className="max-w-[200px]">
-                <span className="block truncate text-[13px] text-ink-2">{skuLabel(r.skus) ?? <span className="text-ink-3">No SKU</span>}</span>
-                <span className="block truncate text-xs text-ink-3">{p.category ?? 'No category'}</span>
+              <Td className="hidden xl:table-cell">
+                <span className="block max-w-48 truncate text-[13px] text-ink-2">{skuLabel(r.skus) ?? <span className="text-ink-3">No SKU</span>}</span>
+                <span className="block max-w-48 truncate text-xs text-ink-3">{p.category ?? 'No category'}</span>
               </Td>
               <Td align="right">
                 <PriceCell price={r.price} align="right" />
@@ -485,10 +485,10 @@ export default function ProductsPage() {
         </ul>
       ) : (
         <>
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             <ProductTable rows={rows} dropLabel={dropLabel} onOpen={(p) => setOpen(p)} />
           </div>
-          <ul className="divide-y divide-line border-y border-line md:hidden">
+          <ul className="divide-y divide-line border-y border-line lg:hidden">
             {rows.map((r) => (
               <CompactRow key={r.product.id} r={r} drop={dropLabel(r.product)} onOpen={() => setOpen(r.product)} />
             ))}

@@ -68,6 +68,16 @@ const ROUTES = [
   { key: 'public-404', path: '/nope-not-here' },
 ].filter((r) => !ONLY.length || ONLY.includes(r.key))
 
+/** page.goto that retries once when an in-app redirect aborts the navigation. */
+async function go(page, url) {
+  try {
+    await page.goto(url)
+  } catch {
+    await page.waitForTimeout(1000)
+    await page.goto(url)
+  }
+}
+
 async function signIn(page) {
   await page.goto(`${BASE}/app`)
   const email = page.getByLabel('Email')
@@ -87,7 +97,8 @@ async function addToCart(page) {
   // Skip scheduled drops and sold-out items: use the first product that can be added now.
   for (const href of hrefs.slice(0, 10)) {
     await page.goto(`${BASE}${href}`)
-    const add = page.getByRole('button', { name: /add to (cart|bag)/i }).first()
+    const add = page.getByRole('button', { name: /add to (cart|bag)/i }).filter({ visible: true }).first()
+    await add.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {})
     if ((await add.count()) && (await add.isEnabled())) {
       await add.click()
       await page.waitForTimeout(400)
@@ -103,9 +114,8 @@ async function placeOrder(page) {
   await page.goto(`${BASE}${SHOP}/checkout`)
   await page.getByText(/^pick ?up$/i).first().click().catch(() => {})
   await page.getByLabel(/full name|your name/i).first().fill('Sample Buyer')
-  await page.getByLabel(/phone/i).first().fill('+15555550123').catch(() => {})
-  await page.getByText(/cash|pay when you collect|pay on delivery/i).first().click().catch(() => {})
-  await page.getByRole('checkbox').first().check().catch(() => {})
+  await page.getByLabel(/phone/i).first().fill('0712345678').catch(() => {})
+  await page.getByRole('radio', { name: /cash|pay when you collect|pay on delivery/i }).first().check({ force: true }).catch(() => {})
   await page.getByRole('button', { name: /place order/i }).click()
   await page.waitForURL(/\/t\//, { timeout: 15000 })
   return new URL(page.url()).pathname
@@ -114,11 +124,14 @@ async function placeOrder(page) {
 /** Creates a rider link on the first confirmed delivery order; returns its path or null. */
 async function riderPath(page) {
   await signIn(page)
-  await page.goto(`${BASE}/app/orders`)
+  await go(page, `${BASE}/app/orders?tab=all`)
+  await page.waitForLoadState('networkidle').catch(() => {})
   const links = await page.locator('a[href^="/app/orders/"]:not([href$="/new"])').evaluateAll((as) => as.map((a) => a.getAttribute('href')))
   for (const href of links.slice(0, 12)) {
-    await page.goto(`${BASE}${href}`)
-    const btn = page.getByRole('button', { name: /create rider link|make a new link/i })
+    await go(page, `${BASE}${href}`)
+    await page.waitForLoadState('networkidle').catch(() => {})
+    const btn = page.getByRole('button', { name: /create rider link|make a new link/i }).filter({ visible: true })
+    await btn.first().waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
     if (await btn.count()) {
       await btn.first().click()
       const text = await page.waitForFunction(() => document.body.innerText.match(/\/r\/[A-Za-z0-9_-]{16,}/)?.[0], null, { timeout: 8000 }).catch(() => null)
@@ -159,7 +172,8 @@ for (const theme of THEMES) {
         if (route.dynamic === 'track') path = dyn.track ??= await placeOrder(page)
         if (route.dynamic === 'rider') path = dyn.rider ??= await riderPath(page)
         if (route.dynamic === 'invoice') {
-          await page.goto(`${BASE}/app/orders`)
+          await go(page, `${BASE}/app/orders?tab=all`)
+          await page.waitForLoadState('networkidle').catch(() => {})
           const href = await page.locator('a[href^="/app/orders/"]:not([href$="/new"])').first().getAttribute('href')
           path = `${href}/invoice`
         }

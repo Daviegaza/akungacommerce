@@ -230,17 +230,17 @@ export default function InventoryPage() {
           )
         ) : (
           <>
-            <div className="hidden md:block">
+            <div className="hidden lg:block">
               <Table>
                 <caption className="sr-only">Stock by variant</caption>
                 <thead>
                   <tr>
                     <Th>Item</Th>
-                    <Th className="hidden md:table-cell">SKU</Th>
+                    <Th className="hidden xl:table-cell">SKU</Th>
                     <Th align="right">On hand</Th>
                     <Th align="right">Reserved</Th>
                     <Th align="right">Available</Th>
-                    <Th align="right" className="hidden lg:table-cell">
+                    <Th align="right" className="hidden xl:table-cell">
                       Alert at
                     </Th>
                     <Th>Stock level</Th>
@@ -261,7 +261,7 @@ export default function InventoryPage() {
                           {r.inactive && ' · not for sale'}
                         </p>
                       </Td>
-                      <Td className="tnum hidden text-[13px] text-ink-2 md:table-cell">{r.sku ?? <span className="text-ink-3">—</span>}</Td>
+                      <Td className="tnum hidden text-[13px] text-ink-2 xl:table-cell">{r.sku ?? <span className="text-ink-3">—</span>}</Td>
                       <Td align="right" className="text-ink-2">
                         {r.onHand}
                       </Td>
@@ -271,7 +271,7 @@ export default function InventoryPage() {
                       <Td align="right" className={cn('font-semibold', r.health === 'out' ? 'text-neg' : r.health === 'low' ? 'text-warn' : 'text-ink')}>
                         {r.available}
                       </Td>
-                      <Td align="right" className="hidden text-ink-3 lg:table-cell">
+                      <Td align="right" className="hidden text-ink-3 xl:table-cell">
                         {r.threshold}
                       </Td>
                       <Td>
@@ -290,7 +290,7 @@ export default function InventoryPage() {
               </Table>
             </div>
 
-            <ul className="divide-y divide-line border-y border-line md:hidden">
+            <ul className="divide-y divide-line border-y border-line lg:hidden">
               {rows.map((r) => (
                 <li key={r.variantId} className="flex items-start justify-between gap-3 py-3">
                   <div className="min-w-0">
@@ -345,7 +345,7 @@ export default function InventoryPage() {
           />
         ) : (
           <>
-            <div className="hidden md:block">
+            <div className="hidden lg:block">
               <Table>
                 <caption className="sr-only">Stock movements</caption>
                 <thead>
@@ -364,8 +364,8 @@ export default function InventoryPage() {
                       <Td className="text-ink-2">
                         <When iso={m.createdAt} />
                       </Td>
-                      <Td className="max-w-[240px]">
-                        <span className="block truncate">
+                      <Td>
+                        <span className="block max-w-48 truncate xl:max-w-60">
                           {m.productName} <span className="text-ink-3">· {m.variantName}</span>
                         </span>
                       </Td>
@@ -376,8 +376,8 @@ export default function InventoryPage() {
                       <Td align="right">
                         <Delta value={m.reservedDelta} />
                       </Td>
-                      <Td className="max-w-[260px] text-ink-2">
-                        <span className="flex flex-wrap items-baseline gap-x-2">
+                      <Td className="text-ink-2">
+                        <span className="flex max-w-52 flex-wrap xl:max-w-64 items-baseline gap-x-2">
                           {reasonText(m) && <span className="break-words">{reasonText(m)}</span>}
                           <MovementOrderLink orderId={m.orderId} />
                           {!reasonText(m) && !m.orderId && <span className="text-ink-3">—</span>}
@@ -389,7 +389,7 @@ export default function InventoryPage() {
               </Table>
             </div>
 
-            <ul className="divide-y divide-line border-y border-line md:hidden">
+            <ul className="divide-y divide-line border-y border-line lg:hidden">
               {visibleMovements.map((m) => (
                 <li key={m.id} className="flex items-start justify-between gap-3 py-3">
                   <div className="min-w-0">

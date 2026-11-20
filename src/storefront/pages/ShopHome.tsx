@@ -139,7 +139,7 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
           )}
 
           <div className={cn('px-4 sm:px-0', hasCover ? 'sm:px-2' : 'pt-6 sm:pt-4')}>
-            <div className={cn('flex items-end justify-between gap-3', hasCover && '-mt-8 sm:-mt-10')}>
+            <div className={cn('relative flex items-end justify-between gap-3', hasCover && '-mt-8 sm:-mt-10')}>
               <ShopAvatar shop={shop} size={76} className={cn(hasCover && 'ring-4 ring-canvas')} />
               <div className="flex items-center gap-2">
                 {wa && (

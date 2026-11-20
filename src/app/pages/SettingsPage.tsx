@@ -475,7 +475,7 @@ function TeamSection() {
               <thead>
                 <tr>
                   <Th>Member</Th>
-                  <Th>Joined</Th>
+                  <Th className="hidden lg:table-cell">Joined</Th>
                   <Th align="right">Role</Th>
                 </tr>
               </thead>
@@ -486,7 +486,7 @@ function TeamSection() {
                       <p className="truncate font-medium text-ink">{memberName(m)}</p>
                       {m.displayName && m.email && <p className="truncate text-xs text-ink-3">{m.email}</p>}
                     </Td>
-                    <Td className="text-ink-2">
+                    <Td className="hidden text-ink-2 lg:table-cell">
                       <When iso={m.createdAt} dateOnly />
                     </Td>
                     <Td className="text-right">

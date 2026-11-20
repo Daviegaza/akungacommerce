@@ -264,18 +264,18 @@ export function Sheet({
 /** Semantic table in a hairline panel; scrolls horizontally on small screens. */
 export function Table({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className="-mx-4 overflow-x-auto border-y border-line bg-panel px-4 sm:mx-0 sm:rounded-[var(--radius-card)] sm:border sm:px-0 sm:[&_td:first-child]:pl-4 sm:[&_td:last-child]:pr-4 sm:[&_th:first-child]:pl-4 sm:[&_th:last-child]:pr-4">
+    <div className="relative -mx-4 overflow-x-auto border-y border-line bg-panel px-4 sm:mx-0 sm:rounded-[var(--radius-card)] sm:border sm:px-0 sm:[&_td:first-child]:pl-4 sm:[&_td:last-child]:pr-4 sm:[&_th:first-child]:pl-4 sm:[&_th:last-child]:pr-4">
       <table className={cn('w-full border-collapse text-sm', className)}>{children}</table>
     </div>
   )
 }
 export function Th({ children, className, align = 'left' }: { children?: ReactNode; className?: string; align?: 'left' | 'right' }) {
   return (
-    <th scope="col" className={cn('border-b border-line bg-sunken/50 py-2.5 pr-4 text-xs font-medium whitespace-nowrap text-ink-3 last:pr-0', align === 'right' ? 'text-right' : 'text-left', className)}>
+    <th scope="col" className={cn('border-b border-line bg-sunken/50 py-2.5 pr-3 text-xs font-medium whitespace-nowrap text-ink-3 last:pr-0 xl:pr-4', align === 'right' ? 'text-right' : 'text-left', className)}>
       {children}
     </th>
   )
 }
 export function Td({ children, className, align = 'left' }: { children?: ReactNode; className?: string; align?: 'left' | 'right' }) {
-  return <td className={cn('border-b border-line py-3 pr-4 align-middle last:pr-0 [tr:last-child_&]:border-b-0', align === 'right' && 'tnum text-right', className)}>{children}</td>
+  return <td className={cn('border-b border-line py-3 pr-3 align-middle last:pr-0 xl:pr-4 [tr:last-child_&]:border-b-0', align === 'right' && 'tnum text-right', className)}>{children}</td>
 }

@@ -489,7 +489,7 @@ export default function NewOrderPage() {
                   ['draft', 'Draft', 'No stock reserved.'],
                 ] as const
               ).map(([value, label, hint]) => (
-                <label key={value} className="flex min-h-10 cursor-pointer items-start gap-3 py-1.5">
+                <label key={value} className="clear-left flex min-h-10 cursor-pointer items-start gap-3 py-1.5">
                   <input type="radio" name="status" value={value} checked={status === value} onChange={() => setStatus(value)} className="mt-1 size-4 shrink-0 accent-[var(--ak-accent)]" />
                   <span className="min-w-0">
                     <span className="block text-sm font-medium text-ink">{label}</span>

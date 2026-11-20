@@ -174,7 +174,7 @@ export default function OrdersPage() {
 
       {orders.isPending ? (
         <div aria-busy="true">
-          <div className="hidden overflow-hidden rounded-[var(--radius-card)] border border-line bg-panel md:block">
+          <div className="hidden overflow-hidden rounded-[var(--radius-card)] border border-line bg-panel lg:block">
             <div className="h-10 border-b border-line bg-sunken/50" />
             {Array.from({ length: 6 }, (_, i) => (
               <div key={i} className="flex items-center gap-6 border-b border-line px-4 py-3.5 last:border-b-0">
@@ -187,7 +187,7 @@ export default function OrdersPage() {
               </div>
             ))}
           </div>
-          <div className="divide-y divide-line border-y border-line md:hidden">
+          <div className="divide-y divide-line border-y border-line lg:hidden">
             {Array.from({ length: 6 }, (_, i) => (
               <div key={i} className="flex items-start justify-between gap-4 py-3.5">
                 <div className="flex flex-col gap-2">
@@ -230,22 +230,22 @@ export default function OrdersPage() {
       ) : (
         <>
           {/* Phones: compact divided list (first in the DOM, so phone-sized checks match the visible row). */}
-          <ul className="-mx-4 divide-y divide-line border-y border-line sm:mx-0 md:hidden">
+          <ul className="-mx-4 divide-y divide-line border-y border-line sm:mx-0 lg:hidden">
             {rows.map((o) => (
               <OrderListRow key={o.id} {...rowProps(o)} />
             ))}
           </ul>
 
           {/* Wide screens: dense queue table. */}
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             <Table>
               <caption className="sr-only">Orders</caption>
               <thead>
                 <tr>
                   <Th>Order</Th>
                   <Th>Customer</Th>
-                  <Th className="hidden lg:table-cell">Channel</Th>
-                  <Th className="hidden lg:table-cell">Fulfilment</Th>
+                  <Th className="hidden 2xl:table-cell">Channel</Th>
+                  <Th className="hidden xl:table-cell">Fulfilment</Th>
                   <Th>Payment</Th>
                   <Th>Status</Th>
                   <Th align="right">Total</Th>
@@ -308,7 +308,7 @@ function FulfilmentText({ method }: { method: OrderSummary['fulfilmentMethod'] }
   )
 }
 
-/* ───────────── Table row (md+) ───────────── */
+/* ───────────── Table row (lg+) ───────────── */
 
 function OrderTableRow({ o, allowed, pendingTo, error, onAdvance }: RowProps) {
   const { step, shownStatus, showPayment, due, name } = rowState(o, pendingTo)
@@ -316,18 +316,18 @@ function OrderTableRow({ o, allowed, pendingTo, error, onAdvance }: RowProps) {
     <>
       <tr className={cn('group relative transition-colors hover:bg-sunken/50', pendingTo && 'bg-sunken/40')}>
         <Td className="tnum font-medium whitespace-nowrap text-ink">#{o.number}</Td>
-        <Td className="max-w-[240px]">
+        <Td>
           <Link
             to={`/app/orders/${o.id}`}
-            className="block truncate font-medium text-ink after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-sm focus-visible:after:ring-2 focus-visible:after:ring-brand focus-visible:after:ring-inset"
+            className="block max-w-44 truncate font-medium text-ink xl:max-w-56 after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:rounded-sm focus-visible:after:ring-2 focus-visible:after:ring-brand focus-visible:after:ring-inset"
             aria-label={`Order ${o.number}, ${name}`}
           >
             {name}
           </Link>
-          {o.customerPhone && <span className="tnum block truncate text-xs text-ink-3">{formatPhone(o.customerPhone)}</span>}
+          {o.customerPhone && <span className="tnum block max-w-44 truncate text-xs text-ink-3 xl:max-w-56">{formatPhone(o.customerPhone)}</span>}
         </Td>
-        <Td className="hidden whitespace-nowrap text-ink-2 lg:table-cell">{CHANNEL_LABEL[o.channel]}</Td>
-        <Td className="hidden lg:table-cell">
+        <Td className="hidden whitespace-nowrap text-ink-2 2xl:table-cell">{CHANNEL_LABEL[o.channel]}</Td>
+        <Td className="hidden xl:table-cell">
           <FulfilmentText method={o.fulfilmentMethod} />
         </Td>
         <Td>{showPayment ? <PaymentStateBadge state={paymentStateOf(o.totalMinor, o.netPaidMinor)} /> : <span className="text-ink-3">—</span>}</Td>

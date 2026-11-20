@@ -196,14 +196,14 @@ function PaymentsPanel({ payments }: { payments: Payment[] }) {
         />
       ) : (
         <>
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             <Table>
               <thead>
                 <tr>
                   <Th>Received</Th>
                   <Th>Order</Th>
                   <Th>Method</Th>
-                  <Th className="hidden lg:table-cell">Reference</Th>
+                  <Th className="hidden xl:table-cell">Reference</Th>
                   <Th>Verification</Th>
                   <Th>Status</Th>
                   <Th align="right">Amount</Th>
@@ -219,7 +219,7 @@ function PaymentsPanel({ payments }: { payments: Payment[] }) {
                       <OrderLink id={p.orderId} number={p.orderNumber} />
                     </Td>
                     <Td className="whitespace-nowrap text-ink-2">{PAYMENT_METHOD_LABEL[p.method]}</Td>
-                    <Td className="hidden max-w-[160px] truncate font-mono text-[12.5px] text-ink-2 lg:table-cell">{p.externalRef ?? <span className="font-sans text-ink-3">—</span>}</Td>
+                    <Td className="hidden max-w-[160px] truncate font-mono text-[12.5px] text-ink-2 xl:table-cell">{p.externalRef ?? <span className="font-sans text-ink-3">—</span>}</Td>
                     <Td>
                       <VerificationBadge verification={p.verification} />
                     </Td>
@@ -234,7 +234,7 @@ function PaymentsPanel({ payments }: { payments: Payment[] }) {
               </tbody>
             </Table>
           </div>
-          <ul className="-mx-4 divide-y divide-line border-y border-line px-4 sm:mx-0 sm:px-0 md:hidden">
+          <ul className="-mx-4 divide-y divide-line border-y border-line px-4 sm:mx-0 sm:px-0 lg:hidden">
             {rows.map((p) => (
               <li key={p.id} className="flex items-start justify-between gap-3 py-3">
                 <div className="min-w-0">
@@ -283,7 +283,7 @@ function RefundsPanel({ refunds }: { refunds: Refund[] }) {
       <p className="mb-4 max-w-2xl text-sm text-ink-3">
         A refund here is a record. {BRAND.name} does not move money: pay the customer back through your usual channel, then record it.
       </p>
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <Table>
           <thead>
             <tr>
@@ -320,7 +320,7 @@ function RefundsPanel({ refunds }: { refunds: Refund[] }) {
           </tbody>
         </Table>
       </div>
-      <ul className="-mx-4 divide-y divide-line border-y border-line px-4 sm:mx-0 sm:px-0 md:hidden">
+      <ul className="-mx-4 divide-y divide-line border-y border-line px-4 sm:mx-0 sm:px-0 lg:hidden">
         {rows.map((r) => (
           <li key={r.id} className="flex items-start justify-between gap-3 py-3">
             <div className="min-w-0">
