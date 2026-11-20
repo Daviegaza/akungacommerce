@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Typecheck, unit tests, build, lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run lint
+
+  edge-functions:
+    name: Edge Functions type check (Deno)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.5.6
+      - run: deno check supabase/functions/*/index.ts
+
+  database-and-e2e:
+    name: Migrations from empty, DB tests, browser E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 3.2.0
+      # A fresh stack applies every migration in supabase/migrations to an empty database.
+      - name: Start local Supabase (applies all migrations)
+        run: supabase start -x studio,imgproxy,realtime,logflare,vector,supavisor,edge-runtime
+      - name: Re-apply all migrations from empty (db reset)
+        run: supabase db reset
+      - name: Export local connection details
+        run: |
+          supabase status -o json > /tmp/sb.json
+          node -e '
+            const s = require("/tmp/sb.json");
+            const fs = require("fs");
+            fs.appendFileSync(process.env.GITHUB_ENV,
+              `SUPABASE_DB_URL=${s.DB_URL}\nSUPABASE_API_URL=${s.API_URL}\nSUPABASE_ANON_KEY=${s.ANON_KEY}\n`);
+          '
+      - name: Database integration tests
+        run: npm run test:db
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser end-to-end (real backend)
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop --no-backup

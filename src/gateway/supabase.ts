@@ -215,7 +215,7 @@ export function createSupabaseGateway(url: string, anonKey: string): CommerceGat
       if (error) throw new GatewayError(error.message)
     },
     async signUp(email, password) {
-      const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin + '/app' } })
+      const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: typeof window === 'undefined' ? undefined : window.location.origin + '/app' } })
       if (error) throw new GatewayError(error.message)
       return { needsEmailConfirmation: !data.session }
     },
