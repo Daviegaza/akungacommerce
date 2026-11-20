@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 @theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
 
   --color-brand-50: #f0f7ff;
   --color-brand-100: #e0effe;
@@ -132,15 +132,15 @@
   background: rgba(15, 23, 42, 0.85);
 }
 
-/* ───────────────────────── Rafu design tokens ─────────────────────────
-   Lively, warm, image-first. One owned brand colour (hibiscus pink), one deal
-   colour (mango), calm ink neutrals. Components use semantic names only.
-   Spec: docs/DESIGN.md */
+/* ───────────────────────── Fungua design tokens ─────────────────────────
+   Structured and calm: graphite structure, neutral off-white surfaces, one cobalt accent used
+   sparingly, restrained status colours. Components use semantic names only.
+   Spec: docs/DESIGN.md · Brand: docs/BRAND_GUIDELINES.md */
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
-  --font-display: 'Bricolage Grotesque', 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --color-canvas: var(--ak-canvas);
   --color-panel: var(--ak-panel);
@@ -155,7 +155,8 @@
   --color-brand: var(--ak-brand);
   --color-brand-strong: var(--ak-brand-strong);
   --color-brand-soft: var(--ak-brand-soft);
-  --color-on-brand: #ffffff;
+  --color-on-brand: var(--ak-on-brand);
+  /* "mango" is kept as the token name for deal accents (compare-at prices, drops). Restrained amber now. */
   --color-mango: var(--ak-mango);
   --color-mango-soft: var(--ak-mango-soft);
   --color-on-mango: #1d1300;
@@ -169,65 +170,71 @@
   --color-neg-soft: var(--ak-neg-soft);
   --color-info: var(--ak-info);
   --color-info-soft: var(--ak-info-soft);
-  --shadow-card: 0 1px 2px rgb(22 15 30 / 0.06), 0 4px 16px rgb(22 15 30 / 0.06);
-  --shadow-lift: 0 2px 4px rgb(22 15 30 / 0.08), 0 12px 32px rgb(22 15 30 / 0.12);
-  --radius-card: 1.125rem;
+  --shadow-card: 0 1px 2px rgb(14 20 32 / 0.05);
+  --shadow-lift: 0 1px 2px rgb(14 20 32 / 0.06), 0 8px 24px rgb(14 20 32 / 0.08);
+  --radius-card: 0.75rem;
 }
 
 :root {
-  --ak-canvas: #fbf7f4;
+  --ak-canvas: #f7f7f4;
   --ak-panel: #ffffff;
-  --ak-sunken: #f3ede8;
-  --ak-ink: #160f1e;
-  --ak-ink-2: #4b4453;
-  --ak-ink-3: #7d7584;
-  --ak-line: #ebe4de;
-  --ak-line-strong: #d9d0c8;
-  --ak-primary: #160f1e;
+  --ak-sunken: #f0f1f3;
+  --ak-ink: #0e1420;
+  --ak-ink-2: #475063;
+  --ak-ink-3: #646d80;
+  --ak-line: #e5e7eb;
+  --ak-line-strong: #d3d7de;
+  --ak-primary: #0e1420;
   --ak-on-primary: #ffffff;
-  --ak-brand: #ff3d6e;
-  --ak-brand-strong: #e01f52;
-  --ak-brand-soft: #ffe4eb;
-  --ak-mango: #ffb020;
-  --ak-mango-soft: #fff1d6;
-  --ak-accent: #ff3d6e;
-  --ak-accent-soft: #ffe4eb;
-  --ak-pos: #0f9d6e;
-  --ak-pos-soft: #dcf5ea;
-  --ak-warn: #a35f00;
-  --ak-warn-soft: #fff1d6;
-  --ak-neg: #d92d20;
-  --ak-neg-soft: #fde8e6;
-  --ak-info: #2563eb;
-  --ak-info-soft: #e5edff;
+  --ak-brand: #2f5bea;
+  --ak-brand-strong: #2449c7;
+  --ak-brand-soft: #eaf0fe;
+  --ak-on-brand: #ffffff;
+  --ak-mango: #e8a33a;
+  --ak-mango-soft: #fdf3e1;
+  --ak-accent: #2f5bea;
+  --ak-accent-soft: #eaf0fe;
+  --ak-pos: #0b7d56;
+  --ak-pos-soft: #e3f4ec;
+  --ak-warn: #a15c07;
+  --ak-warn-soft: #fdf1dc;
+  --ak-neg: #c8322b;
+  --ak-neg-soft: #fce9e7;
+  --ak-info: #2f5bea;
+  --ak-info-soft: #eaf0fe;
+  --ak-logo-ink: #0e1420;
+  --ak-logo-accent: #2f5bea;
 }
 
 .dark {
-  --ak-canvas: #120d17;
-  --ak-panel: #1c1622;
-  --ak-sunken: #0d0911;
-  --ak-ink: #f6f1f8;
-  --ak-ink-2: #c9c0cf;
-  --ak-ink-3: #948a9b;
-  --ak-line: #2c2433;
-  --ak-line-strong: #3d3346;
-  --ak-primary: #f6f1f8;
-  --ak-on-primary: #160f1e;
-  --ak-brand: #ff5c86;
-  --ak-brand-strong: #ff3d6e;
-  --ak-brand-soft: #3a1524;
-  --ak-mango: #ffc04d;
-  --ak-mango-soft: #33260c;
-  --ak-accent: #ff5c86;
-  --ak-accent-soft: #3a1524;
-  --ak-pos: #3ddc97;
-  --ak-pos-soft: #0f2a1f;
-  --ak-warn: #ffc04d;
-  --ak-warn-soft: #33260c;
-  --ak-neg: #ff7a6e;
-  --ak-neg-soft: #3a1714;
-  --ak-info: #7aa2ff;
-  --ak-info-soft: #16203d;
+  --ak-canvas: #0b0f17;
+  --ak-panel: #121826;
+  --ak-sunken: #080b12;
+  --ak-ink: #edf0f5;
+  --ak-ink-2: #b4bccb;
+  --ak-ink-3: #8892a4;
+  --ak-line: #1f2636;
+  --ak-line-strong: #2c3446;
+  --ak-primary: #edf0f5;
+  --ak-on-primary: #0e1420;
+  --ak-brand: #7b9bff;
+  --ak-brand-strong: #9db5ff;
+  --ak-brand-soft: #18213a;
+  --ak-on-brand: #0b0f17;
+  --ak-mango: #f2b85c;
+  --ak-mango-soft: #2e2412;
+  --ak-accent: #7b9bff;
+  --ak-accent-soft: #18213a;
+  --ak-pos: #3dd598;
+  --ak-pos-soft: #0f2a20;
+  --ak-warn: #f2b85c;
+  --ak-warn-soft: #2e2412;
+  --ak-neg: #ff8a80;
+  --ak-neg-soft: #34171a;
+  --ak-info: #7b9bff;
+  --ak-info-soft: #18213a;
+  --ak-logo-ink: #edf0f5;
+  --ak-logo-accent: #7b9bff;
 }
 
 .ak-root {
@@ -237,7 +244,7 @@
 }
 .ak-root h1, .ak-root h2, .ak-root h3, .ak-root .font-display {
   font-family: var(--font-display);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
 }
 .ak-root :focus-visible {
   outline: 2px solid var(--ak-brand);

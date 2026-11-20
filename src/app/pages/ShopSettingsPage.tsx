@@ -177,7 +177,7 @@ function validate(f: Form, countryCode: string, currency: string): { errors: Err
   if (f.published) {
     if (!f.pickupEnabled && !f.deliveryEnabled) errors.methods = 'Turn on pickup or delivery so buyers can get their order.'
     if (f.deliveryEnabled && !f.location)
-      errors.location = 'Drop your shop pin before going live with delivery — Rafu measures each buyer’s distance from it to price delivery.'
+      errors.location = 'Drop your shop pin before going live with delivery — Fungua measures each buyer’s distance from it to price delivery.'
     if (!f.mpesaTill.trim() && !f.mpesaPaybill.trim() && !f.codEnabled)
       errors.payments = 'Add a Till or Paybill number, or allow cash on delivery, so buyers have a way to pay.'
   }
@@ -667,7 +667,7 @@ function ShopPreviewHeader({ form, orgName }: { form: Form; orgName: string }) {
         <span className="absolute top-3 left-3 rounded-md bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white">Preview</span>
       </div>
       <div className="flex items-end gap-4 px-4 pb-4 sm:px-5">
-        <div className="-mt-8 flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 border-panel bg-brand text-2xl font-extrabold text-on-brand sm:size-20">
+        <div className="-mt-8 flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-4 border-panel bg-brand text-2xl font-semibold text-on-brand sm:size-20">
           {showLogo ? (
             <img src={logo} alt="" className="size-full object-cover" onError={() => setBrokenLogo(logo)} />
           ) : (
@@ -675,7 +675,7 @@ function ShopPreviewHeader({ form, orgName }: { form: Form; orgName: string }) {
           )}
         </div>
         <div className="min-w-0 pt-3">
-          <p className="font-display truncate text-xl font-extrabold tracking-tight text-ink">{orgName}</p>
+          <p className="font-display truncate text-xl font-semibold tracking-tight text-ink">{orgName}</p>
           <p className="truncate text-sm text-ink-3">{form.tagline.trim() || 'Add a tagline so buyers know what you sell.'}</p>
         </div>
       </div>
@@ -710,7 +710,7 @@ function ShareKit({ slug, shopName, tagline }: { slug: string; shopName: string;
 
   useEffect(() => {
     let alive = true
-    QRCode.toDataURL(link, { width: 640, margin: 2, errorCorrectionLevel: 'M', color: { dark: '#160F1E', light: '#FFFFFF' } })
+    QRCode.toDataURL(link, { width: 640, margin: 2, errorCorrectionLevel: 'M', color: { dark: '#0E1420', light: '#FFFFFF' } })
       .then((url) => alive && setQr({ link, url }))
       .catch(() => alive && setQrError(true))
     return () => {
@@ -731,7 +731,7 @@ function ShareKit({ slug, shopName, tagline }: { slug: string; shopName: string;
         <div className="min-w-0 space-y-4">
           <div className="rounded-2xl bg-brand-soft p-4">
             <p className="text-xs font-medium text-ink-2">Your shop link</p>
-            <p className="font-display mt-1 text-xl font-extrabold tracking-tight break-all text-ink select-all sm:text-2xl">{link.replace(/^https?:\/\//, '')}</p>
+            <p className="font-display mt-1 text-xl font-semibold tracking-tight break-all text-ink select-all sm:text-2xl">{link.replace(/^https?:\/\//, '')}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button variant="brand" icon={copied === 'link' ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />} onClick={() => copy('link', link)}>
                 {copyLabel('link', 'Copy link')}

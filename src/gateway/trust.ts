@@ -68,7 +68,7 @@ export interface MarketingContact {
   contactedAt: string
 }
 
-/* ───────────── Platform review (Rafu staff only) ───────────── */
+/* ───────────── Platform review (Fungua staff only) ───────────── */
 
 export interface VerificationQueueItem {
   orgId: string
@@ -112,7 +112,7 @@ export interface TrustAdminGateway {
   startMarketingChat(orgId: string, customerId: string, segment: SegmentId): Promise<{ phoneE164: string }>
   listMarketingContacts(orgId: string): Promise<MarketingContact[]>
 
-  /** Whether the signed-in user is a Rafu platform reviewer. */
+  /** Whether the signed-in user is a Fungua platform reviewer. */
   isPlatformAdmin(): Promise<boolean>
   listVerificationQueue(): Promise<VerificationQueueItem[]>
   /** A short-lived link to view one uploaded document (reviewers only). Null when files are not stored (demo). */
@@ -144,7 +144,7 @@ export interface ReportShopInput {
 export interface StorefrontTrustGateway {
   /** Server-derived trust facts for a published shop. */
   getShopTrust(slug: string): Promise<ShopTrustFacts>
-  /** Anonymous, rate-limited. Stored for a Rafu reviewer, not shown to the shop. */
+  /** Anonymous, rate-limited. Stored for a Fungua reviewer, not shown to the shop. */
   reportShop(slug: string, input: ReportShopInput): Promise<void>
   /** Verified (provider-confirmed) payments on the order behind a tracking link. */
   getPaymentReceipts(trackingToken: string): Promise<PaymentReceipt[]>

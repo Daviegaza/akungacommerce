@@ -10,7 +10,7 @@ import { When } from '../ui/format'
 import { Badge, Button, Input, Skeleton } from '../ui/primitives'
 
 /**
- * Minimal Rafu reviewer page: business documents waiting for review and
+ * Minimal Fungua reviewer page: business documents waiting for review and
  * buyer reports. Every action is checked again on the server (platform_admins).
  */
 export default function PlatformReviewPage() {
@@ -26,17 +26,17 @@ export default function PlatformReviewPage() {
             <ChevronLeft className="size-4" aria-hidden /> Trust and verification
           </Link>
         }
-        description="For Rafu staff only. Approve business documents and handle reports from buyers."
+        description="For Fungua staff only. Approve business documents and handle reports from buyers."
       />
       {admin.isPending ? (
         <Skeleton className="h-32" />
       ) : !admin.data ? (
-        <EmptyState title="Reviewers only" body="This page is for Rafu staff who review businesses." />
+        <EmptyState title="Reviewers only" body="This page is for Fungua staff who review businesses." />
       ) : (
         <>
           {gateway.mode === 'demo' && (
             <div className="mb-6">
-              <Notice>Demo workspace: you act as the Rafu reviewer, and document files are not stored (only their names).</Notice>
+              <Notice>Demo workspace: you act as the Fungua reviewer, and document files are not stored (only their names).</Notice>
             </div>
           )}
           <DocumentQueue />

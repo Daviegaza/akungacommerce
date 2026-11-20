@@ -50,7 +50,7 @@ export function loadMetaPixel(id: string): boolean {
     win._fbq = q
   }
   win.fbq('init', id)
-  addScript(src, 'rafu-meta-pixel')
+  addScript(src, 'fungua-meta-pixel')
   return true
 }
 
@@ -69,7 +69,7 @@ export function loadGa4(id: string): boolean {
   win.gtag('js', new Date())
   // Page views are sent by the router hook so SPA navigation is counted once.
   win.gtag('config', id, { send_page_view: false })
-  addScript(src, 'rafu-ga4')
+  addScript(src, 'fungua-ga4')
   return true
 }
 

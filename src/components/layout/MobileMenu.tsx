@@ -31,7 +31,7 @@ export function MobileMenu() {
           >
             <div className="flex flex-col h-full p-6">
               <div className="flex items-center justify-between mb-8">
-                <span className="font-extrabold text-lg text-surface-900 dark:text-white">
+                <span className="font-semibold text-lg text-surface-900 dark:text-white">
                   {APP_NAME}
                 </span>
                 <button

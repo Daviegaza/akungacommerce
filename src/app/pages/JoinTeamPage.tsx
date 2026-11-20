@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Users } from 'lucide-react'
 import { ROLE_PLAIN, isPlausibleInviteToken, roleCapabilities } from '@/domain/team-invites'
-import { RafuLogo } from '@/brand/RafuLogo'
+import { FunguaLogo } from '@/brand/FunguaLogo'
 import { useGateway, useSessionUser } from '../context'
 import { DemoBanner } from '../AppShell'
 import { SignInPage } from './AuthPages'
@@ -50,7 +50,7 @@ export default function JoinTeamPage() {
     <div className="ak-root min-h-dvh">
       <DemoBanner />
       <main className="mx-auto flex max-w-lg flex-col gap-5 px-4 py-10">
-        <RafuLogo />
+        <FunguaLogo />
         {!valid ? (
           <Notice tone="warn">This invitation link is incomplete. Ask for a new one.</Notice>
         ) : preview.isPending ? (
@@ -62,7 +62,7 @@ export default function JoinTeamPage() {
             <span className="mb-3 flex size-11 items-center justify-center rounded-2xl bg-brand-soft text-brand">
               <Users className="size-5" aria-hidden />
             </span>
-            <h1 id="join-title" className="font-display text-2xl font-extrabold tracking-tight text-ink">
+            <h1 id="join-title" className="font-display text-2xl font-semibold tracking-tight text-ink">
               Join {p.orgName}
             </h1>
             <p className="mt-1 text-sm text-ink-2">

@@ -137,11 +137,11 @@ Supabase Vault; `public.mpesa_credentials_for(org)` (service role only) decrypts
 `mpesa-stk-query` (`chooseDarajaConfig` in `_shared/collections.ts`). The prompt therefore pays the shop's own
 Till/Paybill. The `DARAJA_*` env secrets below are a **platform-wide** account and are ignored unless
 `DARAJA_ALLOW_PLATFORM_SHORTCODE=true`. The owner switches on prompts with `mark_mpesa_verified`, which refuses
-until a real M-Pesa payment for that shop has reached Rafu; changing keys drops back to unverified.
+until a real M-Pesa payment for that shop has reached Fungua; changing keys drops back to unverified.
 
 Secrets (placeholders only, set with `supabase secrets set`):
 
-- Always: `DARAJA_CALLBACK_URL` and `MPESA_CALLBACK_SECRET` (Rafu's endpoint, shared by every shop)
+- Always: `DARAJA_CALLBACK_URL` and `MPESA_CALLBACK_SECRET` (Fungua's endpoint, shared by every shop)
 - Platform account only (with `DARAJA_ALLOW_PLATFORM_SHORTCODE=true`):
 - `DARAJA_CONSUMER_KEY=<consumer-key>`, `DARAJA_CONSUMER_SECRET=<consumer-secret>`
 - `DARAJA_SHORTCODE=<business-shortcode>`, `DARAJA_PASSKEY=<lipa-na-mpesa-passkey>`
@@ -287,7 +287,7 @@ its DNS records are right. No certificate is issued and nothing serves the domai
 
 - Records checked (same as the instructions shown to the merchant): a CNAME for a subdomain pointing at
   `CUSTOM_DOMAIN_CNAME_TARGET`, or an A record for an apex domain equal to `CUSTOM_DOMAIN_A_RECORD`, plus the TXT
-  record `_rafu-verification.<host>` = `rafu-verify=<token>`. Without the target env set, a domain can never verify.
+  record `_fungua-verification.<host>` = `fungua-verify=<token>`. Without the target env set, a domain can never verify.
   Keep `VITE_CUSTOM_DOMAIN_CNAME_TARGET` / `VITE_CUSTOM_DOMAIN_A_RECORD` (what the UI shows) equal to these.
 - DNS is resolved with Cloudflare's public DNS-over-HTTPS JSON API (`GET https://cloudflare-dns.com/dns-query?name=..&type=..`,
   header `accept: application/dns-json`). Resolver errors leave the domain unchanged and return `status: "error"`.

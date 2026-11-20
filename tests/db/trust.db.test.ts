@@ -240,8 +240,8 @@ run('trust, verification and consent (database)', () => {
       await asUser(shop.owner, `select public.submit_verification_documents($1, 'kra_pin', $2)`, [shop.org, [path]])
       expect((await sf<Record<string, unknown>>('storefront_trust', [shop.slug])).documents_approved).toBe(false)
 
-      await expect(asUser(shop.owner, `select public.review_verification_documents($1, 'approved', null)`, [shop.org])).rejects.toThrow(/Only Rafu reviewers/)
-      await expect(asUser(shop.owner, `select public.admin_verification_queue()`)).rejects.toThrow(/Only Rafu reviewers/)
+      await expect(asUser(shop.owner, `select public.review_verification_documents($1, 'approved', null)`, [shop.org])).rejects.toThrow(/Only Fungua reviewers/)
+      await expect(asUser(shop.owner, `select public.admin_verification_queue()`)).rejects.toThrow(/Only Fungua reviewers/)
       const queue = (await one<{ q: { org_id: string; paths: string[] }[] }>(reviewer, `select public.admin_verification_queue() as q`)).q
       expect(queue.find((q) => q.org_id === shop.org)?.paths).toEqual([path])
       // Reviewers can read the file; another business cannot.
@@ -275,7 +275,7 @@ run('trust, verification and consent (database)', () => {
 
       await expect(asAnon(`select * from public.shop_reports`)).rejects.toThrow(/permission denied/)
       await expect(asUser(shop.owner, `select * from public.shop_reports`)).rejects.toThrow(/permission denied/)
-      await expect(asUser(shop.owner, `select public.admin_shop_reports(null)`)).rejects.toThrow(/Only Rafu reviewers/)
+      await expect(asUser(shop.owner, `select public.admin_shop_reports(null)`)).rejects.toThrow(/Only Fungua reviewers/)
 
       const reports = (await one<{ r: { id: string; org_id: string; reason: string }[] }>(reviewer, `select public.admin_shop_reports('open') as r`)).r.filter(
         (r) => r.org_id === shop.org,

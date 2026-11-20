@@ -122,7 +122,7 @@ export default function ProductImportPage() {
         <Button
           size="sm"
           icon={<Download className="size-4" aria-hidden />}
-          onClick={() => downloadCsv(`rafu-product-template-${org.baseCurrency}.csv`, importTemplateCsv(org.baseCurrency))}
+          onClick={() => downloadCsv(`fungua-product-template-${org.baseCurrency}.csv`, importTemplateCsv(org.baseCurrency))}
         >
           Download template
         </Button>

@@ -7,7 +7,7 @@
 //
 // DNS is resolved over HTTPS (Cloudflare DoH JSON API, see _shared/dns-verify.ts). The routing record must point at
 // CUSTOM_DOMAIN_CNAME_TARGET (subdomains) or CUSTOM_DOMAIN_A_RECORD (apex domains), and the TXT record
-// `_rafu-verification.<host>` must hold `rafu-verify=<token>`. The result is written with the service-role
+// `_fungua-verification.<host>` must hold `fungua-verify=<token>`. The result is written with the service-role
 // mark_custom_domain_status(). 'verified' means DNS only: certificates and hosting for custom domains are not set up.
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { DnsLookupError, checkDomainDns, dnsTargetsFromServerEnv, isApexDomain, parseVerifyRequest, type FetchLike } from '../_shared/dns-verify.ts'

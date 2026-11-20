@@ -2,34 +2,24 @@ import { Link } from 'react-router-dom'
 import { AlertTriangle, Banknote, BellRing, ShoppingBag, Truck, Undo2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Sheet } from '../ui/layout'
-import { Avatar, Skeleton } from '../ui/primitives'
+import { Skeleton } from '../ui/primitives'
 import { RelativeTime } from '../ui/format'
 import type { FeedItem, FeedKind } from './feed'
 
 const KIND: Record<FeedKind, { icon: typeof ShoppingBag; className: string }> = {
-  order: { icon: ShoppingBag, className: 'bg-brand text-on-brand' },
-  status: { icon: Truck, className: 'bg-info-soft text-info' },
-  payment: { icon: Banknote, className: 'bg-pos-soft text-pos' },
-  reversal: { icon: Undo2, className: 'bg-neg-soft text-neg' },
-  stock: { icon: AlertTriangle, className: 'bg-warn-soft text-warn' },
+  order: { icon: ShoppingBag, className: 'text-brand' },
+  status: { icon: Truck, className: 'text-ink-2' },
+  payment: { icon: Banknote, className: 'text-pos' },
+  reversal: { icon: Undo2, className: 'text-neg' },
+  stock: { icon: AlertTriangle, className: 'text-warn' },
 }
 
 function FeedIcon({ item }: { item: FeedItem }) {
   const k = KIND[item.kind]
   const Icon = k.icon
-  if (item.person) {
-    return (
-      <span className="relative shrink-0">
-        <Avatar name={item.person} size={40} />
-        <span className={cn('absolute -right-1 -bottom-1 flex size-5 items-center justify-center rounded-full ring-2 ring-panel', k.className)} aria-hidden>
-          <Icon className="size-3" />
-        </span>
-      </span>
-    )
-  }
   return (
-    <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full', k.className)} aria-hidden>
-      <Icon className="size-[18px]" />
+    <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg border border-line bg-panel', k.className)} aria-hidden>
+      <Icon className="size-4" />
     </span>
   )
 }
@@ -51,10 +41,10 @@ export function FeedList({
 }) {
   if (loading) {
     return (
-      <ul className="flex flex-col gap-3" aria-busy="true">
+      <ul className="flex flex-col divide-y divide-line" aria-busy="true">
         {Array.from({ length: 5 }, (_, i) => (
-          <li key={i} className="flex items-center gap-3">
-            <Skeleton className="size-10 rounded-full" />
+          <li key={i} className="flex items-center gap-3 py-3">
+            <Skeleton className="size-8" />
             <div className="flex-1">
               <Skeleton className="h-3.5 w-2/3" />
               <Skeleton className="mt-2 h-3 w-1/3" />
@@ -67,7 +57,7 @@ export function FeedList({
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 py-8 text-center">
-        <span className="flex size-12 items-center justify-center rounded-2xl bg-brand-soft text-brand">
+        <span className="flex size-10 items-center justify-center rounded-lg border border-line text-ink-3">
           <BellRing className="size-5" aria-hidden />
         </span>
         <p className="max-w-xs text-sm text-ink-3">{emptyText}</p>
@@ -75,25 +65,25 @@ export function FeedList({
     )
   }
   return (
-    <ol className="-mx-2 flex flex-col">
-      {items.map((item, i) => {
+    <ol className="flex flex-col divide-y divide-line">
+      {items.map((item) => {
         const unread = unreadAfter != null && item.at > unreadAfter
         return (
-          <li key={item.id} className="ak-rise" style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}>
+          <li key={item.id}>
             <Link
               to={item.href}
               onClick={onNavigate}
-              className="flex items-center gap-3 rounded-2xl px-2 py-2.5 transition-colors hover:bg-sunken focus-visible:bg-sunken"
+              className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-sunken focus-visible:bg-sunken"
             >
               <FeedIcon item={item} />
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-2">
-                  <span className="truncate text-sm font-semibold text-ink">{item.title}</span>
+                  <span className="truncate text-sm font-medium text-ink">{item.title}</span>
                   {unread && <span className="size-2 shrink-0 rounded-full bg-brand" role="img" aria-label="New" />}
                 </span>
                 <span className="block truncate text-xs text-ink-3">{item.detail}</span>
               </span>
-              <RelativeTime iso={item.at} className="shrink-0 text-xs font-medium text-ink-3" />
+              <RelativeTime iso={item.at} className="tnum shrink-0 text-xs text-ink-3" />
             </Link>
           </li>
         )

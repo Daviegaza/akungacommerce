@@ -115,7 +115,7 @@ export interface ShopDarajaCredentials {
 
 /**
  * Build a config from a shop's own credentials (money goes to the shop's Till/Paybill).
- * The callback URL and its secret are platform settings: Rafu's endpoint, not the shop's.
+ * The callback URL and its secret are platform settings: Fungua's endpoint, not the shop's.
  */
 export function darajaConfigFromShop(row: unknown, get: (name: string) => string | undefined): DarajaConfig | null {
   if (!row || typeof row !== 'object') return null

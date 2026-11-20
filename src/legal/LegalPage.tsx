@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { BRAND } from '@/brand/brand'
-import { RafuLogo } from '@/brand/RafuLogo'
+import { FunguaLogo } from '@/brand/FunguaLogo'
 
 /*
  * Public legal pages (/legal/privacy and /legal/terms).
@@ -72,7 +72,7 @@ function LegalLayout({
       <header className="border-b border-line">
         <div className="mx-auto flex h-16 max-w-3xl items-center px-4 sm:px-6">
           <Link to="/" aria-label={`${BRAND.name} home`} className="rounded-lg">
-            <RafuLogo size={26} />
+            <FunguaLogo size={26} />
           </Link>
         </div>
       </header>
@@ -83,7 +83,7 @@ function LegalLayout({
             <strong className="font-semibold">Draft — not yet reviewed by a lawyer.</strong> Do not rely on this until it is approved.
           </p>
 
-          <h1 className="mt-8 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">{title}</h1>
+          <h1 className="mt-8 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">{title}</h1>
           <p className="mt-3 text-sm text-ink-3">
             Last updated <time dateTime={LAST_UPDATED_ISO}>{LAST_UPDATED_LABEL}</time>
           </p>

@@ -201,7 +201,7 @@ function VerifyResult({ result }: { result: ReceiptVerification }) {
         <div>
           <p className="font-semibold">Not verifiable automatically</p>
           <p>
-            Your shop is on manual M-Pesa, so Safaricom does not report payments to Rafu. Check the code in your own M-Pesa statement or the M-Pesa app
+            Your shop is on manual M-Pesa, so Safaricom does not report payments to Fungua. Check the code in your own M-Pesa statement or the M-Pesa app
             before releasing goods. A forwarded SMS or screenshot is not proof.
           </p>
           {manual}

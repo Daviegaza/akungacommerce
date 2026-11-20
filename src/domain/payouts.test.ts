@@ -45,8 +45,8 @@ describe('money flow', () => {
     ])
   })
 
-  it('every hold reason has an action, and the rules say Rafu never holds money', () => {
+  it('every hold reason has an action, and the rules say Fungua never holds money', () => {
     for (const r of HOLD_REASONS) expect(HOLD_REASON_TEXT[r].action.length).toBeGreaterThan(10)
-    expect(PAYOUT_RULES[0]).toContain('Rafu never holds your money')
+    expect(PAYOUT_RULES[0]).toContain('Fungua never holds your money')
   })
 })

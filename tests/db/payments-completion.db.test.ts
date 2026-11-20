@@ -67,7 +67,7 @@ async function placeBankOrder(shop: NgShop, phone?: string): Promise<Placed> {
 
 async function assign(shop: NgShop, orderId: string | null, customerId: string | null = null, customerRef: string | null = null) {
   const acct = nuban()
-  await svc(`select public.record_virtual_account($1, 'paystack_dva', 'Wema Bank', $2, 'Shop / Rafu', $3, $4, $5)`, [shop.org, acct, customerRef, orderId, customerId])
+  await svc(`select public.record_virtual_account($1, 'paystack_dva', 'Wema Bank', $2, 'Shop / Fungua', $3, $4, $5)`, [shop.org, acct, customerRef, orderId, customerId])
   return acct
 }
 
@@ -110,7 +110,7 @@ run('virtual accounts + tracking details', () => {
     expect(Number(before.due_now_minor)).toBe(Number(o.total_minor))
     const acct = await assign(shop, o.order_id)
     const after = await sf<{ account: Record<string, string> }>('storefront_bank_transfer', [o.tracking_token])
-    expect(after.account).toEqual({ bank_name: 'Wema Bank', account_number: acct, account_name: 'Shop / Rafu' })
+    expect(after.account).toEqual({ bank_name: 'Wema Bank', account_number: acct, account_name: 'Shop / Fungua' })
   })
 
   it('is null for orders that are not NGN bank transfer', async () => {

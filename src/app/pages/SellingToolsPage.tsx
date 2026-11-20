@@ -126,12 +126,12 @@ function DomainSection({ editable }: { editable: boolean }) {
     <Section
       icon={<Globe className="size-4" aria-hidden />}
       title="Custom domain"
-      description="Use your own address, like shop.yourbrand.com, instead of the Rafu link."
+      description="Use your own address, like shop.yourbrand.com, instead of the Fungua link."
       actions={<Badge tone="info">Not connected</Badge>}
     >
       <Notice tone="warn">
-        Rafu can check your DNS records, but certificates and hosting for custom domains are not set up yet. Even with DNS verified, your domain does not
-        open your shop yet; your Rafu link keeps working.
+        Fungua can check your DNS records, but certificates and hosting for custom domains are not set up yet. Even with DNS verified, your domain does not
+        open your shop yet; your Fungua link keeps working.
       </Notice>
       <div className="mt-4">
         {domain.isPending ? (

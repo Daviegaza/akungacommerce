@@ -2,7 +2,7 @@
  * Custom shop domains (pure). Model, validation and DNS instructions. The DNS
  * check itself runs on the server (Edge Function verify-custom-domain, DNS over
  * HTTPS); 'verified' means the DNS records are right, NOT that the domain is
- * live: Rafu does not issue certificates or host custom domains yet. The
+ * live: Fungua does not issue certificates or host custom domains yet. The
  * database mirrors the hostname rule in set_custom_domain and only resolves
  * verified domains (storefront_resolve_host).
  */
@@ -78,9 +78,9 @@ export function dnsInstructions(hostname: string, verificationToken: string, tar
   const apex = isApexDomain(hostname)
   const records: DnsRecord[] = [
     apex
-      ? { type: 'A', host: '@', value: targets.aRecord, purpose: 'Points your domain at Rafu' }
-      : { type: 'CNAME', host: hostname.split('.')[0], value: targets.cname, purpose: 'Points your domain at Rafu' },
-    { type: 'TXT', host: `_rafu-verification.${hostname}`, value: `rafu-verify=${verificationToken}`, purpose: 'Proves you own the domain' },
+      ? { type: 'A', host: '@', value: targets.aRecord, purpose: 'Points your domain at Fungua' }
+      : { type: 'CNAME', host: hostname.split('.')[0], value: targets.cname, purpose: 'Points your domain at Fungua' },
+    { type: 'TXT', host: `_fungua-verification.${hostname}`, value: `fungua-verify=${verificationToken}`, purpose: 'Proves you own the domain' },
   ]
   return records
 }

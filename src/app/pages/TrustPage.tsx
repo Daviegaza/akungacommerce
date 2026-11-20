@@ -43,7 +43,7 @@ export default function TrustPage() {
     <>
       <PageHeader
         title="Trust and verification"
-        description="Checks that let buyers trust your shop before they pay. A badge appears in your shop only after Rafu confirms it, never because a setting was typed in."
+        description="Checks that let buyers trust your shop before they pay. A badge appears in your shop only after Fungua confirms it, never because a setting was typed in."
         actions={
           admin.data ? (
             <Link to="/app/platform-review" className={buttonClass('secondary')}>
@@ -66,7 +66,7 @@ export default function TrustPage() {
           <div className="min-w-0">
             {verification.data.simulated && (
               <div className="mb-4">
-                <Notice>Demo workspace: phone codes are shown on screen instead of sent, the M-Pesa name check is typed in, and you act as the Rafu reviewer.</Notice>
+                <Notice>Demo workspace: phone codes are shown on screen instead of sent, the M-Pesa name check is typed in, and you act as the Fungua reviewer.</Notice>
               </div>
             )}
             <PhoneStep v={verification.data} />
@@ -181,7 +181,7 @@ function MpesaNameStep({ v }: { v: ShopVerification }) {
   return (
     <Step icon={<Smartphone className="size-4" aria-hidden />} title="M-Pesa business name" badge={badge}>
       <p>
-        Buyers check the name on their M-Pesa prompt before they pay. Rafu compares the name M-Pesa itself reports for your Till or Paybill with the name you gave
+        Buyers check the name on their M-Pesa prompt before they pay. Fungua compares the name M-Pesa itself reports for your Till or Paybill with the name you gave
         in My shop.
       </p>
       <dl className="divide-y divide-line rounded-xl ring-1 ring-line">
@@ -261,7 +261,7 @@ function DocumentsStep({ v }: { v: ShopVerification }) {
 
   return (
     <Step icon={<FileCheck2 className="size-4" aria-hidden />} title="Business documents" badge={<StepBadge state={state}>{DOCUMENT_STATUS_LABEL[d.status]}</StepBadge>}>
-      <p>Send one business document. A Rafu reviewer checks it by hand. Buyers see that it was reviewed, never the document itself.</p>
+      <p>Send one business document. A Fungua reviewer checks it by hand. Buyers see that it was reviewed, never the document itself.</p>
       {d.status === 'submitted' && (
         <p>
           {d.fileCount} {d.fileCount === 1 ? 'file' : 'files'} sent{d.kind ? ` (${DOCUMENT_KIND_LABEL[d.kind]})` : ''}
@@ -337,7 +337,7 @@ function BuyerPreview({ v, shopName }: { v: ShopVerification; shopName: string }
       phoneVerified: v.phone.verified,
       mpesaName: v.mpesaName.matched ? v.mpesaName.reportedName : null,
       documentsApproved: v.documents.status === 'approved',
-      onRafuSince: '',
+      onPlatformSince: '',
       completedOrders: null,
     },
     shopName,
@@ -347,7 +347,7 @@ function BuyerPreview({ v, shopName }: { v: ShopVerification; shopName: string }
       {badges.length === 0 ? (
         <div className="flex items-start gap-2.5 rounded-2xl bg-sunken px-4 py-3 text-sm text-ink-2">
           <CircleDashed className="mt-0.5 size-4 shrink-0" aria-hidden />
-          No badges yet. Buyers still see how long you have been on Rafu and how many orders you have completed.
+          No badges yet. Buyers still see how long you have been on Fungua and how many orders you have completed.
         </div>
       ) : (
         <ul className="flex flex-col gap-2">

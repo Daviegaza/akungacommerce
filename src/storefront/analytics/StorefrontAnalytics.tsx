@@ -87,7 +87,7 @@ export function StorefrontAnalytics({ slug, data }: { slug: string; data: Storef
         <section
           role="region"
           aria-label="Cookie choice"
-          className="fixed inset-x-3 bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+5.5rem))] z-50 mx-auto max-w-md rounded-2xl bg-panel p-4 text-ink shadow-[0_12px_40px_-12px_rgb(22_15_30/0.45)] ring-1 ring-line sm:bottom-6"
+          className="fixed inset-x-3 bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+5.5rem))] z-50 mx-auto max-w-md rounded-2xl bg-panel p-4 text-ink shadow-[0_12px_40px_-12px_rgb(14_20_32/0.45)] ring-1 ring-line sm:bottom-6"
         >
           <p className="text-sm leading-relaxed text-ink-2">
             {data.shop.name} would like to use cookies from {[ids.metaPixelId && 'Meta', ids.ga4Id && 'Google'].filter(Boolean).join(' and ')} to measure its ads.

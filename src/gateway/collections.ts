@@ -91,7 +91,7 @@ export interface CollectionsAdminGateway {
   getMpesaCredentials(orgId: string): Promise<MpesaCredentialsSummary>
   saveMpesaCredentials(orgId: string, input: MpesaCredentialsInput): Promise<MpesaCredentialsSummary>
   clearMpesaCredentials(orgId: string): Promise<void>
-  /** Owner/admin confirms a live test payment reached Rafu; prompts start only after this. */
+  /** Owner/admin confirms a live test payment reached Fungua; prompts start only after this. */
   markMpesaVerified(orgId: string): Promise<void>
   listMpesaPrompts(orgId: string): Promise<MpesaPrompt[]>
   listMpesaReceipts(orgId: string): Promise<MpesaReceipt[]>

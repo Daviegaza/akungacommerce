@@ -120,7 +120,7 @@ export function CheckoutForm() {
           <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30 mb-2">
             <Check className="h-10 w-10 text-green-600 dark:text-green-400" />
           </div>
-          <h2 className="text-2xl font-black text-surface-900 dark:text-white">Order Confirmed!</h2>
+          <h2 className="text-2xl font-semibold text-surface-900 dark:text-white">Order Confirmed!</h2>
           <p className="text-surface-500 dark:text-surface-400 max-w-sm mx-auto">
             Thank you for your order. You will receive a confirmation email shortly with your order details and tracking information.
           </p>

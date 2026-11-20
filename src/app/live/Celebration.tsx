@@ -1,12 +1,12 @@
 import { useEffect } from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { X } from 'lucide-react'
-import { RafuMark } from '@/brand/RafuLogo'
+import { FunguaMark } from '@/brand/FunguaLogo'
 
 const COPY: Record<number, { title: string; body: string }> = {
   1: { title: 'Your first sale!', body: 'The first order is in. Every shop starts exactly here.' },
   10: { title: '10 orders', body: 'Double digits. People are buying from you.' },
-  50: { title: '50 orders', body: 'Fifty real orders. Your shelf is moving.' },
+  50: { title: '50 orders', body: 'Fifty real orders. Your shop is moving.' },
   100: { title: '100 orders', body: 'A hundred orders. This is a real business.' },
   500: { title: '500 orders', body: 'Five hundred orders and counting.' },
   1000: { title: '1,000 orders', body: 'A thousand orders. Take a moment to enjoy this one.' },
@@ -14,7 +14,7 @@ const COPY: Record<number, { title: string; body: string }> = {
 
 const PETALS = Array.from({ length: 10 }, (_, i) => i)
 
-/** Gentle hibiscus burst behind the mark. No confetti; static under reduced motion. */
+/** Gentle accent burst behind the mark. No confetti; static under reduced motion. */
 function Burst({ reduce }: { reduce: boolean }) {
   return (
     <span className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
@@ -73,11 +73,11 @@ export function Celebration({ milestone, onDismiss }: { milestone: number | null
                 transition={{ type: 'spring', stiffness: 380, damping: 18 }}
                 className="relative"
               >
-                <RafuMark size={40} />
+                <FunguaMark size={40} />
               </motion.span>
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block font-display text-lg leading-tight font-extrabold tracking-tight text-ink">{copy.title}</span>
+              <span className="block font-display text-lg leading-tight font-semibold tracking-tight text-ink">{copy.title}</span>
               <span className="mt-0.5 block text-sm text-ink-2">{copy.body}</span>
             </span>
             <button

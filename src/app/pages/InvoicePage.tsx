@@ -11,19 +11,19 @@ import { Badge, Button, Field, Input, Skeleton, buttonClass } from '../ui/primit
 /** Print only the invoice, not the app around it. */
 const PRINT_CSS = `@media print {
   body * { visibility: hidden !important; }
-  .rafu-invoice, .rafu-invoice * { visibility: visible !important; }
-  .rafu-invoice { position: absolute; inset: 0; padding: 24px; box-shadow: none !important; }
+  .fungua-invoice, .fungua-invoice * { visibility: visible !important; }
+  .fungua-invoice { position: absolute; inset: 0; padding: 24px; box-shadow: none !important; }
 }`
 
 function InvoiceDocument({ inv }: { inv: TaxInvoiceRecord }) {
   const { org } = useOrg()
   const m = (minor: number) => <Money minor={minor} currency={inv.currency} />
   return (
-    <article className="rafu-invoice rounded-[var(--radius-card)] bg-panel p-5 text-ink shadow-[var(--shadow-card)] ring-1 ring-line/60 sm:p-8" aria-label={`Tax invoice ${formatInvoiceNumber(inv.invoiceNumber)}`}>
+    <article className="fungua-invoice rounded-[var(--radius-card)] bg-panel p-5 text-ink shadow-[var(--shadow-card)] ring-1 ring-line/60 sm:p-8" aria-label={`Tax invoice ${formatInvoiceNumber(inv.invoiceNumber)}`}>
       <header className="flex flex-col gap-4 border-b border-line pb-5 sm:flex-row sm:justify-between">
         <div>
           <p className="text-xs font-semibold text-ink-3">Tax invoice</p>
-          <h2 className="font-display text-2xl font-extrabold tracking-tight">{formatInvoiceNumber(inv.invoiceNumber)}</h2>
+          <h2 className="font-display text-2xl font-semibold tracking-tight">{formatInvoiceNumber(inv.invoiceNumber)}</h2>
           <p className="mt-1 text-sm text-ink-2">
             Order #{inv.orderNumber ?? '—'} · <When iso={inv.issuedAt} dateOnly />
           </p>
@@ -94,7 +94,7 @@ function InvoiceDocument({ inv }: { inv: TaxInvoiceRecord }) {
             <dd className="tnum">{m(b.taxMinor)}</dd>
           </div>
         ))}
-        <div className="flex justify-between gap-4 font-display text-lg font-extrabold">
+        <div className="flex justify-between gap-4 font-display text-lg font-semibold">
           <dt>Total</dt>
           <dd className="tnum">{m(inv.totalMinor)}</dd>
         </div>

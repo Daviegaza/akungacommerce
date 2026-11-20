@@ -178,7 +178,7 @@ export function DeliveryUpdates({ order, money }: { order: TrackedOrder; money(m
   if (items.length === 0 && policyLines.length === 0) return null
   return (
     <section className="rounded-[var(--radius-card)] bg-panel p-4 shadow-[var(--shadow-card)] sm:p-5 ak-rise" aria-labelledby="delivery-updates">
-      <h2 id="delivery-updates" className="mb-3 text-lg font-extrabold tracking-tight">
+      <h2 id="delivery-updates" className="mb-3 text-lg font-semibold tracking-tight">
         {failed.length > 0 || d.returnedAt ? 'Delivery updates' : 'How your order reaches you'}
       </h2>
       {items.length > 0 && <ul className="flex flex-col gap-3 text-sm">{items}</ul>}

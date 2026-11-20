@@ -129,7 +129,7 @@ function TrackScreen() {
     return (
       <main className="mx-auto flex max-w-md flex-col items-center gap-3 px-4 py-24 text-center">
         <AlertCircle className="size-8 text-neg" aria-hidden />
-        <h1 className="text-2xl font-extrabold tracking-tight">{notFound ? 'We could not find this order' : 'Order status is unavailable'}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{notFound ? 'We could not find this order' : 'Order status is unavailable'}</h1>
         <p className="text-sm text-ink-2">
           {notFound ? 'Check that you opened the full link the shop sent you.' : errorMessage(query.error)}
         </p>
@@ -171,7 +171,7 @@ function Card({ title, children, className, action }: { title?: string; children
     <section className={cn('rounded-[var(--radius-card)] bg-panel p-4 shadow-[var(--shadow-card)] sm:p-5 ak-rise', className)}>
       {(title || action) && (
         <div className="mb-3 flex items-center justify-between gap-3">
-          {title && <h2 className="text-lg font-extrabold tracking-tight">{title}</h2>}
+          {title && <h2 className="text-lg font-semibold tracking-tight">{title}</h2>}
           {action}
         </div>
       )}
@@ -240,7 +240,7 @@ function OrderView({
       ) : (
         <header className="ak-rise">
           <p className="text-sm text-ink-3">{shop.name}</p>
-          <h1 className="text-3xl font-extrabold tracking-tight">
+          <h1 className="text-3xl font-semibold tracking-tight">
             Order <span className="tnum">#{order.number}</span>
           </h1>
           <p className="mt-1 text-sm text-ink-2">Placed {formatDateTime(order.createdAt, locale, shop.timezone)}</p>
@@ -346,7 +346,7 @@ function OrderView({
         </dl>
         <div className="mt-3 flex items-baseline justify-between">
           <span className="text-sm font-semibold">Total</span>
-          <span className="font-display text-2xl font-extrabold tracking-tight tnum">{money(order.totalMinor)}</span>
+          <span className="font-display text-2xl font-semibold tracking-tight tnum">{money(order.totalMinor)}</span>
         </div>
         {order.paidMinor > 0 && (
           <dl className="mt-2 flex flex-col gap-1.5 text-sm">
@@ -411,7 +411,7 @@ function PlacedHeader({ order, money }: { order: TrackedOrder; money(minor: numb
         </svg>
       </motion.span>
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight">
+        <h1 className="text-3xl font-semibold tracking-tight">
           Order <span className="tnum">#{order.number}</span> placed
         </h1>
         <p className="mt-1 text-sm text-ink-2">
@@ -448,7 +448,7 @@ function PaymentPanel({ token, order, money }: { token: string; order: TrackedOr
             <Banknote className="size-5" aria-hidden />
           </span>
           <div>
-            <p className="font-display text-xl font-extrabold tracking-tight tnum">
+            <p className="font-display text-xl font-semibold tracking-tight tnum">
               Pay {money(due)} on {order.fulfilment.method === 'pickup' ? 'pickup' : 'delivery'}
             </p>
             <p className="text-sm text-ink-2">
@@ -466,7 +466,7 @@ function PaymentPanel({ token, order, money }: { token: string; order: TrackedOr
   if (order.paymentPreference !== 'mpesa' && !(depositOutstanding > 0 && (shop.mpesaTill || shop.mpesaPaybill))) {
     return (
       <Card className="border border-line">
-        <p className="font-display text-xl font-extrabold tracking-tight tnum">{money(due)} to pay</p>
+        <p className="font-display text-xl font-semibold tracking-tight tnum">{money(due)} to pay</p>
         <p className="text-sm text-ink-2">{shop.name} will contact you with how to pay.</p>
       </Card>
     )
@@ -531,7 +531,7 @@ function MpesaPanel({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm text-ink-2">Amount to pay</p>
-          <p className="font-display text-4xl font-extrabold leading-tight tracking-tight tnum">{money(due)}</p>
+          <p className="font-display text-4xl font-semibold leading-tight tracking-tight tnum">{money(due)}</p>
           {order.paidMinor > 0 && <p className="text-xs text-ink-3 tnum">{money(order.paidMinor)} of {money(order.totalMinor)} received</p>}
         </div>
         <div className="flex flex-col items-end gap-1.5">

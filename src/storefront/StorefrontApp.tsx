@@ -112,7 +112,7 @@ function CartPill({ slug, shop }: { slug: string; shop: PublicShop }) {
               </span>
             </span>
             <span className="flex-1 text-left text-[15px] font-semibold">View cart</span>
-            <span className="font-display text-lg font-extrabold tnum">
+            <span className="font-display text-lg font-semibold tnum">
               {fmtMoney(cart.subtotalMinor, cart.currency ?? shop.currency, shop.locale)}
             </span>
           </button>

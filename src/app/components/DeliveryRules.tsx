@@ -194,7 +194,7 @@ function PolicyEditor({ saved }: { saved: ShopPolicy }) {
           </div>
         )}
         {form.paymentMode === 'deposit' && form.payer === 'buyer' && (
-          <Notice>Deposits are paid like any other payment on the order. Rafu records what was kept for a failed trip; refund the rest yourself if an order is cancelled.</Notice>
+          <Notice>Deposits are paid like any other payment on the order. Fungua records what was kept for a failed trip; refund the rest yourself if an order is cancelled.</Notice>
         )}
       </fieldset>
 

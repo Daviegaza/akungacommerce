@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { RefreshCw, SearchX, Store } from 'lucide-react'
-import { RafuLogo } from '@/brand/RafuLogo'
+import { FunguaLogo } from '@/brand/FunguaLogo'
 import { BRAND } from '@/brand/brand'
 import { Button, Skeleton } from '@/app/ui/primitives'
 
@@ -12,7 +12,7 @@ export function PoweredBy() {
         href="/"
         className="mx-auto flex w-fit items-center gap-2 rounded-full px-3 py-2 text-xs font-medium text-ink-3 transition-colors hover:bg-sunken hover:text-ink"
       >
-        Powered by <RafuLogo size={20} />
+        Powered by <FunguaLogo size={20} />
       </a>
       <p className="mt-1 text-center text-[11px] text-ink-3">{BRAND.tagline}</p>
       <nav aria-label="Legal" className="mt-3 flex justify-center gap-1 text-[11px] text-ink-3">
@@ -31,7 +31,7 @@ function StateShell({ icon, title, body, action }: { icon: ReactNode; title: str
   return (
     <div className="ak-rise mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center gap-3 px-6 py-16 text-center">
       <span className="grid size-16 place-items-center rounded-full bg-brand-soft text-brand">{icon}</span>
-      <h1 className="text-2xl font-extrabold tracking-tight text-ink">{title}</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">{title}</h1>
       <div className="text-sm leading-relaxed text-ink-2">{body}</div>
       {action && <div className="mt-2">{action}</div>}
     </div>

@@ -3,7 +3,7 @@
  *
  * With Daraja (direct) or manual collection, buyers pay the merchant's own
  * Till or Paybill. The money lands in the merchant's M-Pesa account straight
- * away and Rafu never holds it, so there is nothing to settle.
+ * away and Fungua never holds it, so there is nothing to settle.
  *
  * With an aggregator (for Pochi la Biashara or a personal number), the
  * aggregator collects and later settles to the merchant. Settlement states are
@@ -109,8 +109,8 @@ export function totalsByState(rows: Settlement[]): { state: SettlementState; cur
 
 /** Plain rules shown to every merchant. */
 export const PAYOUT_RULES: readonly string[] = [
-  'Rafu never holds your money. It does not sit between your buyer and your M-Pesa.',
+  'Fungua never holds your money. It does not sit between your buyer and your M-Pesa.',
   'With your own Till or Paybill, each payment lands in your M-Pesa account the moment the buyer pays. Safaricom’s normal tariff for your Till or Paybill applies.',
   'With an aggregator, the aggregator holds the money until it pays you out. Their payout timing and fees apply, and they must give a reason for any hold.',
-  'Rafu only marks an order paid from a confirmed M-Pesa record, never from a screenshot or an SMS someone forwards.',
+  'Fungua only marks an order paid from a confirmed M-Pesa record, never from a screenshot or an SMS someone forwards.',
 ]

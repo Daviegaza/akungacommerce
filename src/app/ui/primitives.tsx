@@ -18,12 +18,12 @@ type ButtonVariant = 'primary' | 'brand' | 'mango' | 'secondary' | 'ghost' | 'da
 type ButtonSize = 'sm' | 'md' | 'lg'
 
 const BUTTON_BASE =
-  'inline-flex items-center justify-center gap-2 rounded-xl font-semibold whitespace-nowrap select-none transition-[transform,background-color,color,box-shadow,opacity] duration-150 ease-[cubic-bezier(.2,.8,.2,1)] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50'
+  'inline-flex items-center justify-center gap-2 rounded-lg font-semibold whitespace-nowrap select-none transition-[transform,background-color,color,box-shadow,opacity] duration-150 ease-[cubic-bezier(.2,.8,.2,1)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50'
 const BUTTON_VARIANT: Record<ButtonVariant, string> = {
-  primary: 'bg-primary text-on-primary shadow-[0_1px_2px_rgb(22_15_30/0.2)] hover:opacity-90',
-  brand: 'bg-brand text-on-brand shadow-[0_8px_20px_-8px_var(--ak-brand)] hover:bg-brand-strong',
+  primary: 'bg-primary text-on-primary hover:opacity-90',
+  brand: 'bg-brand text-on-brand hover:bg-brand-strong',
   mango: 'bg-mango text-on-mango hover:brightness-95',
-  secondary: 'bg-panel text-ink border border-line-strong shadow-[0_1px_2px_rgb(22_15_30/0.05)] hover:bg-sunken',
+  secondary: 'bg-panel text-ink border border-line-strong hover:bg-sunken',
   ghost: 'text-ink-2 hover:bg-sunken hover:text-ink',
   danger: 'bg-neg text-white hover:opacity-90',
 }
@@ -85,7 +85,7 @@ export const IconButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTM
 
 /* ───────────── Form fields ───────────── */
 const CONTROL =
-  'w-full rounded-xl border border-line-strong bg-panel px-3.5 text-sm text-ink placeholder:text-ink-3 transition-[border-color,box-shadow] hover:border-ink-3 focus:border-brand focus:shadow-[0_0_0_3px_var(--ak-brand-soft)] focus:outline-none disabled:bg-sunken disabled:text-ink-3 aria-[invalid=true]:border-neg'
+  'w-full rounded-lg border border-line-strong bg-panel px-3.5 text-sm text-ink placeholder:text-ink-3 transition-[border-color,box-shadow] hover:border-ink-3 focus:border-brand focus:shadow-[0_0_0_3px_var(--ak-brand-soft)] focus:outline-none disabled:bg-sunken disabled:text-ink-3 aria-[invalid=true]:border-neg'
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
   { className, ...rest },
@@ -219,7 +219,7 @@ const TONE: Record<Tone | 'brand' | 'mango', string> = {
 
 export function Badge({ tone = 'neutral', children, className, dot }: { tone?: Tone | 'brand' | 'mango'; children: ReactNode; className?: string; dot?: boolean }) {
   return (
-    <span className={cn('inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold whitespace-nowrap', TONE[tone], className)}>
+    <span className={cn('inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-xs font-medium whitespace-nowrap', TONE[tone], className)}>
       {dot && <span className="size-1.5 rounded-full bg-current" aria-hidden />}
       {children}
     </span>
@@ -236,7 +236,7 @@ export function Spinner({ label = 'Loading' }: { label?: string }) {
 }
 
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn('animate-pulse rounded-xl bg-sunken', className)} aria-hidden />
+  return <div className={cn('animate-pulse rounded-lg bg-sunken', className)} aria-hidden />
 }
 
 /* ───────────── Surfaces ───────────── */
@@ -423,7 +423,7 @@ export function PillTabs<T extends string>({
             onClick={() => onChange(t.id)}
             className={cn(
               'flex h-10 shrink-0 items-center gap-2 rounded-full px-4 text-[13px] font-semibold transition-[background-color,color,box-shadow] duration-200',
-              active ? 'bg-primary text-on-primary shadow-[0_6px_16px_-8px_rgb(22_15_30/0.5)]' : 'bg-panel text-ink-2 ring-1 ring-line hover:text-ink hover:ring-line-strong',
+              active ? 'bg-primary text-on-primary shadow-[0_6px_16px_-8px_rgb(14_20_32/0.5)]' : 'bg-panel text-ink-2 ring-1 ring-line hover:text-ink hover:ring-line-strong',
             )}
           >
             {t.icon}

@@ -17,7 +17,7 @@ import { Badge, Skeleton } from '../ui/primitives'
 
 /**
  * "Where's my money": plain answer to where each M-Pesa payment goes and when.
- * Direct (own Till/Paybill): Rafu never holds it. Aggregator: settlement states,
+ * Direct (own Till/Paybill): Fungua never holds it. Aggregator: settlement states,
  * honestly labelled as not connected in this build.
  */
 export function WhereIsMyMoney() {
@@ -87,7 +87,7 @@ function DirectFlow({ flow }: { flow: Extract<MoneyFlow, { kind: 'direct' }> }) 
       <div className="flex items-start gap-3 rounded-2xl bg-pos-soft px-4 py-3">
         <ShieldCheck className="mt-0.5 size-5 shrink-0 text-pos" aria-hidden />
         <div className="min-w-0">
-          <p className="font-semibold text-ink">Rafu never holds your money.</p>
+          <p className="font-semibold text-ink">Fungua never holds your money.</p>
           <p className="mt-0.5 text-ink-2">
             {flow.destination ? (
               <>
@@ -109,8 +109,8 @@ function DirectFlow({ flow }: { flow: Extract<MoneyFlow, { kind: 'direct' }> }) 
       )}
       <p className="text-ink-3">
         {flow.provider === 'daraja'
-          ? 'Rafu only listens for M-Pesa’s confirmation so it can mark orders paid. To see your balance, use the M-Pesa app or your Safaricom statement.'
-          : 'You confirm each payment yourself from your M-Pesa messages. Rafu cannot see your M-Pesa balance.'}
+          ? 'Fungua only listens for M-Pesa’s confirmation so it can mark orders paid. To see your balance, use the M-Pesa app or your Safaricom statement.'
+          : 'You confirm each payment yourself from your M-Pesa messages. Fungua cannot see your M-Pesa balance.'}
       </p>
     </>
   )
@@ -124,7 +124,7 @@ function AggregatorFlow({ flow, label }: { flow: Extract<MoneyFlow, { kind: 'agg
         <Landmark className="mt-0.5 size-5 shrink-0 text-warn" aria-hidden />
         <div className="min-w-0">
           <p className="font-semibold text-ink">The aggregator{flow.aggregator ? ` (${flow.aggregator})` : ''} holds payments until it pays you out.</p>
-          <p className="mt-0.5 text-ink-2">Rafu itself never holds your money. The aggregator’s payout timing and fees apply.</p>
+          <p className="mt-0.5 text-ink-2">Fungua itself never holds your money. The aggregator’s payout timing and fees apply.</p>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -133,7 +133,7 @@ function AggregatorFlow({ flow, label }: { flow: Extract<MoneyFlow, { kind: 'agg
       </div>
       {!flow.connected ? (
         <p className="text-ink-2">
-          This aggregator is not connected, so Rafu has no payout information to show. Until it is, check payouts in the aggregator’s own dashboard. When connected,
+          This aggregator is not connected, so Fungua has no payout information to show. Until it is, check payouts in the aggregator’s own dashboard. When connected,
           each payout will show here as one of:
         </p>
       ) : totals.length === 0 ? (

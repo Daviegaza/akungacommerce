@@ -1,7 +1,7 @@
 /**
  * Kenya KRA eTIMS tax invoice data (pure).
  *
- * Rafu prepares a numbered tax invoice per order and a CSV laid out for manual
+ * Fungua prepares a numbered tax invoice per order and a CSV laid out for manual
  * entry into eTIMS Lite (eCitizen / USSD). It does NOT submit to KRA: direct
  * API submission is 'not_implemented'. Tax figures come from the order's own
  * line snapshot (computed by computeLine in orders.ts and by the database), so
@@ -29,7 +29,7 @@ export const KRA_SUBMISSION = {
   status: 'not_implemented' as const,
   label: 'Not sent to KRA',
   detail:
-    'Rafu does not submit invoices to KRA. Enter each invoice in eTIMS Lite (eCitizen or *222#) yourself, using the CSV export. Direct eTIMS API submission is not built.',
+    'Fungua does not submit invoices to KRA. Enter each invoice in eTIMS Lite (eCitizen or *222#) yourself, using the CSV export. Direct eTIMS API submission is not built.',
 }
 
 export interface InvoiceSourceLine {

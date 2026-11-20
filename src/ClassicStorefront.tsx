@@ -30,9 +30,9 @@ function RouteWrapper({ children }: { children: React.ReactNode }) {
 
 /**
  * The original storefront template, kept intact as the public shop prototype.
- * Its home moved from "/" to "/classic" (the Rafu landing owns "/"); every other route is unchanged.
+ * Its home moved from "/" to "/classic" (the Fungua landing owns "/"); every other route is unchanged.
  * Loaded on demand so its chrome (framer-motion, mock catalogue, cart stores) never ships with
- * the Rafu landing, shops, tracking pages or the merchant app.
+ * the Fungua landing, shops, tracking pages or the merchant app.
  */
 export default function ClassicStorefront() {
   return (

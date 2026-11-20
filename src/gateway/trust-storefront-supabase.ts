@@ -15,7 +15,7 @@ export function mapShopTrust(r: Row | null): ShopTrustFacts {
     phoneVerified: x.phone_verified === true,
     mpesaName: typeof x.mpesa_name === 'string' && x.mpesa_name ? x.mpesa_name : null,
     documentsApproved: x.documents_approved === true,
-    onRafuSince: String(x.on_rafu_since ?? ''),
+    onPlatformSince: String(x.on_rafu_since ?? ''),
     completedOrders: typeof x.completed_orders === 'number' ? x.completed_orders : null,
   }
 }

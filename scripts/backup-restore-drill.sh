@@ -9,7 +9,7 @@
 #
 #   SOURCE_DB_URL      database to back up (read-only use). Default: the local stack.
 #   RESTORE_ADMIN_URL  a server where the script may CREATE and DROP a scratch database named
-#                      rafu_restore_drill_<timestamp>. Never point this at production.
+#                      fungua_restore_drill_<timestamp>. Never point this at production.
 #   KEEP_DUMP=1        keep the dump file (default: deleted at the end).
 #
 # Local mode needs only Docker (it runs pg_dump/psql inside the Supabase DB container).
@@ -18,7 +18,7 @@ set -euo pipefail
 
 CONTAINER="${SUPABASE_DB_CONTAINER:-supabase_db_akungacommerce}"
 STAMP="$(date -u +%Y%m%d%H%M%S)"
-SCRATCH="rafu_restore_drill_${STAMP}"
+SCRATCH="fungua_restore_drill_${STAMP}"
 WORK="$(mktemp -d)"
 DUMP="${WORK}/rafu-${STAMP}.dump"
 trap 'if [ "${KEEP_DUMP:-0}" != "1" ]; then rm -rf "$WORK"; else echo "Dump kept at $DUMP"; fi' EXIT

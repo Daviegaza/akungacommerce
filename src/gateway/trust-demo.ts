@@ -4,7 +4,7 @@
  *
  * Simulated (and labelled so in the UI): the phone code is shown on screen
  * instead of being sent by SMS, the M-Pesa name check is typed in, document
- * files are not stored (only their names), and the demo user acts as the Rafu
+ * files are not stored (only their names), and the demo user acts as the Fungua
  * reviewer. Every rule (who may export, consent, the 7-day cooldown, rate
  * limits, which badges are earned) is the same as on the server.
  */
@@ -134,7 +134,7 @@ function factsFor(I: Internals, s: DemoState, orgId: string) {
     registeredName: shop?.registeredName ?? null,
     nameMatched: !!reported && businessNamesMatch(reported.name, shop?.registeredName),
     documents: t.documents,
-    onRafuSince: I.getOrg(s, orgId).createdAt,
+    onPlatformSince: I.getOrg(s, orgId).createdAt,
     delivered,
   }
 }
@@ -294,7 +294,7 @@ export function createDemoTrust(I: Internals): Required<TrustAdminGateway> {
           .map(({ customerId, segment, contactedAt }) => ({ customerId, segment, contactedAt }))
       }),
 
-    // SIMULATED: in the demo the signed-in user acts as the Rafu reviewer, so the review flow can be tried.
+    // SIMULATED: in the demo the signed-in user acts as the Fungua reviewer, so the review flow can be tried.
     isPlatformAdmin: () => I.read((s) => s.signedIn),
     listVerificationQueue: () =>
       I.read((s) => {
@@ -365,7 +365,7 @@ export function createDemoStorefrontTrust(I: Internals): StorefrontTrustGateway 
           phoneVerified: f.phoneVerified,
           mpesaName: f.nameMatched ? (f.reported?.name ?? null) : null,
           documentsApproved: f.documents.status === 'approved',
-          onRafuSince: f.onRafuSince,
+          onPlatformSince: f.onPlatformSince,
           completedOrders: publicCompletedOrders(f.delivered),
         }
       }),

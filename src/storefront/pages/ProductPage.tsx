@@ -156,7 +156,7 @@ function ProductView({
       {added ? <Check className="size-5" aria-hidden /> : <ShoppingBag className="size-5" aria-hidden />}
       {addLabel}
       {canBuy && !added && variant && (
-        <span className="font-display font-extrabold tnum opacity-90">· {fmtMoney(variant.priceMinor * quantity, variant.currency, shop.locale)}</span>
+        <span className="font-display font-semibold tnum opacity-90">· {fmtMoney(variant.priceMinor * quantity, variant.currency, shop.locale)}</span>
       )}
     </motion.button>
   )
@@ -204,7 +204,7 @@ function ProductView({
             <div>
               {product.category && <p className="text-sm font-medium text-ink-3">{product.category}</p>}
               <div className="mt-1 flex items-start gap-3">
-                <h1 className="flex-1 font-display text-[1.75rem] leading-tight font-extrabold tracking-tight text-ink sm:text-4xl">
+                <h1 className="flex-1 font-display text-[1.75rem] leading-tight font-semibold tracking-tight text-ink sm:text-4xl">
                   {product.name}
                 </h1>
                 <div className="flex shrink-0 gap-2">
@@ -371,8 +371,8 @@ function ProductView({
             )}
 
             {product.description && (
-              <section aria-labelledby="rafu-desc">
-                <h2 id="rafu-desc" className="text-lg font-extrabold tracking-tight text-ink">
+              <section aria-labelledby="fungua-desc">
+                <h2 id="fungua-desc" className="text-lg font-semibold tracking-tight text-ink">
                   Details
                 </h2>
                 <p className="mt-1.5 text-[15px] leading-relaxed whitespace-pre-line text-ink-2">{product.description}</p>
@@ -383,7 +383,7 @@ function ProductView({
 
             <section aria-labelledby="rafu-reviews">
               <div className="flex items-baseline justify-between gap-3">
-                <h2 id="rafu-reviews" className="text-lg font-extrabold tracking-tight text-ink">
+                <h2 id="rafu-reviews" className="text-lg font-semibold tracking-tight text-ink">
                   Reviews
                 </h2>
                 {product.rating && <RatingStars rating={product.rating.average} count={product.rating.count} />}

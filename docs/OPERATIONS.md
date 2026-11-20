@@ -1,6 +1,6 @@
 # Operations and production readiness
 
-This is the runbook for taking Rafu from a local build to a production deployment. **Nothing described
+This is the runbook for taking Fungua from a local build to a production deployment. **Nothing described
 here has been done for a production project yet.** There is no hosted Supabase project, no deployed Edge
 Function, no production domain and no connected provider. Each section says what exists and what still
 has to be done.
@@ -35,7 +35,7 @@ npm run dev
 | `VITE_SUPABASE_URL` | for Supabase mode | Project URL. Empty = demo mode. |
 | `VITE_SUPABASE_ANON_KEY` | for Supabase mode | Anon/publishable key. Never put the service-role key here. |
 | `VITE_DATA_MODE` | no | `demo` forces demo mode even when Supabase is configured. |
-| `VITE_PLATFORM_HOSTS` | no | Hosts that serve Rafu itself; any other host is treated as a merchant custom domain. |
+| `VITE_PLATFORM_HOSTS` | no | Hosts that serve Fungua itself; any other host is treated as a merchant custom domain. |
 | `VITE_CUSTOM_DOMAIN_CNAME_TARGET`, `VITE_CUSTOM_DOMAIN_A_RECORD` | no | DNS targets shown to merchants. Leave empty until custom-domain hosting exists. |
 
 ### Edge Function secrets (server only: `supabase secrets set NAME=value`)
@@ -51,7 +51,7 @@ npm run dev
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | send-message | SMS |
 | `ALLOWED_ORIGIN` | send-message, mpesa-stk | CORS origin of the app (defaults to `*`; set it in production) |
 | `STRIPE_WEBHOOK_SECRET`, `PAYSTACK_SECRET_KEY` | payment-webhook | Signature checks |
-| `DARAJA_CALLBACK_URL`, `MPESA_CALLBACK_SECRET` | mpesa-stk, mpesa-callback, mpesa-c2b | Rafu's own callback endpoint and its URL secret (needed for any M-Pesa) |
+| `DARAJA_CALLBACK_URL`, `MPESA_CALLBACK_SECRET` | mpesa-stk, mpesa-callback, mpesa-c2b | Fungua's own callback endpoint and its URL secret (needed for any M-Pesa) |
 | `DARAJA_ENV`, `DARAJA_CONSUMER_KEY`, `DARAJA_CONSUMER_SECRET`, `DARAJA_SHORTCODE`, `DARAJA_PASSKEY`, `DARAJA_TRANSACTION_TYPE`, `DARAJA_PARTY_B` | mpesa-stk, mpesa-stk-query | **Platform-wide** account. Ignored unless `DARAJA_ALLOW_PLATFORM_SHORTCODE=true`. Normally each shop saves its own keys in the app instead (section 6). |
 | `DARAJA_ALLOW_PLATFORM_SHORTCODE` | mpesa-stk, mpesa-stk-query | `true` lets shops without their own keys be paid into the platform account. Leave unset unless that payout model is chosen. |
 | `MPESA_ALLOWED_IPS`, `MPESA_CLIENT_IP_HEADER` | mpesa-callback, mpesa-c2b | Optional source-IP allowlist |
@@ -83,7 +83,7 @@ The exact names each function reads are listed at the top of its `index.ts` and 
 
    Every migration has been applied from an empty database locally with `npx supabase db reset`, and CI
    repeats that on every push. Migrations are forward-only. There are no down migrations (see Rollback).
-4. Create the platform admin row (Rafu reviewers) with the SQL editor, as the service role. No UI does this.
+4. Create the platform admin row (Fungua reviewers) with the SQL editor, as the service role. No UI does this.
 5. Storage: the `product-images` (public, 5 MB, raster images only) and `verification-docs` (private) buckets
    and their policies are created by migrations. Check them in the dashboard after `db push`.
 
@@ -153,7 +153,7 @@ Supabase Vault (encrypted at rest); staff only ever see the shortcode, environme
 of the key, and only the service role can decrypt (`mpesa_credentials_for`). STK prompts and status queries
 use the shop's keys, so **money goes straight to the shop's own Till or Paybill**. Saving keys marks the
 connection `configured_unverified`; the owner can switch on prompts (`mark_mpesa_verified`) only after a real
-M-Pesa payment for that shop has reached Rafu. The platform-wide `DARAJA_*` env account is used only when
+M-Pesa payment for that shop has reached Fungua. The platform-wide `DARAJA_*` env account is used only when
 `DARAJA_ALLOW_PLATFORM_SHORTCODE=true`. Still needed per shop: Daraja app approval for production and
 C2B URL registration for the shop's shortcode (not automated here).
 
@@ -223,7 +223,7 @@ No external monitor or alerting is configured today; the endpoints above are rea
   the order is delivered, cancelled or refunded. Staff invitations are 256-bit, hashed, single use, expire
   in 7 days, and email invitations need a confirmed email address.
 - **Payments:** only signed and verified callbacks create `provider_verified` payments. Manual payments are
-  always `manual_unverified` and cannot exceed the balance due. Refunds are records; Rafu never moves money.
+  always `manual_unverified` and cannot exceed the balance due. Refunds are records; Fungua never moves money.
 - **M-Pesa callbacks** are not signed by Safaricom. They are protected by a long URL secret, optional IP
   allowlisting, replay protection and exact-amount matching. Keep the secret out of logs and rotate it if exposed.
 - **Personal data:** buyer name, phone, address and delivery pin are stored per business. All staff roles,

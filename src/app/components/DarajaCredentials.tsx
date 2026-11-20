@@ -114,7 +114,7 @@ export function DarajaCredentials({ verified }: { verified: boolean }) {
       <div>
         <h3 className="text-sm font-semibold text-ink">Your M-Pesa keys</h3>
         <p className="mt-0.5 max-w-xl text-xs leading-relaxed text-ink-3">
-          Customers pay straight into your own Till or Paybill. Rafu never holds the money.
+          Customers pay straight into your own Till or Paybill. Fungua never holds the money.
           {gateway.mode === 'demo' && ' Demo: only the summary is kept in this browser; nothing is sent anywhere.'}
         </p>
       </div>
@@ -144,7 +144,7 @@ export function DarajaCredentials({ verified }: { verified: boolean }) {
           </dl>
           {!verified && (
             <p className="max-w-xl text-sm text-ink-2">
-              Next: send a small test payment to this account from a Rafu order. Once it shows up under M-Pesa reconciliation,
+              Next: send a small test payment to this account from a Fungua order. Once it shows up under M-Pesa reconciliation,
               confirm below and payment prompts switch on.
             </p>
           )}

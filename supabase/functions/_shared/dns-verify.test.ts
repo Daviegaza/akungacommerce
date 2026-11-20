@@ -31,7 +31,7 @@ function resolver(records: Record<string, { type: number; data: string }[] | 'nx
   return { fetchFn, calls }
 }
 
-const sub = { hostname: 'shop.mtohome.co.ke', verificationToken: TOKEN, isApex: false, cnameTarget: 'domains.rafu.example', aRecord: null }
+const sub = { hostname: 'shop.mtohome.co.ke', verificationToken: TOKEN, isApex: false, cnameTarget: 'domains.fungua.example', aRecord: null }
 
 describe('DNS-over-HTTPS custom domain check', () => {
   it('queries the documented Cloudflare JSON endpoint with the dns-json accept header', async () => {
@@ -51,8 +51,8 @@ describe('DNS-over-HTTPS custom domain check', () => {
 
   it('verifies a subdomain with the right CNAME (trailing dot, any case) and TXT token', async () => {
     const { fetchFn } = resolver({
-      'shop.mtohome.co.ke|CNAME': [{ type: 5, data: 'Domains.Rafu.Example.' }],
-      '_rafu-verification.shop.mtohome.co.ke|TXT': [{ type: 16, data: '"google-site-verification=x"' }, { type: 16, data: `"rafu-verify=${TOKEN}"` }],
+      'shop.mtohome.co.ke|CNAME': [{ type: 5, data: 'Domains.Fungua.Example.' }],
+      '_fungua-verification.shop.mtohome.co.ke|TXT': [{ type: 16, data: '"google-site-verification=x"' }, { type: 16, data: `"fungua-verify=${TOKEN}"` }],
     })
     expect(await checkDomainDns(fetchFn, sub)).toMatchObject({ status: 'verified', routing: 'ok', ownership: 'ok', reason: null })
   })
@@ -65,18 +65,18 @@ describe('DNS-over-HTTPS custom domain check', () => {
     const wrong = await checkDomainDns(
       resolver({
         'shop.mtohome.co.ke|CNAME': [{ type: 5, data: 'someone-else.example.' }],
-        '_rafu-verification.shop.mtohome.co.ke|TXT': [{ type: 16, data: '"rafu-verify=ffffffffffffffffffffffffffffffff"' }],
+        '_fungua-verification.shop.mtohome.co.ke|TXT': [{ type: 16, data: '"fungua-verify=ffffffffffffffffffffffffffffffff"' }],
       }).fetchFn,
       sub,
     )
     expect(wrong).toMatchObject({ status: 'failed', routing: 'wrong', ownership: 'wrong' })
-    expect(wrong.reason).toMatch(/points to someone-else.example, not domains.rafu.example.*different code/)
+    expect(wrong.reason).toMatch(/points to someone-else.example, not domains.fungua.example.*different code/)
   })
 
-  it('checks the A record for an apex domain, and never verifies when Rafu has no target configured', async () => {
+  it('checks the A record for an apex domain, and never verifies when Fungua has no target configured', async () => {
     const records = {
       'mtohome.com|A': [{ type: 1, data: '203.0.113.10' }],
-      '_rafu-verification.mtohome.com|TXT': [{ type: 16, data: `"rafu-verify=${TOKEN}"` }],
+      '_fungua-verification.mtohome.com|TXT': [{ type: 16, data: `"fungua-verify=${TOKEN}"` }],
     }
     const apex = { hostname: 'mtohome.com', verificationToken: TOKEN, isApex: true, cnameTarget: null, aRecord: '203.0.113.10' }
     expect(await checkDomainDns(resolver(records).fetchFn, apex)).toMatchObject({ status: 'verified', routing: 'ok' })
@@ -91,7 +91,7 @@ describe('DNS-over-HTTPS custom domain check', () => {
   })
 
   it('joins split TXT strings and unescapes quotes', () => {
-    expect(txtValue('"rafu-verify=0123" "4567"')).toBe('rafu-verify=01234567')
+    expect(txtValue('"fungua-verify=0123" "4567"')).toBe('fungua-verify=01234567')
     expect(txtValue('"a\\"b"')).toBe('a"b')
     expect(txtValue('plain')).toBe('plain')
   })
@@ -102,15 +102,15 @@ describe('DNS-over-HTTPS custom domain check', () => {
     expect(parseVerifyRequest({ scheduled: true, limit: 500 })).toMatch(/limit/)
     expect(parseVerifyRequest({ org_id: 'nope' })).toMatch(/org_id/)
     const env = (m: Record<string, string>) => (k: string) => m[k]
-    expect(dnsTargetsFromServerEnv(env({ CUSTOM_DOMAIN_CNAME_TARGET: 'Domains.Rafu.Example.', CUSTOM_DOMAIN_A_RECORD: '203.0.113.10' }))).toEqual({
-      cnameTarget: 'domains.rafu.example',
+    expect(dnsTargetsFromServerEnv(env({ CUSTOM_DOMAIN_CNAME_TARGET: 'Domains.Fungua.Example.', CUSTOM_DOMAIN_A_RECORD: '203.0.113.10' }))).toEqual({
+      cnameTarget: 'domains.fungua.example',
       aRecord: '203.0.113.10',
     })
     expect(dnsTargetsFromServerEnv(env({ CUSTOM_DOMAIN_CNAME_TARGET: 'bad target!', CUSTOM_DOMAIN_A_RECORD: 'x' }))).toEqual({ cnameTarget: null, aRecord: null })
     expect(isApexDomain('mtohome.co.ke')).toBe(true)
     expect(isApexDomain('shop.mtohome.co.ke')).toBe(false)
     expect(isApexDomain('mtohome.com')).toBe(true)
-    // Same heuristic as the merchant UI, so the record Rafu asks for is the record it checks.
+    // Same heuristic as the merchant UI, so the record Fungua asks for is the record it checks.
     for (const h of ['a.com', 'shop.a.com', 'a.co.ke', 'shop.a.co.ke', 'x.y.a.com.ng', 'a.com.ng', 'a.co.uk', 'b.a.io']) {
       expect(isApexDomain(h), h).toBe(uiIsApex(h))
     }

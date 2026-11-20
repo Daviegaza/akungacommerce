@@ -1,7 +1,8 @@
-# Rafu
+# Fungua
 
-> **Rafu** (Swahili for "shelf") is the working product name. The owner has not approved it yet. It is set
-> in `src/brand/brand.ts` (repository name: akungacommerce). Design system: [`docs/DESIGN.md`](docs/DESIGN.md).
+> **Fungua** (Swahili for "open", "unfasten") is the proposed product name: **Open commerce. Everywhere.** It is pending
+> trademark and domain clearance and the owner's approval. It is set in `src/brand/brand.ts` (repository name: akungacommerce).
+> Brand: [`docs/BRAND_GUIDELINES.md`](docs/BRAND_GUIDELINES.md). Design system: [`docs/DESIGN.md`](docs/DESIGN.md).
 > Operations runbook: [`docs/OPERATIONS.md`](docs/OPERATIONS.md). Product brief: [`PRODUCT_BUILD_BRIEF.md`](PRODUCT_BUILD_BRIEF.md).
 
 A commerce operating system for businesses that sell through WhatsApp, Instagram, TikTok, direct links and in
@@ -67,7 +68,7 @@ workspace share the same browser-local state, so a product created in the demo w
 | M-Pesa STK push + automatic reconciliation, C2B, STK query fallback | **Adapter only** (no Daraja account) | Unit, DB. The demo simulates the lifecycle and says so. |
 | Product photo upload (camera, picker, drag and drop; resized in the browser) | Built | Unit (compression), DB (storage policies: own org folder, 5 MB, raster only). The upload UI was checked in demo mode. An upload to Supabase Storage from a browser has **not** been run as an automated test. |
 | CSV product import (2,000 rows, dry run, all-or-nothing) | Built | Unit, DB |
-| Staff invitations (link token, roles, revoke; email invites need a confirmed email) | Built. Rafu does not send them; the owner shares the link. | DB |
+| Staff invitations (link token, roles, revoke; email invites need a confirmed email) | Built. Fungua does not send them; the owner shares the link. | DB |
 | Trust badges, report a shop, marketing consent, re-engagement list, "where's my money" | Built | Unit, DB |
 | Reliable WhatsApp STOP handling (retryable, idempotent, durable failure state) | Built, adapter only | Unit (8), DB (8) |
 | Outbound messages (named customers only, logged, rate-limited) | Built, adapter only (no provider secrets) | DB |
@@ -192,7 +193,7 @@ exists and is tested against fixtures, but no provider account, credentials or e
 | WhatsApp click-to-chat links | Works, no API | Opens the merchant's own WhatsApp with a prepared message. Nothing is sent automatically. |
 | Email (Resend) | Adapter only | No account or secrets |
 | SMS (Twilio) | Adapter only | No account or secrets |
-| Stripe | Adapter only | Webhook signature and replay window. Rafu never creates charges. |
+| Stripe | Adapter only | Webhook signature and replay window. Fungua never creates charges. |
 | Paystack (incl. NGN dedicated virtual accounts) | Adapter only | Webhook signature verification; DVA credits go to `reconcile_bank_transfer`. Account assignment is not implemented, and the kobo amount unit is unconfirmed in sandbox. |
 | M-Pesa Daraja (STK, callback, C2B, STK query) | Adapter only | Reconciliation built and tested (unit + DB). Each shop enters its own Daraja keys in the app (Vault); a platform-wide account is used only if `DARAJA_ALLOW_PLATFORM_SHORTCODE=true`. Needs a registered Till/Paybill, Daraja keys and a sandbox end-to-end test. Callbacks are unsigned: protected by a URL secret, an optional IP allowlist, replay protection and exact-amount matching. |
 | IntaSend, Pesapal (aggregators) | Adapter only | Interface only; no API called |
@@ -246,7 +247,7 @@ Everything below needs an account, a person or a decision. The code side for eac
   paid deposit only for buyer-caused failures under a "buyer pays" policy. After the last attempt, rider links
   are cancelled.
 - **Returned to shop** (`20261120000070`): this is the only way from dispatched to cancelled. Stock goes back,
-  and what the buyer paid, minus any fee kept, becomes a pending refund suggestion. Rafu never moves money.
+  and what the buyer paid, minus any fee kept, becomes a pending refund suggestion. Fungua never moves money.
 - **Unpaid storefront orders** hold stock while waiting. A buyer can have at most 3 open unpaid orders per shop.
   The scheduled `cancel_stale_storefront_orders` releases stock from unpaid orders after 24 hours (once scheduled).
 - **Stock** is reserved for orders awaiting confirmation, confirmed, preparing or ready. It is committed on

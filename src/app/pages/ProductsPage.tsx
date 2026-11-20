@@ -67,7 +67,7 @@ function PriceLine({ price, large }: { price: Row['price']; large?: boolean }) {
   return (
     <span className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
       {price.from && <span className="text-xs text-ink-3">from</span>}
-      <Money minor={price.minor} currency={price.currency} className={cn('font-display font-extrabold tracking-tight text-ink', large ? 'text-[17px]' : 'text-[15px]')} />
+      <Money minor={price.minor} currency={price.currency} className={cn('font-display font-semibold tracking-tight text-ink', large ? 'text-[17px]' : 'text-[15px]')} />
       {price.compareAt && (
         <>
           <span className="text-xs text-ink-3">
@@ -139,7 +139,7 @@ function GridCard({ r, drop, onOpen }: { r: Row; drop: string | null; onOpen: ()
             </span>
           )}
           {out ? (
-            <span className="absolute inset-0 flex items-center justify-center bg-[#160f1e]/40">
+            <span className="absolute inset-0 flex items-center justify-center bg-[#0e1420]/40">
               <span className="rounded-full bg-panel px-3 py-1 text-xs font-bold text-ink shadow">Out of stock</span>
             </span>
           ) : (
@@ -260,7 +260,7 @@ export default function ProductsPage() {
     <>
       <PageHeader
         title="Products"
-        description="Your shelf. Photos, prices and stock here feed your shop and every new order."
+        description="Your catalogue. Photos, prices and stock here feed your shop and every new order."
         actions={
           canWrite && (
             <>
@@ -342,7 +342,7 @@ export default function ProductsPage() {
         products.data.length === 0 ? (
           <EmptyState
             icon={<Package className="size-6" aria-hidden />}
-            title="Your shelf is empty"
+            title="No products yet"
             body="Add what you sell with a photo and a price. Sizes and colours become variants, each with its own stock."
             action={
               canWrite ? (

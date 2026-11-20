@@ -8,7 +8,7 @@ function platformHostsFromEnv(): string[] {
 }
 
 /**
- * "/" on the platform host shows the Rafu landing page. On a merchant's own
+ * "/" on the platform host shows the Fungua landing page. On a merchant's own
  * domain, the hostname is looked up (verified domains of published shops only)
  * and the visitor is sent to that shop; anything else falls back to the landing
  * page, and /s/:slug links keep working everywhere.

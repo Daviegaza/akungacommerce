@@ -95,7 +95,7 @@ function PanelBody({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
       )}
       {d.depositDueMinor > d.depositPaidMinor && ['confirmed', 'preparing', 'ready'].includes(order.status) && (
         <div className="mt-3">
-          <Notice tone="warn">The deposit has not been received. Riders on a Rafu link cannot mark this order picked up until it is.</Notice>
+          <Notice tone="warn">The deposit has not been received. Riders on a Fungua link cannot mark this order picked up until it is.</Notice>
         </div>
       )}
 
@@ -121,7 +121,7 @@ function PanelBody({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
             <li className="rounded-2xl border border-line p-3">
               <p className="font-semibold text-ink">No delivery attempts left</p>
               <p className="mt-0.5 text-ink-2">
-                When the goods are back at the shop, mark the order returned. The items go back into stock, the order is closed and Rafu works out what
+                When the goods are back at the shop, mark the order returned. The items go back into stock, the order is closed and Fungua works out what
                 you owe the buyer{d.forfeitedMinor > 0 ? ' (the kept delivery fee stays with you)' : ''}.
               </p>
               {canReturn ? (
@@ -479,7 +479,7 @@ function ReturnSheet({ order, d, onClose }: { order: OrderDetail; d: OrderDelive
           />
           <p className="mt-2 text-xs text-ink-3">
             {plan.refundMinor > 0
-              ? 'Rafu does not send money. This adds a refund to do: send it to the buyer yourself, then confirm it here to record it.'
+              ? 'Fungua does not send money. This adds a refund to do: send it to the buyer yourself, then confirm it here to record it.'
               : 'Nothing was paid beyond what you keep, so no refund is due.'}
           </p>
         </div>

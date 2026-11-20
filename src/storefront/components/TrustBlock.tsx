@@ -2,7 +2,7 @@ import { useId, useState, type FormEvent, type ReactNode } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { BadgeCheck, Banknote, CalendarDays, ChevronDown, Flag, MapPin, PackageCheck, RotateCcw, ShieldCheck, Smartphone, Truck } from 'lucide-react'
 import type { PublicShop } from '@/gateway/storefront'
-import { completedOrdersLabel, onRafuSinceLabel, REPORT_REASON_LABEL, REPORT_REASONS, trustBadges, type ReportReason } from '@/domain/trust'
+import { completedOrdersLabel, onPlatformSinceLabel, REPORT_REASON_LABEL, REPORT_REASONS, trustBadges, type ReportReason } from '@/domain/trust'
 import { isE164, whatsappChatLink } from '@/integrations/whatsapp-link'
 import { getStorefrontGateway } from '@/storefront/gateway'
 import { cn } from '@/lib/utils'
@@ -42,7 +42,7 @@ export function TrustBlock({ shop, className, contextText }: { shop: PublicShop;
 
   return (
     <section aria-label="About this seller" className={cn('rounded-[var(--radius-card)] border border-line bg-panel p-4 sm:p-5', className)}>
-      <h2 className="text-lg font-extrabold tracking-tight text-ink">Buying from {shop.name}</h2>
+      <h2 className="text-lg font-semibold tracking-tight text-ink">Buying from {shop.name}</h2>
 
       {badges.length > 0 && (
         <ul className="mt-3 flex flex-col gap-2" aria-label="Checks this shop passed">
@@ -60,7 +60,7 @@ export function TrustBlock({ shop, className, contextText }: { shop: PublicShop;
 
       <ul className="mt-1 divide-y divide-line">
         {facts && (
-          <Row icon={<CalendarDays className="size-4" aria-hidden />} title={`On Rafu since ${onRafuSinceLabel(facts.onRafuSince, shop.locale, shop.timezone)}`}>
+          <Row icon={<CalendarDays className="size-4" aria-hidden />} title={`On Fungua since ${onPlatformSinceLabel(facts.onPlatformSince, shop.locale, shop.timezone)}`}>
             <span className="inline-flex items-center gap-1.5">
               <PackageCheck className="size-3.5 text-ink-3" aria-hidden />
               {completedOrdersLabel(facts.completedOrders)}
@@ -158,7 +158,7 @@ function ReportShop({ slug, shopName }: { slug: string; shopName: string }) {
   if (report.isSuccess) {
     return (
       <p role="status" className="mt-4 rounded-xl bg-sunken px-3 py-3 text-sm text-ink-2">
-        Thank you. A Rafu reviewer will look at this report. {shopName} is not told who sent it.
+        Thank you. A Fungua reviewer will look at this report. {shopName} is not told who sent it.
       </p>
     )
   }
@@ -179,7 +179,7 @@ function ReportShop({ slug, shopName }: { slug: string; shopName: string }) {
         <form id={`${formId}-form`} onSubmit={submit} className="mt-2 flex flex-col gap-3 rounded-xl border border-line p-3" noValidate>
           <fieldset aria-describedby={missingReason ? `${formId}-reason-err` : undefined}>
             <legend className="text-sm font-semibold text-ink">What went wrong?</legend>
-            <p className="mt-0.5 text-xs text-ink-3">Your report is anonymous. Only Rafu reviewers see it.</p>
+            <p className="mt-0.5 text-xs text-ink-3">Your report is anonymous. Only Fungua reviewers see it.</p>
             <div className="mt-2 flex flex-col gap-1">
               {REPORT_REASONS.map((r) => (
                 <label key={r} className="flex min-h-10 cursor-pointer items-start gap-2.5 rounded-lg px-1 py-1.5 text-sm text-ink-2 hover:bg-sunken">

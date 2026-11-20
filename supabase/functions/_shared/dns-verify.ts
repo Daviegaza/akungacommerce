@@ -6,7 +6,7 @@
 // 3 = NXDOMAIN. This proves DNS only: it says nothing about certificates or hosting.
 
 export const DOH_ENDPOINT = 'https://cloudflare-dns.com/dns-query'
-export const TXT_PREFIX = '_rafu-verification.'
+export const TXT_PREFIX = '_fungua-verification.'
 
 export type FetchLike = (input: string, init?: { headers?: Record<string, string>; signal?: AbortSignal }) => Promise<{
   ok: boolean
@@ -84,7 +84,7 @@ export interface DomainCheckOutcome {
 }
 
 /**
- * Checks the two records Rafu asks for (see src/domain/custom-domain.ts dnsInstructions):
+ * Checks the two records Fungua asks for (see src/domain/custom-domain.ts dnsInstructions):
  * routing (CNAME for a subdomain, A for an apex) and the ownership TXT token.
  * Throws DnsLookupError when the resolver itself fails (the domain is left unchanged).
  */
@@ -99,10 +99,10 @@ export async function checkDomainDns(fetchFn: FetchLike, i: DomainCheckInput): P
     cname: i.isApex ? [] : routing.map((a) => bareName(a.data)),
     a: i.isApex ? routing.map((a) => a.data.trim()) : [],
   }
-  const expectedTxt = `rafu-verify=${i.verificationToken}`
+  const expectedTxt = `fungua-verify=${i.verificationToken}`
   const ownership: OwnershipResult = found.txt.includes(expectedTxt)
     ? 'ok'
-    : found.txt.some((t) => t.startsWith('rafu-verify='))
+    : found.txt.some((t) => t.startsWith('fungua-verify='))
       ? 'wrong'
       : 'missing'
 
@@ -117,7 +117,7 @@ export async function checkDomainDns(fetchFn: FetchLike, i: DomainCheckInput): P
   }
 
   const reasons: string[] = []
-  if (route === 'not_configured') reasons.push('Rafu has not set up its address for custom domains yet, so the pointing record cannot be checked.')
+  if (route === 'not_configured') reasons.push('Fungua has not set up its address for custom domains yet, so the pointing record cannot be checked.')
   else if (route === 'missing') reasons.push(i.isApex ? `No A record found for ${host} yet.` : `No CNAME record found for ${host} yet.`)
   else if (route === 'wrong')
     reasons.push(
@@ -126,7 +126,7 @@ export async function checkDomainDns(fetchFn: FetchLike, i: DomainCheckInput): P
         : `The CNAME for ${host} points to ${found.cname.join(', ')}, not ${bareName(i.cnameTarget ?? '')}.`,
     )
   if (ownership === 'missing') reasons.push(`No TXT record found at ${TXT_PREFIX}${host} yet.`)
-  else if (ownership === 'wrong') reasons.push(`The TXT record at ${TXT_PREFIX}${host} has a different code. Copy it again from Rafu.`)
+  else if (ownership === 'wrong') reasons.push(`The TXT record at ${TXT_PREFIX}${host} has a different code. Copy it again from Fungua.`)
   if (reasons.length && (route === 'missing' || ownership === 'missing')) reasons.push('New DNS records can take up to 48 hours to appear.')
 
   const ok = route === 'ok' && ownership === 'ok'

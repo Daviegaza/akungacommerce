@@ -24,7 +24,7 @@ export function PriceTag({
     <div className={cn('flex flex-wrap items-baseline gap-x-2 gap-y-1', className)}>
       <span
         className={cn(
-          'font-display font-extrabold tracking-tight text-ink tnum',
+          'font-display font-semibold tracking-tight text-ink tnum',
           size === 'sm' && 'text-base',
           size === 'md' && 'text-lg',
           size === 'lg' && 'text-3xl',

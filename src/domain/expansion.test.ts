@@ -194,7 +194,7 @@ describe('Team invitations', () => {
     expect(generateInviteToken()).not.toBe(t)
     // Known vector: SHA-256("abc")
     expect(await hashInviteToken('abc')).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')
-    expect(inviteLink('https://rafu.test/', t)).toBe(`https://rafu.test/app/join/${t}`)
+    expect(inviteLink('https://fungua.test/', t)).toBe(`https://fungua.test/app/join/${t}`)
   })
 
   it('expires pending invites only', () => {
@@ -230,20 +230,20 @@ describe('Custom domains', () => {
     }
   })
   it('gives CNAME for subdomains, A for apex, and a TXT ownership record', () => {
-    const sub = dnsInstructions('shop.mybrand.com', 'abc', { cname: 'shops.rafu.test', aRecord: null })
-    expect(sub[0]).toMatchObject({ type: 'CNAME', host: 'shop', value: 'shops.rafu.test' })
-    expect(sub[1]).toMatchObject({ type: 'TXT', host: '_rafu-verification.shop.mybrand.com', value: 'rafu-verify=abc' })
+    const sub = dnsInstructions('shop.mybrand.com', 'abc', { cname: 'shops.fungua.test', aRecord: null })
+    expect(sub[0]).toMatchObject({ type: 'CNAME', host: 'shop', value: 'shops.fungua.test' })
+    expect(sub[1]).toMatchObject({ type: 'TXT', host: '_fungua-verification.shop.mybrand.com', value: 'fungua-verify=abc' })
     const apex = dnsInstructions('mybrand.com', 'abc', { cname: null, aRecord: null })
     expect(apex[0]).toMatchObject({ type: 'A', host: '@', value: null })
     expect(isApexDomain('www.mybrand.co.uk')).toBe(false)
-    expect(dnsTargetsFromEnv({ VITE_CUSTOM_DOMAIN_A_RECORD: 'not-ip', VITE_CUSTOM_DOMAIN_CNAME_TARGET: ' shops.rafu.test ' })).toEqual({ cname: 'shops.rafu.test', aRecord: null })
+    expect(dnsTargetsFromEnv({ VITE_CUSTOM_DOMAIN_A_RECORD: 'not-ip', VITE_CUSTOM_DOMAIN_CNAME_TARGET: ' shops.fungua.test ' })).toEqual({ cname: 'shops.fungua.test', aRecord: null })
   })
   it('recognises platform hosts', () => {
     expect(isPlatformHost('localhost')).toBe(true)
     expect(isPlatformHost('127.0.0.1')).toBe(true)
-    expect(isPlatformHost('rafu-git-main.vercel.app')).toBe(true)
-    expect(isPlatformHost('app.rafu.test', ['rafu.test'])).toBe(true)
-    expect(isPlatformHost('shop.mybrand.com', ['rafu.test'])).toBe(false)
+    expect(isPlatformHost('fungua-git-main.vercel.app')).toBe(true)
+    expect(isPlatformHost('app.fungua.test', ['fungua.test'])).toBe(true)
+    expect(isPlatformHost('shop.mybrand.com', ['fungua.test'])).toBe(false)
   })
 })
 

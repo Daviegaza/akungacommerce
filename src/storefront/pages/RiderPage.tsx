@@ -64,7 +64,7 @@ function RiderScreen() {
     return (
       <main className="mx-auto flex max-w-md flex-col items-center gap-3 px-4 py-24 text-center">
         <AlertCircle className="size-8 text-neg" aria-hidden />
-        <h1 className="text-2xl font-extrabold tracking-tight">This delivery link can’t be opened</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">This delivery link can’t be opened</h1>
         <p className="text-sm text-ink-2">{errorMessage(query.error)}</p>
         <Button variant="secondary" onClick={() => void query.refetch()} icon={<RefreshCw className="size-4" aria-hidden />}>
           Try again
@@ -78,7 +78,7 @@ function RiderScreen() {
 function Card({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
   return (
     <section className="rounded-[var(--radius-card)] bg-panel p-4 shadow-[var(--shadow-card)] ak-rise">
-      <h2 className="mb-2 flex items-center gap-2 text-base font-extrabold tracking-tight">
+      <h2 className="mb-2 flex items-center gap-2 text-base font-semibold tracking-tight">
         <span className="text-brand">{icon}</span>
         {title}
       </h2>
@@ -97,7 +97,7 @@ function JobView({ token, job, onJob }: { token: string; job: RiderJob; onJob(j:
     <main className="mx-auto flex max-w-lg flex-col gap-4 px-4 pb-16 pt-5">
       <header>
         <p className="text-sm text-ink-3">{job.shopName} · delivery job</p>
-        <h1 className="text-3xl font-extrabold tracking-tight">
+        <h1 className="text-3xl font-semibold tracking-tight">
           Order <span className="tnum">#{job.orderNumber}</span>
         </h1>
         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -179,7 +179,7 @@ function JobView({ token, job, onJob }: { token: string; job: RiderJob; onJob(j:
         <Banknote className="size-5 shrink-0 text-on-mango" aria-hidden />
         {job.collectMinor > 0 ? (
           <p>
-            Collect <span className="font-display text-lg font-extrabold tnum">{money(job.collectMinor)}</span> from the buyer for {job.shopName}.
+            Collect <span className="font-display text-lg font-semibold tnum">{money(job.collectMinor)}</span> from the buyer for {job.shopName}.
           </p>
         ) : (
           <p>Fully paid. Collect nothing from the buyer.</p>

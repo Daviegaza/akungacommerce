@@ -1,29 +1,38 @@
-# Rafu design system
+# Fungua design system
 
-Rafu ("shelf" in Swahili) is the proposed brand name. It is set in `src/brand/brand.ts`.
+Fungua is the proposed brand name (pending clearance), set in `src/brand/brand.ts`. Identity, logo, colour values,
+typography and voice: [BRAND_GUIDELINES.md](BRAND_GUIDELINES.md). Tokens: `src/index.css` (`--ak-*`, light and dark).
 
-Research behind these choices: `reports/Lively global ecommerce UI.md`, which is local and not committed.
+## Principles
 
-## Principle: alive because it is real
+1. **Structured and calm.** Graphite structure, quiet off-white surfaces, one cobalt accent used sparingly. It should feel like a mature product, not a template.
+2. **Open, not boxed.** Sections are separated by space and hairlines, not by nested cards. Avoid a card inside a card, and avoid a floating panel when an edge-attached one will do.
+3. **Dense but readable.** Operational screens favour tables and lists with tabular figures over big tiles. Every number is real.
+4. **The merchant's brand leads on storefronts.** Platform styling stays in the workspace and marketing site. Storefront chrome takes the shop's own name, logo and imagery; Fungua appears only as a small footer credit.
+5. **Alive because it is real.** Motion and live updates reflect real changes. There is no decoration, fake urgency or invented numbers.
 
-A Rafu screen should feel alive because things on it genuinely change and respond: photos, motion, live data and fast feedback. It should not rely on decoration, fake urgency or invented numbers.
+## Foundations
 
-## Brand
-
-- **Mark:** `public/rafu-mark.svg` is a hibiscus rounded square with two white shelves and a mango "product" dot. Use the `<RafuLogo/>` component (`src/brand/RafuLogo.tsx`) and never redraw it.
-- **Brand colour, hibiscus `#FF3D6E`** (`bg-brand`, `text-brand`, `bg-brand-soft`). Use it for primary calls to action in the shopper storefront, active states, the logo and a few accents. Do not paint whole page backgrounds with it.
-- **Deal colour, mango `#FFB020`** (`bg-mango`, `text-on-mango`). Use it only for real deals: a compare-at price, scheduled drops and "new" badges.
-- **Neutrals:** warm paper `canvas`, white `panel`, ink `#160F1E`. Dark mode is fully supported through the tokens.
-- **Status colours:** `pos` (green), `warn`, `neg`, `info`, each with a `-soft` variant. Each status always uses the same tone wherever it appears.
-- **Type:**
-  - Headings use `font-display`, which is Bricolage Grotesque at 700–800 with tight tracking. Example: `text-3xl font-extrabold tracking-tight`.
-  - Body text is Inter.
-  - Numbers get `tnum`.
-  - Do not use all-caps body text.
-- **Radius and shadow:**
-  - Cards: `rounded-[var(--radius-card)]` or `rounded-2xl`.
-  - Controls: `rounded-xl`.
-  - Shadows: `shadow-[var(--shadow-card)]`, lifting to `shadow-[var(--shadow-lift)]` on hover.
+- **Type:** Geist for everything, Geist Mono for codes. Weights 400/500/600, sentence case, `tnum` on all figures.
+  - Page title: 24–28 px.
+  - Section title: 15 px semibold.
+  - Labels: 13 px.
+- **Colour:** semantic tokens only (`ink`, `ink-2`, `ink-3`, `canvas`, `panel`, `sunken`, `line`, `brand`, `pos`, `warn`, `neg`). Never hard-code hex values in components.
+  - `mango` remains as the token name for real deals (a compare-at price or a drop), now a restrained amber.
+- **Radius:**
+  - Controls: 8 px (`rounded-lg`).
+  - Cards and tables: 12 px (`--radius-card`).
+  - Badges: 6 px (`rounded-md`).
+  - Pills only for toggles.
+- **Elevation:** surfaces use a 1 px hairline, not shadows. `--shadow-lift` is only for menus, sheets and previews that float.
+- **Spacing:**
+  - 4 px base.
+  - 40 px between page sections in the workspace, 80–112 px on marketing pages.
+- **Focus:** a 2 px cobalt outline with a 2 px offset on every interactive element.
+- **Layout:**
+  - Workspace sidebar from 768 px, with grouped navigation (Catalogue, Business, Channels).
+  - Below 768 px, a flat bottom tab bar with a "New order" tab.
+  - Content max-width is 1240 px.
 
 ## Components and patterns
 
@@ -78,10 +87,10 @@ A Rafu screen should feel alive because things on it genuinely change and respon
   - Live activity feed (new order, payment recorded, stock low) with relative times.
   - Map of today's deliveries.
   - Sale chime: WebAudio, off by default, with a toggle in the header.
-  - First-sale and milestone celebration (confetti-free: a gentle hibiscus burst and a message, respecting reduced motion).
+  - First-sale and milestone celebration (confetti-free: a short message, respecting reduced motion).
 - **Orders:** status tabs with counts. Order cards show product thumbnails, customer initials avatar, a payment badge and the next action button.
 - **Products:** image grid by default with an optional list view, inline stock badge, and an "Out of stock" overlay.
-- **Bottom tab bar on phones** with a hibiscus floating "New order" button.
+- **Bottom tab bar on phones** with a flat "New order" tab (no floating button).
 
 ## Motion
 
@@ -101,7 +110,7 @@ A Rafu screen should feel alive because things on it genuinely change and respon
 
 ## Accessibility
 
-- Contrast ≥ 4.5:1 for text. Hibiscus on white is used for large or bold text and icons; button text is white on hibiscus.
+- Contrast ≥ 4.5:1 for text (measured values in BRAND_GUIDELINES.md §2). White on cobalt in light mode; dark text on light cobalt in dark mode.
 - Tap targets ≥ 44px. Visible focus rings are in brand colour.
 - Every icon button has an `aria-label`.
 - Images need `alt` text, using the product name as a fallback.

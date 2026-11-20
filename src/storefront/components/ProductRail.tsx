@@ -35,7 +35,7 @@ export function ProductRail({
     <section className={cn('ak-rise', className)} aria-label={title}>
       <div className="mb-3 flex items-end justify-between gap-3 px-4 sm:px-6">
         <div className="min-w-0">
-          <h2 className="flex items-center gap-2 text-xl font-extrabold tracking-tight text-ink sm:text-2xl">
+          <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight text-ink sm:text-2xl">
             {icon}
             {title}
           </h2>

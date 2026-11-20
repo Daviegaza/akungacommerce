@@ -7,15 +7,12 @@ import {
   Check,
   ClipboardCheck,
   Copy,
-  MapPin,
   MessageCircle,
   PackageCheck,
   PackageOpen,
   Plus,
   Share2,
-  Sparkles,
   Store,
-  TrendingUp,
 } from 'lucide-react'
 import { addDays, buildAnalytics, daysIn, type DateRange } from '@/domain/analytics'
 import { businessDate } from '@/domain/locale'
@@ -25,9 +22,9 @@ import type { Address, OrderSummary } from '@/gateway/types'
 import { MapFallback, StaticMap, WhenVisible, type MapMarker } from '@/maps'
 import { cn } from '@/lib/utils'
 import { useGateway, useMovements, useOrders, useOrg, useProducts } from '../context'
-import { ErrorNotice, KpiTile, PageHeader, Section } from '../ui/layout'
+import { ErrorNotice, PageHeader, Section } from '../ui/layout'
 import { Money } from '../ui/format'
-import { Button, Card, Skeleton, Thumb, buttonClass } from '../ui/primitives'
+import { Button, Skeleton, Sparkline, Thumb, buttonClass } from '../ui/primitives'
 import { FeedList, shopUrl, useLiveFeed, useNow, useShopSettings } from '../live'
 
 const OPEN_DELIVERY: OrderSummary['status'][] = ['pending_confirmation', 'confirmed', 'preparing', 'ready', 'dispatched']
@@ -168,52 +165,48 @@ export default function DashboardPage() {
       <PageHeader
         eyebrow={dateLine}
         title={greetingFor(hour)}
-        description={`Here is what is happening at ${org.name} today.`}
+        description={org.name}
         actions={
           can('orders.create') && (
-            <Link to="/app/orders/new" className={buttonClass('brand', 'md', 'hidden sm:inline-flex')}>
+            <Link to="/app/orders/new" className={buttonClass('primary', 'md', 'hidden sm:inline-flex')}>
               <Plus className="size-4" strokeWidth={2.5} aria-hidden /> New order
             </Link>
           )
         }
       />
 
-      {/* To-do queue: always visible, cannot be dismissed. */}
-      <section aria-labelledby="todo-h" className="mb-8">
-        <h2 id="todo-h" className="sr-only">
-          To do
+      {/* Work queue: always visible, cannot be dismissed. */}
+      <section aria-labelledby="todo-h" className="mb-10">
+        <h2 id="todo-h" className="mb-3 text-[13px] font-medium text-ink-3">
+          Needs attention
         </h2>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <QueuePill loading={orders.isPending} count={queue.confirm} label="to confirm" to="/app/orders?tab=confirm" icon={<ClipboardCheck className="size-5" />} tone="brand" />
-          <QueuePill loading={orders.isPending} count={queue.pack} label="to pack" to="/app/orders?tab=pack" icon={<PackageOpen className="size-5" />} tone="info" />
-          <QueuePill loading={orders.isPending} count={queue.ready} label="ready to dispatch" to="/app/orders?tab=ready" icon={<PackageCheck className="size-5" />} tone="pos" />
-          <QueuePill loading={products.isPending} count={lowStock} label="low on stock" to="/app/inventory" icon={<AlertTriangle className="size-5" />} tone="warn" />
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-line bg-line lg:grid-cols-4">
+          <QueueCell loading={orders.isPending} count={queue.confirm} label="To confirm" to="/app/orders?tab=confirm" icon={<ClipboardCheck className="size-4" />} tone="brand" />
+          <QueueCell loading={orders.isPending} count={queue.pack} label="To pack" to="/app/orders?tab=pack" icon={<PackageOpen className="size-4" />} tone="ink" />
+          <QueueCell loading={orders.isPending} count={queue.ready} label="Ready to dispatch" to="/app/orders?tab=ready" icon={<PackageCheck className="size-4" />} tone="pos" />
+          <QueueCell loading={products.isPending} count={lowStock} label="Low on stock" to="/app/inventory" icon={<AlertTriangle className="size-4" />} tone="warn" />
         </div>
       </section>
 
-      {/* KPI tiles per currency. */}
-      <section aria-labelledby="kpi-h" className="mb-8">
+      {/* Performance per currency, never merged. */}
+      <section aria-labelledby="kpi-h" className="mb-10">
         <div className="mb-3 flex items-baseline justify-between gap-3">
-          <h2 id="kpi-h" className="font-display text-[17px] font-bold tracking-tight text-ink">
+          <h2 id="kpi-h" className="text-[13px] font-medium text-ink-3">
             Last 14 days
           </h2>
-          <Link to="/app/analytics" className="inline-flex items-center gap-1 text-[13px] font-semibold text-ink-2 hover:text-ink">
+          <Link to="/app/analytics" className="inline-flex items-center gap-1 text-[13px] font-medium text-ink-2 hover:text-ink">
             Analytics <ArrowRight className="size-3.5" aria-hidden />
           </Link>
         </div>
         {orders.isPending ? (
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {Array.from({ length: 4 }, (_, i) => (
-              <Skeleton key={i} className="h-[136px] rounded-[var(--radius-card)]" />
-            ))}
-          </div>
+          <Skeleton className="h-[132px] rounded-[var(--radius-card)]" />
         ) : (
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-4">
             {kpis.map((k) => (
               <div key={k.currency}>
-                {multi && <p className="mb-2 text-xs font-bold text-ink-3">{k.currency}</p>}
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                  <KpiTile
+                {multi && <p className="mb-2 text-xs font-medium text-ink-3">{k.currency}</p>}
+                <div className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-line bg-line lg:grid-cols-4">
+                  <Metric
                     label="Sales"
                     value={<Money minor={k.sales} currency={k.currency} />}
                     change={pctChange(k.sales, k.salesPrev)}
@@ -221,42 +214,40 @@ export default function DashboardPage() {
                     sparkLabel={`Daily sales in ${k.currency}, last 14 days`}
                     foot={
                       <>
-                        Today <Money minor={k.salesToday} currency={k.currency} className="font-semibold text-ink-2" />
+                        Today <Money minor={k.salesToday} currency={k.currency} className="text-ink-2" />
                       </>
                     }
                   />
-                  <KpiTile
+                  <Metric
                     label="Orders"
                     value={k.orders}
                     change={pctChange(k.orders, k.ordersPrev)}
                     spark={k.dailyOrders}
                     sparkLabel={`Daily orders in ${k.currency}, last 14 days`}
-                    tone="info"
                     foot={
                       <>
-                        Today <span className="tnum font-semibold text-ink-2">{k.ordersToday}</span>
+                        Today <span className="tnum text-ink-2">{k.ordersToday}</span>
                       </>
                     }
                   />
-                  <KpiTile
-                    label="Avg order"
+                  <Metric
+                    label="Average order"
                     value={<Money minor={k.avg} currency={k.currency} />}
                     change={pctChange(k.avg, k.avgPrev)}
                     spark={k.dailyAvg}
                     sparkLabel={`Average order value per day in ${k.currency}, last 14 days`}
-                    tone="pos"
                     foot="Excludes cancelled orders"
                   />
-                  <KpiTile
+                  <Metric
                     label="Unpaid balance"
                     value={<Money minor={k.unpaid} currency={k.currency} />}
                     spark={k.dailyUnpaid}
                     sparkLabel={`Unpaid balance by order day in ${k.currency}, last 14 days`}
-                    tone="warn"
+                    sparkTone="warn"
                     foot={
                       k.unpaidCount > 0 ? (
-                        <Link to="/app/payments" className="font-semibold text-ink-2 underline-offset-2 hover:underline">
-                          {k.unpaidCount} {k.unpaidCount === 1 ? 'order' : 'orders'} owe money
+                        <Link to="/app/payments" className="text-ink-2 underline-offset-2 hover:underline">
+                          {k.unpaidCount} {k.unpaidCount === 1 ? 'order owes' : 'orders owe'} money
                         </Link>
                       ) : (
                         'Everything is paid'
@@ -270,30 +261,25 @@ export default function DashboardPage() {
         )}
       </section>
 
-      <div className="grid gap-x-6 lg:grid-cols-5">
-        <div className="min-w-0 lg:col-span-3">
-          <ActivityCard />
-          <DeliveriesCard orders={orders.data} />
+      <div className="grid gap-x-10 gap-y-2 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0">
+          <ActivitySection />
+          <DeliveriesSection orders={orders.data} />
         </div>
-        <div className="min-w-0 lg:col-span-2">
-          <ShareShopCard />
-          <TopProductsCard today={today} />
+        <div className="min-w-0">
+          <ShareShopSection />
+          <TopProductsSection today={today} />
         </div>
       </div>
     </>
   )
 }
 
-/* ───────────── Queue pill ───────────── */
+/* ───────────── Queue cell ───────────── */
 
-const PILL_TONE = {
-  brand: { active: 'bg-brand text-on-brand shadow-[0_10px_24px_-12px_var(--ak-brand)]', icon: 'bg-white/20' },
-  info: { active: 'bg-info-soft text-info ring-1 ring-info/20', icon: 'bg-info/10' },
-  pos: { active: 'bg-pos-soft text-pos ring-1 ring-pos/20', icon: 'bg-pos/10' },
-  warn: { active: 'bg-warn-soft text-warn ring-1 ring-warn/20', icon: 'bg-warn/10' },
-} as const
+const CELL_TONE = { brand: 'text-brand', ink: 'text-ink', pos: 'text-pos', warn: 'text-warn' } as const
 
-function QueuePill({
+function QueueCell({
   count,
   label,
   to,
@@ -305,46 +291,75 @@ function QueuePill({
   label: string
   to: string
   icon: ReactNode
-  tone: keyof typeof PILL_TONE
+  tone: keyof typeof CELL_TONE
   loading?: boolean
 }) {
-  if (loading) return <Skeleton className="h-[76px] rounded-[var(--radius-card)]" />
+  if (loading) return <div className="h-[92px] animate-pulse bg-panel" aria-hidden />
   const active = count > 0
-  const t = PILL_TONE[tone]
   return (
-    <Link
-      to={to}
-      className={cn(
-        'ak-rise group flex min-h-[76px] items-center gap-3 rounded-[var(--radius-card)] px-4 py-3 transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(.2,.8,.2,1)] hover:-translate-y-0.5 active:scale-[0.98]',
-        active ? t.active : 'bg-panel text-ink-3 shadow-[var(--shadow-card)] ring-1 ring-line/60',
-      )}
-    >
-      <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full', active ? t.icon : 'bg-sunken')} aria-hidden>
-        {active ? icon : <Check className="size-5" />}
+    <Link to={to} className="group flex min-h-[92px] flex-col justify-between bg-panel px-4 py-3.5 transition-colors hover:bg-sunken/60 sm:px-5">
+      <span className="flex items-center justify-between gap-2 text-[13px] text-ink-2">
+        <span className="flex items-center gap-2">
+          <span className={active ? CELL_TONE[tone] : 'text-ink-3'} aria-hidden>
+            {active ? icon : <Check className="size-4" />}
+          </span>
+          {label}
+        </span>
+        <ArrowRight className="size-3.5 text-ink-3 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
       </span>
-      <span className="min-w-0">
-        <span className={cn('tnum block font-display text-2xl leading-none font-extrabold tracking-tight', !active && 'text-ink-2')}>{count}</span>
-        <span className="mt-1 block text-[13px] leading-tight font-semibold">{label}</span>
+      <span className={cn('tnum font-display text-[28px] leading-none font-semibold tracking-tight', active ? 'text-ink' : 'text-ink-3')}>
+        {count}
+        {!active && <span className="sr-only">, all clear</span>}
       </span>
     </Link>
   )
 }
 
+function Metric({
+  label,
+  value,
+  change,
+  spark,
+  sparkLabel,
+  sparkTone = 'brand',
+  foot,
+}: {
+  label: string
+  value: ReactNode
+  change?: number | null
+  spark: number[]
+  sparkLabel: string
+  sparkTone?: 'brand' | 'warn'
+  foot: ReactNode
+}) {
+  const up = change != null && change > 0
+  const flat = change != null && Math.abs(change) < 0.005
+  return (
+    <div className="flex min-w-0 flex-col bg-panel px-4 py-4 sm:px-5">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[13px] text-ink-2">{label}</p>
+        {change != null && Number.isFinite(change) && (
+          <span className={cn('tnum text-xs font-medium', flat ? 'text-ink-3' : up ? 'text-pos' : 'text-neg')} title="vs previous 14 days">
+            {flat ? '0%' : `${up ? '+' : '−'}${Math.abs(Math.round(change * 100))}%`}
+            <span className="sr-only"> {flat ? 'no change' : up ? 'up' : 'down'} vs previous 14 days</span>
+          </span>
+        )}
+      </div>
+      <div className="tnum mt-1.5 min-w-0 truncate font-display text-[clamp(1.05rem,4.6vw,1.5rem)] leading-tight font-semibold tracking-tight text-ink">{value}</div>
+      <div className="mt-auto flex items-end justify-between gap-2 pt-3">
+        <div className="min-w-0 text-xs text-ink-3">{foot}</div>
+        <Sparkline values={spark} label={sparkLabel} className={cn('hidden shrink-0 sm:block', sparkTone === 'warn' ? 'text-warn' : 'text-brand')} width={72} height={24} />
+      </div>
+    </div>
+  )
+}
+
 /* ───────────── Activity ───────────── */
 
-function ActivityCard() {
+function ActivitySection() {
   const feed = useLiveFeed(8)
   return (
-    <Section
-      variant="card"
-      title={
-        <span className="flex items-center gap-2">
-          Live activity
-          <span className="ak-live-dot size-2 rounded-full bg-pos" aria-hidden />
-        </span>
-      }
-      description="Updates every 20 seconds"
-    >
+    <Section title="Recent activity" description="Orders, payments and stock alerts. Refreshes every 20 seconds." className="border-t border-line pt-5">
       {feed.error ? <ErrorNotice error={feed.error} onRetry={feed.refetch} /> : <FeedList items={feed.items} loading={feed.isPending} />}
     </Section>
   )
@@ -352,7 +367,7 @@ function ActivityCard() {
 
 /* ───────────── Deliveries map ───────────── */
 
-function DeliveriesCard({ orders }: { orders: OrderSummary[] | undefined }) {
+function DeliveriesSection({ orders }: { orders: OrderSummary[] | undefined }) {
   const gateway = useGateway()
   const { org } = useOrg()
   const shop = useShopSettings()
@@ -384,8 +399,7 @@ function DeliveriesCard({ orders }: { orders: OrderSummary[] | undefined }) {
 
   return (
     <Section
-      variant="card"
-      icon={<MapPin className="size-4" aria-hidden />}
+      className="border-t border-line pt-5"
       title="Deliveries to do"
       description={
         open.length === 0
@@ -393,7 +407,7 @@ function DeliveriesCard({ orders }: { orders: OrderSummary[] | undefined }) {
           : `${open.length} open${outCount ? ` · ${outCount} out for delivery` : ''}`
       }
       actions={
-        <Link to="/app/fulfilment" className="text-[13px] font-semibold text-ink-2 hover:text-ink">
+        <Link to="/app/fulfilment" className="text-[13px] font-medium text-ink-2 hover:text-ink">
           Fulfilment
         </Link>
       }
@@ -402,7 +416,7 @@ function DeliveriesCard({ orders }: { orders: OrderSummary[] | undefined }) {
         <MapFallback height={240} />
       ) : markers.length > 0 ? (
         <>
-          <div className="overflow-hidden rounded-2xl">
+          <div className="overflow-hidden rounded-[var(--radius-card)] border border-line">
             {/* MapLibre (~450 KB gzipped with its worker) loads only when the map scrolls into view. */}
             <WhenVisible fallback={<MapFallback height={240} />}>
               <Suspense fallback={<MapFallback height={240} />}>
@@ -418,7 +432,7 @@ function DeliveriesCard({ orders }: { orders: OrderSummary[] | undefined }) {
           </p>
         </>
       ) : (
-        <div className="flex flex-col items-start gap-3 rounded-2xl bg-sunken px-4 py-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col items-start gap-3 rounded-[var(--radius-card)] border border-dashed border-line-strong px-4 py-5 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-ink-2">
             {open.length > 0
               ? `${open.length} delivery ${open.length === 1 ? 'order has' : 'orders have'} no map pin. Add your shop location to see the map.`
@@ -435,28 +449,22 @@ function DeliveriesCard({ orders }: { orders: OrderSummary[] | undefined }) {
 
 /* ───────────── Share your shop ───────────── */
 
-function ShareShopCard() {
+function ShareShopSection() {
   const shop = useShopSettings()
   const { org } = useOrg()
   const [copied, setCopied] = useState(false)
 
-  if (shop.isPending) return <Skeleton className="mb-8 h-44 rounded-[var(--radius-card)]" />
+  if (shop.isPending) return <Skeleton className="mb-8 h-40 rounded-[var(--radius-card)]" />
 
   if (!shop.data) {
     return (
-      <Card className="relative mb-8 overflow-hidden p-5">
-        <span className="pointer-events-none absolute -top-10 -right-10 size-36 rounded-full bg-brand-soft" aria-hidden />
-        <div className="relative">
-          <span className="flex size-11 items-center justify-center rounded-2xl bg-brand text-on-brand">
-            <Sparkles className="size-5" aria-hidden />
-          </span>
-          <h2 className="mt-3 font-display text-xl font-extrabold tracking-tight text-ink">Open your online shop</h2>
-          <p className="mt-1 text-sm text-ink-2">One link for WhatsApp, Instagram and TikTok. Customers order and pay; orders land here.</p>
-          <Link to="/app/shop" className={buttonClass('brand', 'md', 'mt-4')}>
-            Set up your shop <ArrowRight className="size-4" aria-hidden />
-          </Link>
-        </div>
-      </Card>
+      <section className="mb-8 border-t border-line pt-5">
+        <h2 className="font-display text-[15px] font-semibold tracking-tight text-ink">Open your storefront</h2>
+        <p className="mt-1 text-sm text-ink-2">One link for your website, social profiles and chats. Customers order and pay; orders land here.</p>
+        <Link to="/app/shop" className={buttonClass('brand', 'sm', 'mt-4')}>
+          Set up your storefront <ArrowRight className="size-4" aria-hidden />
+        </Link>
+      </section>
     )
   }
 
@@ -481,19 +489,16 @@ function ShareShopCard() {
   const canNativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
 
   return (
-    <Card className="relative mb-8 overflow-hidden p-5">
-      <span className="pointer-events-none absolute -top-12 -right-12 size-40 rounded-full bg-brand-soft" aria-hidden />
-      <div className="relative">
+    <section className="mb-8 border-t border-line pt-5">
+      <div>
         <div className="flex items-center gap-2">
-          <h2 className="font-display text-xl font-extrabold tracking-tight text-ink">Share your shop</h2>
-          {!shop.data.published && (
-            <span className="rounded-full bg-warn-soft px-2 py-0.5 text-[11px] font-bold text-warn">Not published</span>
-          )}
+          <h2 className="font-display text-[15px] font-semibold tracking-tight text-ink">Your storefront link</h2>
+          {!shop.data.published && <span className="rounded-md bg-warn-soft px-1.5 py-0.5 text-[11px] font-medium text-warn">Not published</span>}
         </div>
         <p className="mt-1 text-sm text-ink-2">
-          {shop.data.published ? 'Post it on your Status and bio. Every order comes straight here.' : 'Only you can open it until you publish it in My shop.'}
+          {shop.data.published ? 'Share it in your bio, chats and posts. Every order comes straight here.' : 'Only you can open it until you publish it.'}
         </p>
-        <div className="mt-4 flex items-center gap-2 rounded-xl bg-sunken py-1.5 pr-1.5 pl-3">
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-line bg-panel py-1 pr-1 pl-3">
           <span className="min-w-0 flex-1 truncate font-mono text-[13px] text-ink-2" title={url}>
             {url.replace(/^https?:\/\//, '')}
           </span>
@@ -509,7 +514,7 @@ function ShareShopCard() {
             href={`https://wa.me/?text=${encodeURIComponent(message)}`}
             target="_blank"
             rel="noreferrer"
-            className={buttonClass('secondary', 'sm', 'text-[#0B7A3E] dark:text-[#4ade80]')}
+            className={buttonClass('secondary', 'sm')}
           >
             <MessageCircle className="size-4" aria-hidden /> WhatsApp
             <span className="sr-only"> (opens in a new tab)</span>
@@ -520,17 +525,17 @@ function ShareShopCard() {
             </Button>
           )}
           <Link to="/app/shop" className={buttonClass('ghost', 'sm')}>
-            Edit shop
+            Edit storefront
           </Link>
         </div>
       </div>
-    </Card>
+    </section>
   )
 }
 
 /* ───────────── Top products ───────────── */
 
-function TopProductsCard({ today }: { today: string }) {
+function TopProductsSection({ today }: { today: string }) {
   const { org } = useOrg()
   const movements = useMovements()
   const products = useProducts()
@@ -575,12 +580,11 @@ function TopProductsCard({ today }: { today: string }) {
 
   return (
     <Section
-      variant="card"
-      icon={<TrendingUp className="size-4" aria-hidden />}
+      className="border-t border-line pt-5"
       title="Top products"
       description="Units sent out in the last 30 days"
       actions={
-        <Link to="/app/products" className="text-[13px] font-semibold text-ink-2 hover:text-ink">
+        <Link to="/app/products" className="text-[13px] font-medium text-ink-2 hover:text-ink">
           Products
         </Link>
       }
@@ -597,25 +601,21 @@ function TopProductsCard({ today }: { today: string }) {
       ) : movements.isError ? (
         <ErrorNotice error={movements.error} onRetry={() => movements.refetch()} />
       ) : top.length === 0 ? (
-        <p className="rounded-2xl bg-sunken px-4 py-5 text-sm text-ink-3">No items have left the shop in the last 30 days. Best sellers show up here once orders are dispatched.</p>
+        <p className="text-sm text-ink-3">No items have left the shop in the last 30 days. Best sellers show up here once orders are dispatched.</p>
       ) : (
-        <ol className="flex flex-col gap-3">
+        <ol className="flex flex-col divide-y divide-line">
           {top.map((t, i) => (
-            <li key={t.variantId} className="ak-rise flex items-center gap-3" style={{ animationDelay: `${i * 40}ms` }}>
-              <span className="relative shrink-0">
-                <Thumb src={t.image} alt={t.name} className="size-12" />
-                <span className="tnum absolute -top-1.5 -left-1.5 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-on-primary ring-2 ring-panel">
-                  {i + 1}
-                </span>
-              </span>
+            <li key={t.variantId} className="flex items-center gap-3 py-2.5">
+              <span className="tnum w-4 shrink-0 text-xs text-ink-3">{i + 1}</span>
+              <Thumb src={t.image} alt={t.name} className="size-10" />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-ink">{t.name}</span>
-                <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-sunken" aria-hidden>
-                  <span className="block h-full rounded-full bg-brand" style={{ width: `${Math.max(6, (t.units / maxUnits) * 100)}%` }} />
+                <span className="block truncate text-sm font-medium text-ink">{t.name}</span>
+                <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-sunken" aria-hidden>
+                  <span className="block h-full rounded-full bg-ink-3" style={{ width: `${Math.max(6, (t.units / maxUnits) * 100)}%` }} />
                 </span>
               </span>
               <span className="shrink-0 text-right">
-                <span className="tnum block text-sm font-bold text-ink">{t.units}</span>
+                <span className="tnum block text-sm font-semibold text-ink">{t.units}</span>
                 <span className="block text-[11px] text-ink-3">{t.stock != null ? `${t.stock} left` : 'sent'}</span>
               </span>
             </li>

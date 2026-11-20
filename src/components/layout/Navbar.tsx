@@ -40,9 +40,9 @@ export function Navbar() {
           {/* Logo */}
           <Link
             to="/"
-            className="flex items-center gap-2 font-extrabold text-xl tracking-tight text-surface-900 dark:text-white shrink-0"
+            className="flex items-center gap-2 font-semibold text-xl tracking-tight text-surface-900 dark:text-white shrink-0"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-surface-900 text-white dark:bg-white dark:text-surface-900 text-sm font-black">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-surface-900 text-white dark:bg-white dark:text-surface-900 text-sm font-semibold">
               A
             </span>
             {APP_NAME}

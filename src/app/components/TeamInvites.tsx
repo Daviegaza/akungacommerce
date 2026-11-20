@@ -50,7 +50,7 @@ function ShareInvite({ created }: { created: CreatedInvite }) {
   return (
     <div className="flex flex-col gap-3" role="status">
       <p className="text-sm text-ink">
-        Invitation ready for <strong>{created.invite.email ?? (created.invite.phoneE164 ? formatPhone(created.invite.phoneE164) : '')}</strong>. Rafu does not send it
+        Invitation ready for <strong>{created.invite.email ?? (created.invite.phoneE164 ? formatPhone(created.invite.phoneE164) : '')}</strong>. Fungua does not send it
         for you: share the link below. It works once and expires in 7 days.
       </p>
       <div className="rounded-xl bg-sunken p-3 text-xs break-all text-ink-2">{link}</div>
@@ -70,7 +70,7 @@ function ShareInvite({ created }: { created: CreatedInvite }) {
         )}
         {created.invite.email && (
           <a
-            href={`mailto:${encodeURIComponent(created.invite.email)}?subject=${encodeURIComponent(`Join ${org.name} on Rafu`)}&body=${encodeURIComponent(message)}`}
+            href={`mailto:${encodeURIComponent(created.invite.email)}?subject=${encodeURIComponent(`Join ${org.name} on Fungua`)}&body=${encodeURIComponent(message)}`}
             className={buttonClass('secondary', 'sm')}
           >
             <Mail className="size-4" aria-hidden /> Email

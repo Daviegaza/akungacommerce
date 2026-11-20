@@ -134,7 +134,7 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
               <img src={shop.coverUrl} alt="" decoding="async" className="ak-rise size-full object-cover" />
             ) : (
               <div className="absolute inset-0 overflow-hidden" aria-hidden>
-                <span className="absolute -right-6 -bottom-16 font-display text-[16rem] leading-none font-extrabold text-brand/10 sm:text-[22rem]">
+                <span className="absolute -right-6 -bottom-16 font-display text-[16rem] leading-none font-semibold text-brand/10 sm:text-[22rem]">
                   {shop.name.trim()[0]?.toUpperCase()}
                 </span>
                 <span className="absolute top-10 left-8 h-3 w-40 rounded-full bg-brand/15" />
@@ -164,7 +164,7 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
               </div>
             </div>
 
-            <h1 className="ak-rise mt-3 font-display text-[2.1rem] leading-[1.05] font-extrabold tracking-tight text-ink sm:text-5xl">
+            <h1 className="ak-rise mt-3 font-display text-[2.1rem] leading-[1.05] font-semibold tracking-tight text-ink sm:text-5xl">
               {shop.name}
             </h1>
             {shop.tagline && <p className="mt-1.5 max-w-2xl text-[15px] text-ink-2 sm:text-base">{shop.tagline}</p>}
@@ -198,7 +198,7 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
 
         {products.length === 0 ? (
           <div className="ak-rise mx-4 mt-10 rounded-[var(--radius-card)] border border-dashed border-line-strong px-6 py-14 text-center sm:mx-6">
-            <p className="font-display text-xl font-extrabold text-ink">The shelves are being stocked</p>
+            <p className="font-display text-xl font-semibold text-ink">New products are on the way</p>
             <p className="mx-auto mt-1 max-w-sm text-sm text-ink-3">
               {shop.name} hasn't added products yet. {wa ? 'Say hi on WhatsApp to ask what is coming.' : 'Check back soon.'}
             </p>
@@ -254,10 +254,10 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
             )}
 
             {/* ───────── Grid ───────── */}
-            <section aria-labelledby="rafu-grid-title" className="mt-10 px-4 sm:px-6">
+            <section aria-labelledby="fungua-grid-title" className="mt-10 px-4 sm:px-6">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div className="min-w-0">
-                  <h2 id="rafu-grid-title" className="truncate text-xl font-extrabold tracking-tight text-ink sm:text-2xl">
+                  <h2 id="fungua-grid-title" className="truncate text-xl font-semibold tracking-tight text-ink sm:text-2xl">
                     {gridTitle}
                   </h2>
                   <p className="text-sm text-ink-3 tnum" aria-live="polite">
@@ -318,7 +318,7 @@ export function ShopHome({ slug, data }: { slug: string; data: StorefrontData })
 
               {results.length === 0 ? (
                 <div className="ak-rise mt-6 rounded-[var(--radius-card)] border border-dashed border-line-strong px-6 py-12 text-center">
-                  <p className="font-display text-lg font-extrabold text-ink">Nothing matches that</p>
+                  <p className="font-display text-lg font-semibold text-ink">Nothing matches that</p>
                   <p className="mx-auto mt-1 max-w-sm text-sm text-ink-3">Try fewer filters or a different word.</p>
                   <div className="mt-4 flex flex-wrap justify-center gap-2">
                     <button

@@ -138,7 +138,7 @@ export default function PinPickerMap({
             animate={moving && !reduceMotion ? { y: -10 } : { y: 0 }}
             transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}
           >
-            <svg width="36" height="46" viewBox="0 0 36 46" className="drop-shadow-[0_4px_6px_rgb(22_15_30/0.35)]">
+            <svg width="36" height="46" viewBox="0 0 36 46" className="drop-shadow-[0_4px_6px_rgb(14_20_32/0.35)]">
               <path
                 d="M18 45c-1.2-6-14-15.5-14-27a14 14 0 1 1 28 0c0 11.5-12.8 21-14 27Z"
                 fill="var(--ak-brand)"

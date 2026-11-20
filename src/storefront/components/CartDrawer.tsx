@@ -78,7 +78,7 @@ export function CartDrawer({ slug, shop }: { slug: string; shop: PublicShop }) {
           >
             <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-line-strong sm:hidden" aria-hidden />
             <div className="flex items-center justify-between px-5 pt-3 pb-2 sm:pt-5">
-              <h2 id="rafu-cart-title" className="text-2xl font-extrabold tracking-tight text-ink">
+              <h2 id="rafu-cart-title" className="text-2xl font-semibold tracking-tight text-ink">
                 Your cart
                 {cart.count > 0 && <span className="ml-2 text-base font-semibold text-ink-3 tnum">{cart.count}</span>}
               </h2>
@@ -98,7 +98,7 @@ export function CartDrawer({ slug, shop }: { slug: string; shop: PublicShop }) {
                 <span className="grid size-16 place-items-center rounded-full bg-brand-soft text-brand">
                   <ShoppingBag className="size-7" aria-hidden />
                 </span>
-                <p className="font-display text-xl font-extrabold text-ink">Your cart is empty</p>
+                <p className="font-display text-xl font-semibold text-ink">Your cart is empty</p>
                 <p className="max-w-xs text-sm text-ink-3">Tap + on anything you like and it will wait for you here.</p>
                 <Button variant="brand" size="lg" className="mt-2" onClick={close}>
                   Keep shopping
@@ -173,7 +173,7 @@ export function CartDrawer({ slug, shop }: { slug: string; shop: PublicShop }) {
                                   <Plus className="size-4" aria-hidden />
                                 </button>
                               </div>
-                              <span className="font-display text-base font-extrabold text-ink tnum">
+                              <span className="font-display text-base font-semibold text-ink tnum">
                                 {fmtMoney(l.unitPriceMinor * l.quantity, l.currency, shop.locale)}
                               </span>
                             </div>
@@ -188,7 +188,7 @@ export function CartDrawer({ slug, shop }: { slug: string; shop: PublicShop }) {
                 <div className="border-t border-line bg-panel px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
                   <div className="flex items-baseline justify-between">
                     <span className="text-sm font-medium text-ink-2">Subtotal</span>
-                    <span className="font-display text-2xl font-extrabold text-ink tnum">{fmtMoney(cart.subtotalMinor, currency, shop.locale)}</span>
+                    <span className="font-display text-2xl font-semibold text-ink tnum">{fmtMoney(cart.subtotalMinor, currency, shop.locale)}</span>
                   </div>
                   <p className="mt-0.5 text-xs text-ink-3">
                     {shop.deliveryEnabled

@@ -240,7 +240,7 @@ function OrderCard({
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <Money minor={o.totalMinor} currency={o.currency} className="font-display text-lg font-extrabold tracking-tight text-ink" />
+          <Money minor={o.totalMinor} currency={o.currency} className="font-display text-lg font-semibold tracking-tight text-ink" />
           {showPayment && due > 0 && o.netPaidMinor > 0 && (
             <p className="text-[11px] text-ink-3">
               <Money minor={due} currency={o.currency} /> due

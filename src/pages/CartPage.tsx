@@ -36,7 +36,7 @@ export default function CartPage() {
         className="flex items-center justify-between mb-8"
       >
         <div>
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-surface-900 dark:text-white">
+          <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-surface-900 dark:text-white">
             Shopping Cart
           </h1>
           <p className="mt-2 text-surface-500 dark:text-surface-400">

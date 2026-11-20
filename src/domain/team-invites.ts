@@ -79,7 +79,7 @@ export function maskContact(c: InviteContact): string {
 
 /** Prepared message the owner sends themselves (WhatsApp / SMS / email). Nothing is sent automatically. */
 export function inviteMessage(orgName: string, roleLabel: string, link: string): string {
-  return `You're invited to join ${orgName} on Rafu as ${roleLabel}. Open this link to accept (valid for ${INVITE_TTL_DAYS} days): ${link}`
+  return `You're invited to join ${orgName} on Fungua as ${roleLabel}. Open this link to accept (valid for ${INVITE_TTL_DAYS} days): ${link}`
 }
 
 /* ───────────── Plain-language permissions ───────────── */

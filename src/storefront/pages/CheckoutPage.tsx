@@ -112,7 +112,7 @@ export default function CheckoutPage() {
       <PageFrame slug={slug}>
         <div className="mx-auto flex max-w-md flex-col items-center gap-3 py-20 text-center">
           <AlertCircle className="size-8 text-neg" aria-hidden />
-          <h1 className="text-2xl font-extrabold tracking-tight">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {isNotFoundError(storefront.error) ? 'This shop is not available' : 'We could not load checkout'}
           </h1>
           <p className="text-sm text-ink-2">{errorMessage(storefront.error)}</p>
@@ -133,7 +133,7 @@ export default function CheckoutPage() {
           <span className="grid size-16 place-items-center rounded-full bg-brand-soft text-brand">
             <ShoppingBag className="size-7" aria-hidden />
           </span>
-          <h1 className="text-2xl font-extrabold tracking-tight">Your cart is empty</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Your cart is empty</h1>
           <p className="text-sm text-ink-2">Add something you love from {shop.name}, then come back here to order.</p>
           <Link to={`/s/${slug}`} className={buttonClass('brand', 'lg', 'min-h-11')}>
             Browse the shop
@@ -163,7 +163,7 @@ function PageFrame({ slug, shopName, children }: { slug: string; shopName?: stri
             <ArrowLeft className="size-5" aria-hidden />
           </Link>
           <div className="min-w-0">
-            <p className="font-display text-lg font-extrabold leading-tight tracking-tight">Checkout</p>
+            <p className="font-display text-lg font-semibold leading-tight tracking-tight">Checkout</p>
             {shopName && <p className="truncate text-xs text-ink-3">{shopName}</p>}
           </div>
           <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-ink-3">
@@ -695,11 +695,11 @@ function Section({ step, title, subtitle, children }: { step: number; title: str
   return (
     <section aria-labelledby={id} className="rounded-[var(--radius-card)] bg-panel p-4 shadow-[var(--shadow-card)] sm:p-5 ak-rise">
       <div className="mb-4 flex items-start gap-3">
-        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand-soft font-display text-sm font-extrabold text-brand tnum" aria-hidden>
+        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand-soft font-display text-sm font-semibold text-brand tnum" aria-hidden>
           {step}
         </span>
         <div className="min-w-0">
-          <h2 id={id} className="text-lg font-extrabold leading-7 tracking-tight">
+          <h2 id={id} className="text-lg font-semibold leading-7 tracking-tight">
             {title}
           </h2>
           {subtitle && <p className="text-xs text-ink-3">{subtitle}</p>}
@@ -975,7 +975,7 @@ function OrderSummary({
             initial={{ opacity: 0.4, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, ease: EASE }}
-            className="font-display text-3xl font-extrabold leading-none tracking-tight text-ink tnum"
+            className="font-display text-3xl font-semibold leading-none tracking-tight text-ink tnum"
           >
             {money(quote.totalMinor)}
           </motion.p>
@@ -987,7 +987,7 @@ function OrderSummary({
         <dl className="mt-2 flex flex-col gap-1.5 rounded-2xl border border-brand/25 p-3 text-sm" aria-label="How you pay">
           <div className="flex items-center justify-between gap-3">
             <dt className="font-semibold text-ink">{(quote.depositDueMinor ?? 0) >= quote.totalMinor ? 'Pay now (full amount)' : 'Deposit due now'}</dt>
-            <dd className="font-display text-lg font-extrabold tracking-tight text-ink tnum">{money(quote.depositDueMinor ?? 0)}</dd>
+            <dd className="font-display text-lg font-semibold tracking-tight text-ink tnum">{money(quote.depositDueMinor ?? 0)}</dd>
           </div>
           {(quote.balanceOnDeliveryMinor ?? 0) > 0 && (
             <div className="flex items-center justify-between gap-3">

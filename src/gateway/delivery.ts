@@ -1,7 +1,7 @@
 /**
  * Deposits, failed deliveries and delivery handoff (own rider link, pickup
  * point, courier). Mirrors supabase/migrations/20261120000030_deposits_handoff.sql.
- * Rafu brokers delivery: it never runs a fleet, and no courier or pickup-point
+ * Fungua brokers delivery: it never runs a fleet, and no courier or pickup-point
  * network is connected (see src/integrations/registry.ts).
  */
 import type { FailedReason, ShopPolicy } from '@/domain/delivery-policy'
@@ -108,7 +108,7 @@ export interface OrderDelivery {
 
 export type RefundSuggestionStatus = 'pending' | 'confirmed' | 'dismissed'
 
-/** A refund the merchant should make after a return. Rafu never moves money: confirming records a refund. */
+/** A refund the merchant should make after a return. Fungua never moves money: confirming records a refund. */
 export interface RefundSuggestion {
   id: string
   amountMinor: number
@@ -168,7 +168,7 @@ export interface DeliveryAdminGateway {
   revokeRiderLink(orgId: string, orderId: string): Promise<void>
   /** Out for delivery -> returned to shop: stock back, order cancelled, refund suggested (never paid out). */
   returnToShop(orgId: string, orderId: string, input: { note: string | null }, idempotencyKey: string): Promise<ReturnToShopResult>
-  /** The merchant refunded the buyer outside Rafu: record it against the order's payments. */
+  /** The merchant refunded the buyer outside Fungua: record it against the order's payments. */
   confirmRefundSuggestion(orgId: string, suggestionId: string, idempotencyKey: string): Promise<void>
   dismissRefundSuggestion(orgId: string, suggestionId: string, reason: string): Promise<void>
 }

@@ -368,7 +368,7 @@ export function createDemoCollections(I: Internals): Required<CollectionsAdminGa
     markMpesaVerified: (orgId) =>
       I.tx((s) => {
         I.requirePermission(s, orgId, 'integrations.manage')
-        I.fail('The demo cannot verify a real M-Pesa account. In a live workspace this unlocks after a real test payment reaches Rafu.', 'invalid')
+        I.fail('The demo cannot verify a real M-Pesa account. In a live workspace this unlocks after a real test payment reaches Fungua.', 'invalid')
       }),
     listMpesaPrompts: (orgId) =>
       I.tx((s) => {
@@ -529,7 +529,7 @@ export function createDemoCollections(I: Internals): Required<CollectionsAdminGa
           provider,
           bankName: 'Demo Bank (simulated)',
           accountNumber,
-          accountName: `${org.name} / Rafu`,
+          accountName: `${org.name} / Fungua`,
           orderId: o.id,
           customerId: o.customerId ?? null,
           status: 'active',

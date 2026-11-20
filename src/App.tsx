@@ -8,7 +8,7 @@ import { HostHome } from '@/storefront/HostHome'
 // workspace, the classic template or the landing page (and vice versa).
 // Merchant workspace (the commerce operating system) lives under /app.
 const WorkspaceApp = lazy(() => import('@/app/WorkspaceApp'))
-// Rafu product landing ("/"), public merchant shops ("/s/:slug") and buyer order tracking ("/t/:token").
+// Fungua product landing ("/"), public merchant shops ("/s/:slug") and buyer order tracking ("/t/:token").
 const LandingPage = lazy(() => import('@/landing/LandingPage'))
 const StorefrontApp = lazy(() => import('@/storefront/StorefrontApp'))
 const TrackPage = lazy(() => import('@/storefront/pages/TrackPage'))
@@ -21,8 +21,8 @@ const PublicNotFound = lazy(() => import('@/storefront/components/States').then(
 const PrivacyPage = lazy(() => import('@/legal/LegalPage').then((m) => ({ default: m.PrivacyPage })))
 const TermsPage = lazy(() => import('@/legal/LegalPage').then((m) => ({ default: m.TermsPage })))
 
-/** Calm full-screen placeholder for the Rafu surfaces while their code loads. */
-function RafuLoader() {
+/** Calm full-screen placeholder for the Fungua surfaces while their code loads. */
+function AppLoader() {
   return (
     <div className="ak-root flex min-h-dvh items-center justify-center" role="status" aria-label="Loading">
       <span className="size-8 animate-pulse rounded-xl bg-brand" aria-hidden />
@@ -39,7 +39,7 @@ export default function App() {
             <Route
               path="/"
               element={
-                <Suspense fallback={<RafuLoader />}>
+                <Suspense fallback={<AppLoader />}>
                   {/* On a verified custom domain, "/" opens that merchant's shop. */}
                   <HostHome landing={<LandingPage />} />
                 </Suspense>
@@ -48,7 +48,7 @@ export default function App() {
             <Route
               path="/s/:slug/*"
               element={
-                <Suspense fallback={<RafuLoader />}>
+                <Suspense fallback={<AppLoader />}>
                   <StorefrontApp />
                 </Suspense>
               }
@@ -56,7 +56,7 @@ export default function App() {
             <Route
               path="/t/:token"
               element={
-                <Suspense fallback={<RafuLoader />}>
+                <Suspense fallback={<AppLoader />}>
                   <TrackPage />
                 </Suspense>
               }
@@ -64,7 +64,7 @@ export default function App() {
             <Route
               path="/r/:token"
               element={
-                <Suspense fallback={<RafuLoader />}>
+                <Suspense fallback={<AppLoader />}>
                   <RiderPage />
                 </Suspense>
               }
@@ -72,7 +72,7 @@ export default function App() {
             <Route
               path="/legal/privacy"
               element={
-                <Suspense fallback={<RafuLoader />}>
+                <Suspense fallback={<AppLoader />}>
                   <PrivacyPage />
                 </Suspense>
               }
@@ -80,7 +80,7 @@ export default function App() {
             <Route
               path="/legal/terms"
               element={
-                <Suspense fallback={<RafuLoader />}>
+                <Suspense fallback={<AppLoader />}>
                   <TermsPage />
                 </Suspense>
               }
@@ -96,7 +96,7 @@ export default function App() {
             <Route
               path="*"
               element={
-                <Suspense fallback={<RafuLoader />}>
+                <Suspense fallback={<AppLoader />}>
                   {import.meta.env.DEV ? <ClassicStorefront /> : <PublicNotFound />}
                 </Suspense>
               }

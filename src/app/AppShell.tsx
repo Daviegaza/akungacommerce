@@ -25,7 +25,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
-import { RafuLogo, RafuMark } from '@/brand/RafuLogo'
+import { FunguaLogo, FunguaMark } from '@/brand/FunguaLogo'
 import { cn } from '@/lib/utils'
 import { useUIStore } from '@/store/uiStore'
 import { useGateway, useOrg } from './context'
@@ -54,20 +54,41 @@ interface NavItem {
   end?: boolean
 }
 
-const NAV: NavItem[] = [
-  { to: '/app', label: 'Today', icon: Home, end: true },
-  { to: '/app/shop', label: 'My shop', icon: Store },
-  { to: '/app/trust', label: 'Trust', icon: ShieldCheck },
-  { to: '/app/orders', label: 'Orders', icon: Receipt },
-  { to: '/app/fulfilment', label: 'Fulfilment', icon: Truck },
-  { to: '/app/products', label: 'Products', icon: Package },
-  { to: '/app/inventory', label: 'Inventory', icon: Boxes },
-  { to: '/app/customers', label: 'Customers', icon: Users },
-  { to: '/app/payments', label: 'Payments', icon: CreditCard },
-  { to: '/app/analytics', label: 'Analytics', icon: BarChart3 },
-  { to: '/app/tools', label: 'Selling tools', icon: Wrench },
-  { to: '/app/settings', label: 'Settings', icon: Settings },
+const NAV_GROUPS: { label: string | null; items: NavItem[] }[] = [
+  {
+    label: null,
+    items: [
+      { to: '/app', label: 'Today', icon: Home, end: true },
+      { to: '/app/orders', label: 'Orders', icon: Receipt },
+      { to: '/app/fulfilment', label: 'Fulfilment', icon: Truck },
+    ],
+  },
+  {
+    label: 'Catalogue',
+    items: [
+      { to: '/app/products', label: 'Products', icon: Package },
+      { to: '/app/inventory', label: 'Inventory', icon: Boxes },
+    ],
+  },
+  {
+    label: 'Business',
+    items: [
+      { to: '/app/customers', label: 'Customers', icon: Users },
+      { to: '/app/payments', label: 'Payments', icon: CreditCard },
+      { to: '/app/analytics', label: 'Analytics', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Channels',
+    items: [
+      { to: '/app/shop', label: 'Storefront', icon: Store },
+      { to: '/app/tools', label: 'Selling tools', icon: Wrench },
+      { to: '/app/trust', label: 'Trust', icon: ShieldCheck },
+    ],
+  },
+  { label: null, items: [{ to: '/app/settings', label: 'Settings', icon: Settings }] },
 ]
+const NAV: NavItem[] = NAV_GROUPS.flatMap((g) => g.items)
 
 const MOBILE_PRIMARY = ['/app', '/app/orders', '/app/products']
 
@@ -75,10 +96,10 @@ export function DemoBanner() {
   const gateway = useGateway()
   if (gateway.mode !== 'demo') return null
   return (
-    <div className="flex items-center justify-center gap-2 bg-brand-soft px-4 py-1 text-center text-[11px] leading-5 font-medium text-ink">
-      <span className="size-1.5 shrink-0 rounded-full bg-brand" aria-hidden />
+    <div className="flex items-center justify-center gap-2 border-b border-line bg-sunken px-4 py-1 text-center text-[11px] leading-5 font-medium text-ink-2">
+      <span className="size-1.5 shrink-0 rounded-full bg-warn" aria-hidden />
       <span>
-        <strong className="font-bold">Demo workspace</strong> · fictional data kept in this browser<span className="hidden sm:inline">. Nothing is sent, charged or delivered</span>.
+        <strong className="font-semibold text-ink">Demo workspace</strong> · fictional data kept in this browser<span className="hidden sm:inline">. Nothing is sent, charged or delivered</span>.
       </span>
     </div>
   )
@@ -178,7 +199,7 @@ function SignOutButton({ className, children }: { className?: string; children?:
 function CountDot({ count, className }: { count: number; className?: string }) {
   if (count <= 0) return null
   return (
-    <span className={cn('tnum flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[11px] font-bold text-on-brand', className)}>
+    <span className={cn('tnum flex h-5 min-w-5 items-center justify-center rounded-md bg-brand px-1.5 text-[11px] font-semibold text-on-brand', className)}>
       {count > 99 ? '99+' : count}
       <span className="sr-only"> to confirm</span>
     </span>
@@ -187,31 +208,32 @@ function CountDot({ count, className }: { count: number; className?: string }) {
 
 function SideNav({ toConfirm }: { toConfirm: number }) {
   return (
-    <nav aria-label="Workspace" className="flex flex-col gap-0.5">
-      {NAV.map((item) => (
-        <NavLink
-          key={item.to}
-          to={item.to}
-          end={item.end}
-          className={({ isActive }) =>
-            cn(
-              'group relative flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors',
-              isActive ? 'bg-brand-soft text-ink' : 'text-ink-2 hover:bg-sunken hover:text-ink',
-            )
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <span
-                aria-hidden
-                className={cn('absolute top-2 bottom-2 left-0 w-1 rounded-full bg-brand transition-opacity', isActive ? 'opacity-100' : 'opacity-0')}
-              />
-              <item.icon className={cn('size-[18px]', isActive ? 'text-brand' : 'text-ink-3 group-hover:text-ink-2')} aria-hidden />
-              <span className={cn('flex-1', isActive && 'font-semibold')}>{item.label}</span>
-              {item.to === '/app/orders' && <CountDot count={toConfirm} />}
-            </>
-          )}
-        </NavLink>
+    <nav aria-label="Workspace" className="flex flex-col gap-4">
+      {NAV_GROUPS.map((group, gi) => (
+        <div key={group.label ?? gi} className="flex flex-col gap-px">
+          {group.label && <p className="px-2.5 pb-1 text-[11px] font-medium tracking-wide text-ink-3 uppercase">{group.label}</p>}
+          {group.items.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) =>
+                cn(
+                  'group flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm transition-colors',
+                  isActive ? 'bg-ink/[0.07] font-medium text-ink' : 'text-ink-2 hover:bg-ink/[0.04] hover:text-ink',
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <item.icon className={cn('size-[17px]', isActive ? 'text-ink' : 'text-ink-3 group-hover:text-ink-2')} aria-hidden />
+                  <span className="flex-1 truncate">{item.label}</span>
+                  {item.to === '/app/orders' && <CountDot count={toConfirm} />}
+                </>
+              )}
+            </NavLink>
+          ))}
+        </div>
       ))}
     </nav>
   )
@@ -235,15 +257,15 @@ function MobileNav({ toConfirm, slug }: { toConfirm: number; slug: string | null
   const moreActive = secondary.some((n) => pathname.startsWith(n.to))
   const tab = (active: boolean) =>
     cn(
-      'relative flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors',
-      active ? 'text-brand' : 'text-ink-3 hover:text-ink-2',
+      'relative flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors',
+      active ? 'text-ink' : 'text-ink-3 hover:text-ink-2',
     )
 
   return (
     <>
       <nav
         aria-label="Workspace"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgb(22_15_30/0.06)] backdrop-blur-md lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel pb-[env(safe-area-inset-bottom)] md:hidden"
       >
         <div className="flex h-16 items-stretch">
           <NavLink to="/app" end className={({ isActive }) => tab(isActive)}>
@@ -258,15 +280,12 @@ function MobileNav({ toConfirm, slug }: { toConfirm: number; slug: string | null
             Orders
           </NavLink>
           {can('orders.create') ? (
-            <div className="flex flex-1 items-start justify-center">
-              <Link
-                to="/app/orders/new"
-                aria-label="New order"
-                className="-mt-6 flex size-[60px] items-center justify-center rounded-full bg-brand text-on-brand shadow-[0_10px_24px_-6px_var(--ak-brand)] ring-[5px] ring-canvas transition-transform active:scale-95"
-              >
-                <Plus className="size-7" strokeWidth={2.5} aria-hidden />
-              </Link>
-            </div>
+            <Link to="/app/orders/new" className="flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium text-ink">
+              <span className="flex size-8 items-center justify-center rounded-lg bg-brand text-on-brand" aria-hidden>
+                <Plus className="size-[18px]" strokeWidth={2.5} />
+              </span>
+              New order
+            </Link>
           ) : (
             <span className="flex-1" />
           )}
@@ -288,12 +307,12 @@ function MobileNav({ toConfirm, slug }: { toConfirm: number; slug: string | null
               to={item.to}
               onClick={() => setMoreOpen(false)}
               className={({ isActive }) =>
-                cn('flex h-12 items-center gap-3 rounded-xl px-3 text-[15px] font-medium', isActive ? 'bg-brand-soft text-ink' : 'text-ink-2 hover:bg-sunken')
+                cn('flex h-12 items-center gap-3 rounded-lg px-3 text-[15px] font-medium', isActive ? 'bg-sunken text-ink' : 'text-ink-2 hover:bg-sunken')
               }
             >
               {({ isActive }) => (
                 <>
-                  <item.icon className={cn('size-5', isActive ? 'text-brand' : 'text-ink-3')} aria-hidden />
+                  <item.icon className={cn('size-5', isActive ? 'text-ink' : 'text-ink-3')} aria-hidden />
                   {item.label}
                 </>
               )}
@@ -355,19 +374,19 @@ export function AppShell() {
         Skip to content
       </a>
       <DemoBanner />
-      <div className="lg:grid lg:grid-cols-[256px_1fr]">
-        <aside className="sticky top-0 hidden h-dvh flex-col overflow-y-auto border-r border-line bg-panel/50 px-3 py-5 lg:flex">
-          <Link to="/app" className="mb-5 self-start rounded-xl px-3 py-1" aria-label="Rafu, go to Today">
-            <RafuLogo size={30} />
+      <div className="md:grid md:grid-cols-[216px_1fr] lg:grid-cols-[240px_1fr]">
+        <aside className="sticky top-0 hidden h-dvh flex-col overflow-y-auto border-r border-line bg-panel px-3 py-4 md:flex">
+          <Link to="/app" className="mb-4 self-start rounded-lg px-2.5 py-1.5" aria-label="Fungua, go to Today">
+            <FunguaLogo size={22} />
           </Link>
-          <div className="mx-1 mb-4 rounded-2xl bg-panel px-3 py-2.5 shadow-[var(--shadow-card)] ring-1 ring-line/60">
+          <div className="mb-3 border-b border-line px-2.5 pb-3">
             <OrgSwitcher />
             <p className="mt-0.5 truncate text-xs text-ink-3">
               {org.baseCurrency} · {org.timezone.replace(/_/g, ' ')}
             </p>
           </div>
           {can('orders.create') && (
-            <Link to="/app/orders/new" className={buttonClass('brand', 'md', 'mx-1 mb-5')}>
+            <Link to="/app/orders/new" className={buttonClass('primary', 'sm', 'mb-4 w-full')}>
               <Plus className="size-4" strokeWidth={2.5} aria-hidden /> New order
             </Link>
           )}
@@ -376,10 +395,10 @@ export function AppShell() {
             {slug && (
               <ViewShopLink
                 slug={slug}
-                className="mb-2 flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium text-ink-2 transition-colors hover:bg-sunken hover:text-ink"
+                className="mb-1 flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm text-ink-2 transition-colors hover:bg-sunken hover:text-ink"
               />
             )}
-            <div className="flex items-center justify-between border-t border-line px-1 pt-3">
+            <div className="flex items-center justify-between border-t border-line pt-2">
               <span className="px-2 text-xs font-medium text-ink-3 capitalize">{org.role}</span>
               <div className="flex">
                 <ThemeButton />
@@ -390,24 +409,24 @@ export function AppShell() {
         </aside>
 
         <div className="min-w-0">
-          <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-2 border-b border-line bg-canvas/85 px-3 backdrop-blur-md sm:px-4 lg:h-14 lg:justify-end lg:border-transparent lg:bg-transparent lg:px-8 lg:backdrop-blur-none">
-            <div className="flex min-w-0 items-center gap-2.5 lg:hidden">
-              <Link to="/app" aria-label="Rafu, go to Today" className="shrink-0 rounded-xl">
-                <RafuMark size={32} />
+          <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-2 border-b border-line bg-canvas/90 px-3 backdrop-blur-md sm:px-4 md:justify-end md:px-6 lg:px-8">
+            <div className="flex min-w-0 items-center gap-2.5 md:hidden">
+              <Link to="/app" aria-label="Fungua, go to Today" className="shrink-0 rounded-lg">
+                <FunguaMark size={26} />
               </Link>
               <div className="min-w-0">
                 <OrgSwitcher compact />
               </div>
             </div>
-            <div className="flex shrink-0 items-center lg:rounded-full lg:bg-panel/80 lg:px-1 lg:shadow-[var(--shadow-card)] lg:ring-1 lg:ring-line/60 lg:backdrop-blur-md">
+            <div className="flex shrink-0 items-center">
               <ChimeButton />
               <BellButton unread={unread} onClick={openFeed} />
-              <span className="lg:hidden">
+              <span className="md:hidden">
                 <ThemeButton />
               </span>
             </div>
           </header>
-          <main id="main" className="mx-auto w-full max-w-[1200px] px-4 pt-5 pb-32 sm:px-6 lg:px-10 lg:pt-2 lg:pb-16">
+          <main id="main" className="mx-auto w-full max-w-[1240px] px-4 pt-6 pb-28 sm:px-6 md:pb-16 lg:px-10 lg:pt-8">
             <Outlet />
           </main>
         </div>

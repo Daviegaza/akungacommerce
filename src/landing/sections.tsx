@@ -1,260 +1,313 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { motion, useReducedMotion } from 'framer-motion'
 import {
-  BadgeCheck,
-  BellRing,
+  BarChart3,
   Boxes,
-  Check,
   ChevronDown,
-  Globe,
-  Map as MapIcon,
-  MessageCircle,
-  PackageCheck,
-  Plug,
+  CreditCard,
+  FileClock,
+  Globe2,
+  KeyRound,
+  Lock,
   Receipt,
-  Share2,
+  ShieldCheck,
   Store,
   Truck,
+  Users,
   Wallet,
 } from 'lucide-react'
-import { RafuLogo } from '@/brand/RafuLogo'
+import { FunguaLogo } from '@/brand/FunguaLogo'
+import { BRAND } from '@/brand/brand'
 import { DEMO_SHOP_PATH } from './constants'
 
-const EASE = [0.2, 0.8, 0.2, 1] as const
+/* Shared */
 
-/** List item that rises gently into view once; static under reduced motion. */
-function RevealItem({ children, delay = 0, className }: { children: ReactNode; delay?: number; className?: string }) {
-  const reduce = useReducedMotion()
-  if (reduce) return <li className={className}>{children}</li>
-  return (
-    <motion.li
-      className={className}
-      initial={{ opacity: 0, y: 16 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-60px' }}
-      transition={{ duration: 0.35, ease: EASE, delay }}
-    >
-      {children}
-    </motion.li>
-  )
+export function Container({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <div className={`mx-auto w-full max-w-[1180px] px-4 sm:px-6 lg:px-8 ${className}`}>{children}</div>
 }
 
-function SectionHeading({ eyebrow, title, body, id }: { eyebrow: string; title: ReactNode; body?: ReactNode; id: string }) {
+function SectionHead({ id, kicker, title, body }: { id: string; kicker: string; title: ReactNode; body?: ReactNode }) {
   return (
     <div className="max-w-2xl">
-      <p className="text-sm font-semibold text-brand">{eyebrow}</p>
-      <h2 id={id} className="font-display mt-2 text-3xl leading-[1.05] font-extrabold tracking-tight text-ink sm:text-[2.6rem]">
+      <p className="text-[13px] font-medium text-brand">{kicker}</p>
+      <h2 id={id} className="mt-2 font-display text-[clamp(1.75rem,3.6vw,2.5rem)] leading-[1.1] font-semibold tracking-tight text-ink">
         {title}
       </h2>
-      {body && <p className="mt-3 text-base leading-relaxed text-ink-2 sm:text-lg">{body}</p>}
+      {body && <p className="mt-4 text-[17px] leading-relaxed text-ink-2">{body}</p>}
     </div>
   )
 }
 
-/* ───────────── How it works ───────────── */
+/* ───────────── From social selling to a connected operation ───────────── */
 
 const STEPS = [
   {
-    icon: Store,
-    title: 'Add your products',
-    body: 'Photos, prices, sizes and colours. Stock is tracked for you, so you never sell what you don’t have.',
+    title: 'Sell wherever your customers are',
+    body: 'Publish a storefront with your own name, share it in your bio, posts and chats, and record in-person or phone sales in the same place.',
   },
   {
-    icon: Share2,
-    title: 'Share your link',
-    body: 'One shop link for your WhatsApp Status, Instagram bio and TikTok. A QR code for your stall and packaging.',
+    title: 'Run the operation from one workspace',
+    body: 'Every order lands in one queue with its payment, stock reservation and delivery. Your team works from the same list, with the access their role allows.',
   },
   {
-    icon: Truck,
-    title: 'Get paid & deliver',
-    body: 'Buyers pay by M-Pesa or cash on delivery, with delivery priced before they pay. You see each order the moment it lands.',
+    title: 'Get paid and keep the books straight',
+    body: 'Customers pay with the methods available in your country. Payments are matched to orders, refunds are recorded, and every change is in the audit log.',
   },
 ]
 
 export function HowItWorks() {
   return (
-    <section aria-labelledby="how-title" id="how" className="scroll-mt-20 px-4 py-20 sm:px-6 lg:py-28">
-      <div className="mx-auto max-w-6xl">
-        <SectionHeading id="how-title" eyebrow="How it works" title="From chat to checkout in three steps." />
-        <ol className="mt-12 grid gap-10 md:grid-cols-3 md:gap-8">
+    <section aria-labelledby="how-title" id="how" className="scroll-mt-20 border-t border-line py-20 lg:py-28">
+      <Container>
+        <SectionHead
+          id="how-title"
+          kicker="How it works"
+          title="From social selling to a connected commerce operation."
+          body="Most businesses start with a phone, a few chats and a spreadsheet. Fungua keeps that simplicity for customers and gives the business the structure behind it."
+        />
+        <ol className="mt-12 grid gap-px overflow-hidden rounded-xl border border-line bg-line md:grid-cols-3">
           {STEPS.map((s, i) => (
-            <RevealItem key={s.title} delay={i * 0.08} className="relative border-t-2 border-ink pt-5">
-                <span className="font-display tnum text-5xl font-extrabold text-brand">{i + 1}</span>
-                <h3 className="font-display mt-3 flex items-center gap-2 text-xl font-extrabold tracking-tight text-ink">
-                  <s.icon className="size-5 text-ink-2" aria-hidden />
-                  {s.title}
-                </h3>
-                <p className="mt-2 leading-relaxed text-ink-2">{s.body}</p>
-              </RevealItem>
+            <li key={s.title} className="bg-panel p-6 lg:p-8">
+              <span className="tnum text-[13px] font-medium text-ink-3">0{i + 1}</span>
+              <h3 className="mt-3 text-lg font-semibold tracking-tight text-ink">{s.title}</h3>
+              <p className="mt-2 leading-relaxed text-ink-2">{s.body}</p>
+            </li>
           ))}
         </ol>
-      </div>
+      </Container>
     </section>
   )
 }
 
 /* ───────────── Features ───────────── */
 
-const FEATURES = [
-  {
-    icon: Wallet,
-    title: 'M-Pesa & cash on delivery',
-    body: 'Show your Till or Paybill with the order number, or let buyers pay on delivery. Your registered business name is shown so buyers know who they’re paying.',
-  },
-  {
-    icon: MessageCircle,
-    title: 'Order on WhatsApp',
-    body: 'Buyers who prefer to chat can send their whole cart to your WhatsApp as a ready-made message.',
-  },
-  {
-    icon: MapIcon,
-    title: 'Delivery zones on a map',
-    body: 'Drop your pin and set fees by distance — “up to 5 km, KES 200”. Buyers drop their pin and see the exact fee before paying.',
-  },
-  {
-    icon: PackageCheck,
-    title: 'Tracking link for buyers',
-    body: 'Every order gets a private link with a real, timestamped timeline. No account or app needed.',
-  },
-  {
-    icon: BellRing,
-    title: 'Live back office',
-    body: 'Orders, payments and stock update live, with an optional sale chime. A to-do queue tells you what to confirm and pack next.',
-  },
-  {
-    icon: Boxes,
-    title: 'Stock that never oversells',
-    body: 'Stock is reserved when an order is placed, so two buyers can’t both get the last one.',
-  },
-  {
-    icon: Globe,
-    title: 'Any currency, any country',
-    body: 'Prices, phone numbers and time zones follow your business. Kenya first, with shillings and M-Pesa built in.',
-  },
+const FEATURES: { icon: typeof Store; title: string; body: string }[] = [
+  { icon: Store, title: 'Storefronts', body: 'A fast mobile shop in your brand: catalogue, categories, cart, checkout and buyer order tracking. No buyer account needed.' },
+  { icon: Receipt, title: 'Orders', body: 'One queue for every channel, with server-calculated totals, a clear status flow, returns and a full history for each order.' },
+  { icon: Boxes, title: 'Inventory', body: 'Stock is reserved when an order is placed and committed when it ships, so you never sell what you do not have.' },
+  { icon: Users, title: 'Customers', body: 'Contact details, order history and marketing consent per customer. Opt-outs are honoured everywhere, automatically.' },
+  { icon: Wallet, title: 'Payments and reconciliation', body: 'Provider-confirmed payments are matched to orders. Anything that does not match waits for review instead of being guessed.' },
+  { icon: Truck, title: 'Fulfilment and delivery', body: 'Pickup, delivery priced by distance, pick-up points and rider job links, with the customer kept informed at each step.' },
+  { icon: BarChart3, title: 'Analytics', body: 'Sales, orders, average order and unpaid balances per currency, in your business time zone. Currencies are never added together.' },
+  { icon: KeyRound, title: 'Team and permissions', body: 'Six roles from owner to analyst. Each person sees and changes only what their role allows, enforced on the server.' },
 ]
 
 export function Features() {
   return (
-    <section aria-labelledby="features-title" id="features" className="scroll-mt-20 border-t border-line bg-panel px-4 py-20 sm:px-6 lg:py-28">
-      <div className="mx-auto max-w-6xl">
-        <SectionHeading
-          id="features-title"
-          eyebrow="What you get"
-          title="Everything a social seller needs. Nothing they don’t."
-          body="Built around how people actually buy from small shops: on their phone, through chat, paying by mobile money."
-        />
-        <ul className="mt-12 grid gap-x-10 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f, i) => (
-            <RevealItem key={f.title} delay={(i % 3) * 0.06} className="flex gap-4 border-t border-line py-6">
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand">
-                  <f.icon className="size-5" aria-hidden />
-                </span>
-                <div className="min-w-0">
-                  <h3 className="font-display text-lg font-extrabold tracking-tight text-ink">{f.title}</h3>
-                  <p className="mt-1 text-[15px] leading-relaxed text-ink-2">{f.body}</p>
-                </div>
-              </RevealItem>
+    <section aria-labelledby="features-title" id="features" className="scroll-mt-20 border-t border-line py-20 lg:py-28">
+      <Container>
+        <SectionHead id="features-title" kicker="The workspace" title="Everything behind the sale, in one place." />
+        <ul className="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+          {FEATURES.map((f) => (
+            <li key={f.title} className="border-t border-line pt-5">
+              <f.icon className="size-5 text-ink" strokeWidth={1.75} aria-hidden />
+              <h3 className="mt-4 text-[15px] font-semibold text-ink">{f.title}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink-2">{f.body}</p>
+            </li>
           ))}
         </ul>
-      </div>
+      </Container>
     </section>
   )
 }
 
-/* ───────────── Built honest ───────────── */
+/* ───────────── Global ───────────── */
 
-const HONEST = [
+const LOCALES = [
+  { country: 'Germany', currency: 'EUR', sample: '1.234,56 €', tz: 'Europe/Berlin' },
+  { country: 'Japan', currency: 'JPY', sample: '￥123,456', tz: 'Asia/Tokyo' },
+  { country: 'Kuwait', currency: 'KWD', sample: 'KWD 1,234.567', tz: 'Asia/Kuwait' },
+  { country: 'Kenya', currency: 'KES', sample: 'Ksh 1,234.56', tz: 'Africa/Nairobi' },
+  { country: 'United Kingdom', currency: 'GBP', sample: '£1,234.56', tz: 'Europe/London' },
+  { country: 'United States', currency: 'USD', sample: '$1,234.56', tz: 'America/New_York' },
+]
+
+export function Global() {
+  return (
+    <section aria-labelledby="global-title" className="border-t border-line py-20 lg:py-28">
+      <Container className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
+        <div>
+          <SectionHead
+            id="global-title"
+            kicker="Built for any country"
+            title="Local where it matters. One system everywhere."
+            body="Each business is set up for its own country: currency, number and date formats, time zone, phone numbers, address fields, tax mode and the payment methods available there."
+          />
+          <ul className="mt-8 space-y-3 text-[15px] text-ink-2">
+            <li className="flex gap-3">
+              <Globe2 className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
+              ISO currency codes with exact minor units, including zero- and three-decimal currencies.
+            </li>
+            <li className="flex gap-3">
+              <FileClock className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
+              Reports and days follow your business time zone, including daylight-saving changes.
+            </li>
+            <li className="flex gap-3">
+              <CreditCard className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
+              Payment options depend on the country and on which providers your business connects.
+            </li>
+          </ul>
+          <p className="mt-6 text-xs leading-relaxed text-ink-3">
+            Tax settings calculate and show tax; they are not legal or tax advice. Check local requirements with an adviser.
+          </p>
+        </div>
+        <div className="overflow-hidden rounded-xl border border-line bg-panel">
+          <table className="w-full text-sm">
+            <caption className="sr-only">Examples of how amounts are formatted per country</caption>
+            <thead>
+              <tr className="border-b border-line text-left text-xs text-ink-3">
+                <th scope="col" className="px-5 py-3 font-medium">
+                  Country
+                </th>
+                <th scope="col" className="px-5 py-3 font-medium">
+                  Currency
+                </th>
+                <th scope="col" className="px-5 py-3 text-right font-medium">
+                  Amount shown as
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {LOCALES.map((l) => (
+                <tr key={l.currency}>
+                  <td className="px-5 py-3.5 text-ink">
+                    {l.country}
+                    <span className="block text-xs text-ink-3">{l.tz}</span>
+                  </td>
+                  <td className="tnum px-5 py-3.5 text-ink-2">{l.currency}</td>
+                  <td className="tnum px-5 py-3.5 text-right font-medium text-ink">{l.sample}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Container>
+    </section>
+  )
+}
+
+/* ───────────── Trust and security ───────────── */
+
+const TRUST: { icon: typeof Lock; title: string; body: string }[] = [
+  { icon: Lock, title: 'Each business is isolated', body: 'Row-level security on every table. One business can never read or change another’s data.' },
+  { icon: ShieldCheck, title: 'Prices are set by the server', body: 'Totals, tax and delivery fees are calculated on the server. A price sent by a browser is ignored.' },
+  { icon: Wallet, title: 'Your money goes to you', body: `Customers pay into your own accounts. ${BRAND.name} does not hold funds. A payment counts as verified only when the provider confirms it.` },
+  { icon: FileClock, title: 'Everything is on the record', body: 'Orders, stock, payments and settings changes are written to an audit log you can review.' },
+]
+
+export function Trust() {
+  return (
+    <section aria-labelledby="trust-title" id="security" className="scroll-mt-20 border-t border-line bg-panel py-20 lg:py-28">
+      <Container>
+        <SectionHead
+          id="trust-title"
+          kicker="Trust and security"
+          title="Built to be relied on."
+          body="Commerce runs on trust, from the customer paying for an order to the team member issuing a refund. These rules are enforced in the system, not left to good intentions."
+        />
+        <ul className="mt-12 grid gap-x-10 gap-y-8 sm:grid-cols-2">
+          {TRUST.map((t) => (
+            <li key={t.title} className="flex gap-4 border-t border-line pt-5">
+              <t.icon className="mt-0.5 size-5 shrink-0 text-ink" strokeWidth={1.75} aria-hidden />
+              <div>
+                <h3 className="text-[15px] font-semibold text-ink">{t.title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-ink-2">{t.body}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Container>
+    </section>
+  )
+}
+
+/* ───────────── Pricing (structure only; prices not yet set) ───────────── */
+
+const PLANS = [
   {
-    icon: BadgeCheck,
-    title: 'Verified reviews only',
-    body: 'Only buyers with a delivered order can leave a review. Sellers can’t type, import or hide them.',
+    name: 'Starter',
+    for: 'For a business getting its first storefront online.',
+    items: ['Storefront and checkout', 'Orders, products and stock', 'Manual payment recording', 'Owner account'],
   },
   {
-    icon: Check,
-    title: 'No fake urgency',
-    body: 'No looping countdowns, invented “people viewing” or made-up sold counts. “Only 3 left” appears only when it’s true.',
+    name: 'Growth',
+    for: 'For a business selling across several channels with a team.',
+    items: ['Everything in Starter', 'Payment provider connections', 'Delivery zones and rider links', 'Team members with roles'],
   },
   {
-    icon: Receipt,
-    title: 'Prices include delivery',
-    body: 'Buyers see the full total, delivery included, before they pay. No surprise fees at the end.',
+    name: 'Scale',
+    for: 'For multi-location or high-volume operations.',
+    items: ['Everything in Growth', 'Several businesses and currencies', 'Custom domain', 'Priority support'],
   },
 ]
 
-export function BuiltHonest() {
+export function Pricing() {
   return (
-    <section aria-labelledby="honest-title" className="px-4 py-20 sm:px-6 lg:py-28">
-      <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
-        <SectionHeading
-          id="honest-title"
-          eyebrow="Built honest"
-          title={
-            <>
-              Trust is the product. <span className="text-brand">We enforce it in code.</span>
-            </>
-          }
-          body="Buyers of small online shops worry about scams. Every shop on Rafu plays by the same honest rules — they’re built into the platform, not left to good intentions."
+    <section aria-labelledby="pricing-title" id="pricing" className="scroll-mt-20 border-t border-line py-20 lg:py-28">
+      <Container>
+        <SectionHead
+          id="pricing-title"
+          kicker="Pricing"
+          title="Plans that grow with the business."
+          body="Prices will be set per region and published before launch. This is the proposed plan structure, not a final offer."
         />
-        <ul className="space-y-0">
-          {HONEST.map((h, i) => (
-            <RevealItem key={h.title} delay={i * 0.08} className="flex gap-4 border-b border-line py-6 first:pt-0">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-pos-soft text-pos">
-                  <h.icon className="size-5" aria-hidden />
-                </span>
-                <div>
-                  <h3 className="font-display text-xl font-extrabold tracking-tight text-ink">{h.title}</h3>
-                  <p className="mt-1 leading-relaxed text-ink-2">{h.body}</p>
-                </div>
-              </RevealItem>
+        <div className="mt-12 grid gap-px overflow-hidden rounded-xl border border-line bg-line md:grid-cols-3">
+          {PLANS.map((p) => (
+            <div key={p.name} className="flex flex-col bg-panel p-6 lg:p-8">
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold tracking-tight text-ink">{p.name}</h3>
+              </div>
+              <p className="mt-1.5 text-sm text-ink-2">{p.for}</p>
+              <p className="mt-6 text-[15px] font-medium text-ink-3">Price announced at launch</p>
+              <ul className="mt-6 space-y-2.5 border-t border-line pt-6 text-sm text-ink-2">
+                {p.items.map((it) => (
+                  <li key={it}>{it}</li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
-      </div>
+        </div>
+      </Container>
     </section>
   )
 }
 
-/* ───────────── Integration status ───────────── */
+/* ───────────── What is connected today (honest status) ───────────── */
 
-type Status = 'live' | 'coming'
+type Status = 'live' | 'adapter'
 const INTEGRATIONS: { name: string; detail: string; status: Status }[] = [
-  { name: 'M-Pesa Till & Paybill', detail: 'Buyers pay to your number with the order reference; you mark it paid.', status: 'live' },
-  { name: 'Cash on delivery', detail: 'Optional, switched on per shop.', status: 'live' },
-  { name: 'Order on WhatsApp', detail: 'Opens WhatsApp with the cart as a message to you.', status: 'live' },
-  { name: 'M-Pesa STK push (Daraja)', detail: 'Payment prompt on the buyer’s phone and automatic confirmation. Adapter ready, not connected yet.', status: 'coming' },
-  { name: 'WhatsApp Business API', detail: 'Automatic order updates to buyers. Adapter ready, not connected yet.', status: 'coming' },
+  { name: 'Manual payments', detail: 'Bank transfer, mobile money to your own number, cash on delivery. You record them; they stay marked unverified.', status: 'live' },
+  { name: 'Order by chat', detail: 'Customers can send their cart to you on WhatsApp in one tap.', status: 'live' },
+  { name: 'M-Pesa (Daraja)', detail: 'Payment prompts and automatic matching, paid into each business’s own Till or Paybill.', status: 'adapter' },
+  { name: 'Paystack, Stripe', detail: 'Signed webhooks record provider-confirmed payments.', status: 'adapter' },
+  { name: 'WhatsApp Business, email, SMS', detail: 'Order updates to customers, with consent and opt-out handling.', status: 'adapter' },
 ]
 
 export function IntegrationStatus() {
   return (
-    <section aria-labelledby="status-title" className="border-y border-line bg-panel px-4 py-16 sm:px-6">
-      <div className="mx-auto max-w-6xl">
-        <div className="flex items-center gap-2">
-          <Plug className="size-5 text-ink-2" aria-hidden />
-          <h2 id="status-title" className="font-display text-2xl font-extrabold tracking-tight text-ink">
-            What’s connected today
-          </h2>
-        </div>
-        <p className="mt-2 max-w-2xl text-ink-2">
-          We’d rather tell you than surprise you. Until the M-Pesa prompt is connected, you confirm payments yourself from your M-Pesa messages.
-        </p>
-        <ul className="mt-6 divide-y divide-line border-y border-line">
+    <section aria-labelledby="status-title" className="border-t border-line py-20 lg:py-24">
+      <Container>
+        <SectionHead
+          id="status-title"
+          kicker="Integrations"
+          title="What is connected today."
+          body="Provider integrations are built and tested, and switch on once a business connects its own account. Until then, nothing is shown as automatic."
+        />
+        <ul className="mt-10 divide-y divide-line border-y border-line">
           {INTEGRATIONS.map((it) => (
-            <li key={it.name} className="flex flex-col gap-1 py-4 sm:flex-row sm:items-center sm:gap-6">
-              <span className="w-56 shrink-0 font-semibold text-ink">{it.name}</span>
-              <span className="flex-1 text-sm text-ink-2">{it.detail}</span>
+            <li key={it.name} className="grid gap-1 py-4 sm:grid-cols-[220px_1fr_auto] sm:items-center sm:gap-6">
+              <span className="font-medium text-ink">{it.name}</span>
+              <span className="text-sm text-ink-2">{it.detail}</span>
               <span
-                className={`inline-flex h-6 w-fit items-center gap-1.5 rounded-md px-2 text-xs font-semibold ${
-                  it.status === 'live' ? 'bg-pos-soft text-pos' : 'bg-warn-soft text-warn'
-                }`}
+                className={`inline-flex h-6 w-fit items-center gap-1.5 rounded-md px-2 text-xs font-medium ${it.status === 'live' ? 'bg-pos-soft text-pos' : 'bg-sunken text-ink-2'}`}
               >
                 <span className="size-1.5 rounded-full bg-current" aria-hidden />
-                {it.status === 'live' ? 'Live' : 'Coming — adapter ready'}
+                {it.status === 'live' ? 'Available' : 'Ready to connect'}
               </span>
             </li>
           ))}
         </ul>
-      </div>
+      </Container>
     </section>
   )
 }
@@ -263,48 +316,48 @@ export function IntegrationStatus() {
 
 const FAQS = [
   {
-    q: 'Do my buyers need an account or an app?',
-    a: 'No. They open your link, add to cart and check out with their name and phone number. Their tracking link works without signing in.',
+    q: 'Do customers need an account or an app?',
+    a: 'No. They open your storefront, add to cart and check out with their name and contact details. Their order tracking link works without signing in.',
+  },
+  {
+    q: 'Which countries and currencies are supported?',
+    a: 'Each business chooses its country, currency and time zone. Amounts use the currency’s exact minor units, and dates and numbers follow the local format. Payment methods depend on what is available in that country.',
   },
   {
     q: 'How do I get paid?',
-    a: 'Buyers pay straight to your own M-Pesa Till or Paybill, or in cash on delivery. Rafu doesn’t hold your money. Until automatic M-Pesa confirmation is connected, you confirm each payment yourself.',
+    a: `Customers pay into your own accounts, by a connected provider or by a method you record yourself. ${BRAND.name} does not hold your money. Manually recorded payments are clearly marked as unverified.`,
   },
   {
-    q: 'How is delivery priced?',
-    a: 'You drop a pin for your shop and set fees by distance. The buyer drops a pin for their address, and the matching fee is added to their total before they pay.',
+    q: 'Can my team use it?',
+    a: 'Yes. Invite people with one of six roles. Permissions are enforced on the server, so a role cannot see or change more than it should.',
   },
   {
-    q: 'I already sell on WhatsApp. Why add a shop link?',
-    a: 'Your catalogue, prices and stock live in one place instead of in screenshots. Buyers who still prefer chat can send you their cart on WhatsApp in one tap.',
+    q: 'Will my storefront show reviews and ratings straight away?',
+    a: 'Only after real customers with delivered orders leave them. A new storefront says so plainly. Reviews and sales numbers are never invented.',
   },
   {
-    q: 'Can I use Rafu outside Kenya?',
-    a: 'Yes. Your shop uses your country’s currency, phone format and time zone. M-Pesa options appear for sellers who use it; cash on delivery works everywhere.',
-  },
-  {
-    q: 'Will my shop show reviews and ratings straight away?',
-    a: 'Only once real buyers with delivered orders leave them. A new shop says so plainly — we never seed reviews or sales numbers.',
+    q: 'Is Fungua the final name?',
+    a: 'Fungua is the proposed name and is pending trademark and domain checks.',
   },
 ]
 
 export function Faq() {
   return (
-    <section aria-labelledby="faq-title" id="faq" className="scroll-mt-20 px-4 py-20 sm:px-6 lg:py-28">
-      <div className="mx-auto max-w-3xl">
-        <SectionHeading id="faq-title" eyebrow="Questions" title="Good questions, straight answers." />
-        <div className="mt-10 divide-y divide-line border-y border-line">
+    <section aria-labelledby="faq-title" id="faq" className="scroll-mt-20 border-t border-line py-20 lg:py-28">
+      <Container className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-16">
+        <SectionHead id="faq-title" kicker="Questions" title="Straight answers." />
+        <div className="divide-y divide-line border-y border-line">
           {FAQS.map((f) => (
-            <details key={f.q} className="group py-1">
-              <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-3 text-left text-base font-semibold text-ink [&::-webkit-details-marker]:hidden">
+            <details key={f.q} className="group">
+              <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-4 text-left text-[15px] font-medium text-ink [&::-webkit-details-marker]:hidden">
                 {f.q}
-                <ChevronDown className="size-5 shrink-0 text-ink-3 transition-transform group-open:rotate-180" aria-hidden />
+                <ChevronDown className="size-4 shrink-0 text-ink-3 transition-transform group-open:rotate-180" aria-hidden />
               </summary>
-              <p className="pb-5 leading-relaxed text-ink-2">{f.a}</p>
+              <p className="pb-5 text-[15px] leading-relaxed text-ink-2">{f.a}</p>
             </details>
           ))}
         </div>
-      </div>
+      </Container>
     </section>
   )
 }
@@ -313,63 +366,95 @@ export function Faq() {
 
 export function FinalCta() {
   return (
-    <section aria-labelledby="cta-title" className="px-4 pb-20 sm:px-6">
-      <div className="mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-brand px-6 py-14 text-center text-white sm:px-12">
-        <h2 id="cta-title" className="font-display text-3xl leading-tight font-extrabold tracking-tight sm:text-5xl">
-          Your buyers are already on WhatsApp.
-          <br className="hidden sm:block" /> Give them a shop.
-        </h2>
-        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+    <section aria-labelledby="cta-title" className="border-t border-line bg-[#0b0f17] py-20 text-white lg:py-24">
+      <Container className="flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-end">
+        <div className="max-w-2xl">
+          <h2 id="cta-title" className="font-display text-[clamp(1.75rem,3.6vw,2.75rem)] leading-[1.08] font-semibold tracking-tight">
+            Open commerce. Everywhere.
+          </h2>
+          <p className="mt-4 text-[17px] leading-relaxed text-[#b4bccb]">Explore a working demo workspace and storefront with sample data. No sign-up needed.</p>
+        </div>
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
           <Link
             to="/app"
-            className="inline-flex h-12 items-center justify-center rounded-xl bg-white px-6 text-[15px] font-semibold text-[#160F1E] transition-transform hover:scale-[1.02] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.98]"
+            className="inline-flex h-11 items-center justify-center rounded-lg bg-white px-5 text-sm font-semibold text-[#0e1420] hover:bg-[#edf0f5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
-            Open your shop free
+            Open the workspace
           </Link>
           <Link
             to={DEMO_SHOP_PATH}
-            className="inline-flex h-12 items-center justify-center rounded-xl border border-white/60 px-6 text-[15px] font-semibold text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="inline-flex h-11 items-center justify-center rounded-lg border border-white/25 px-5 text-sm font-semibold text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
-            See a demo shop
+            View a demo storefront
           </Link>
         </div>
-      </div>
+      </Container>
     </section>
   )
 }
 
+const FOOTER_COLUMNS: { title: string; links: { label: string; to: string; internal?: boolean }[] }[] = [
+  {
+    title: 'Product',
+    links: [
+      { label: 'How it works', to: '#how' },
+      { label: 'Features', to: '#features' },
+      { label: 'Security', to: '#security' },
+      { label: 'Pricing', to: '#pricing' },
+    ],
+  },
+  {
+    title: 'Try it',
+    links: [
+      { label: 'Demo workspace', to: '/app', internal: true },
+      { label: 'Demo storefront', to: DEMO_SHOP_PATH, internal: true },
+      { label: 'Sign in', to: '/app', internal: true },
+    ],
+  },
+  {
+    title: 'Legal',
+    links: [
+      { label: 'Privacy', to: '/legal/privacy', internal: true },
+      { label: 'Terms', to: '/legal/terms', internal: true },
+    ],
+  },
+]
+
 export function LandingFooter() {
   return (
-    <footer className="border-t border-line px-4 py-10 sm:px-6">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <RafuLogo size={28} />
-          <p className="mt-2 text-sm text-ink-3">Kenya first, built for everywhere.</p>
+    <footer className="border-t border-line py-12">
+      <Container>
+        <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+          <div>
+            <FunguaLogo size={22} />
+            <p className="mt-3 max-w-xs text-sm text-ink-3">{BRAND.tagline}</p>
+          </div>
+          {FOOTER_COLUMNS.map((c) => (
+            <nav key={c.title} aria-label={c.title}>
+              <p className="text-[13px] font-medium text-ink">{c.title}</p>
+              <ul className="mt-3 space-y-2 text-sm text-ink-2">
+                {c.links.map((l) => (
+                  <li key={l.label}>
+                    {l.internal ? (
+                      <Link to={l.to} className="hover:text-ink">
+                        {l.label}
+                      </Link>
+                    ) : (
+                      <a href={l.to} className="hover:text-ink">
+                        {l.label}
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          ))}
         </div>
-        <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-2">
-          <Link to="/app" className="hover:text-ink">
-            Open your shop
-          </Link>
-          <Link to={DEMO_SHOP_PATH} className="hover:text-ink">
-            Demo shop
-          </Link>
-          <a href="#faq" className="hover:text-ink">
-            FAQ
-          </a>
-          <Link to="/app" className="hover:text-ink">
-            Sign in
-          </Link>
-          <Link to="/legal/privacy" className="hover:text-ink">
-            Privacy
-          </Link>
-          <Link to="/legal/terms" className="hover:text-ink">
-            Terms
-          </Link>
-        </nav>
-      </div>
-      <p className="mx-auto mt-6 max-w-6xl text-xs text-ink-3">
-        M-Pesa is a trademark of Safaricom PLC. WhatsApp is a trademark of Meta Platforms, Inc.
-      </p>
+        <div className="mt-10 flex flex-col gap-2 border-t border-line pt-6 text-xs text-ink-3 sm:flex-row sm:justify-between">
+          <p>{BRAND.name} is a proposed name, pending trademark and domain clearance.</p>
+          <p>M-Pesa is a trademark of Safaricom PLC. WhatsApp is a trademark of Meta Platforms, Inc.</p>
+        </div>
+      </Container>
     </footer>
   )
 }

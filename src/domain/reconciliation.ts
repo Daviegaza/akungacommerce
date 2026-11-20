@@ -268,7 +268,7 @@ export type ReceiptVerification =
     }
 
 /**
- * Turn a lookup into a verdict. In manual mode nothing reports to Rafu, so a
+ * Turn a lookup into a verdict. In manual mode nothing reports to Fungua, so a
  * code can never be confirmed automatically — say so instead of guessing.
  */
 export function verdictFor(input: {

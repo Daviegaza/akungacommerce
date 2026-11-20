@@ -25,7 +25,7 @@ export function WishlistPage({ slug, data }: { slug: string; data: StorefrontDat
     <>
       <ShopHeader slug={slug} shop={shop} products={products} showBack />
       <main className="mx-auto max-w-7xl px-4 pt-6 sm:px-6">
-        <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">Saved</h1>
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">Saved</h1>
         <p className="mt-1 text-sm text-ink-3">Kept on this device only. No account needed.</p>
 
         {saved.length === 0 ? (
@@ -33,7 +33,7 @@ export function WishlistPage({ slug, data }: { slug: string; data: StorefrontDat
             <span className="grid size-16 place-items-center rounded-full bg-brand-soft text-brand">
               <Heart className="size-7" aria-hidden />
             </span>
-            <p className="font-display text-xl font-extrabold text-ink">Nothing saved yet</p>
+            <p className="font-display text-xl font-semibold text-ink">Nothing saved yet</p>
             <p className="max-w-xs text-sm text-ink-3">Tap the heart on anything you like to find it here later.</p>
             <Link
               to={shopPath(slug)}

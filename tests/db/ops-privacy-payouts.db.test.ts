@@ -176,7 +176,7 @@ run('per-shop M-Pesa credentials', () => {
     await expect(asUser(null, SET, creds(s.org))).rejects.toThrow(/permission denied/)
   })
 
-  it('refuses "verified" until an M-Pesa payment has reached Rafu; clearing removes the Vault secrets', async () => {
+  it('refuses "verified" until an M-Pesa payment has reached Fungua; clearing removes the Vault secrets', async () => {
     const s = await shop()
     await expect(one(s.owner, `select public.mark_mpesa_verified($1)`, [s.org])).rejects.toThrow(/credentials first/)
     await one(s.owner, SET, creds(s.org))

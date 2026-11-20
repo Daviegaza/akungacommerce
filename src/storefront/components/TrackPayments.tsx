@@ -38,7 +38,7 @@ export function BankTransferPanel({ order, money }: { order: TrackedOrder; money
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm text-ink-2">Transfer exactly</p>
-          <p className="font-display text-4xl font-extrabold leading-tight tracking-tight tnum">{money(due)}</p>
+          <p className="font-display text-4xl font-semibold leading-tight tracking-tight tnum">{money(due)}</p>
           {order.paidMinor > 0 && <p className="text-xs text-ink-3 tnum">{money(order.paidMinor)} of {money(order.totalMinor)} received</p>}
         </div>
         <div className="flex flex-col items-end gap-1.5">

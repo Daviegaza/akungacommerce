@@ -19,7 +19,7 @@ export function ShopAvatar({ shop, size = 36, className }: { shop: Pick<PublicSh
       {shop.logoUrl && failedUrl !== shop.logoUrl ? (
         <img src={shop.logoUrl} alt="" className="size-full object-cover" decoding="async" onError={() => setFailedUrl(shop.logoUrl)} />
       ) : (
-        <span className="font-display font-extrabold" style={{ fontSize: size * 0.45 }} aria-hidden>
+        <span className="font-display font-semibold" style={{ fontSize: size * 0.45 }} aria-hidden>
           {initialOf(shop.name)}
         </span>
       )}
@@ -80,7 +80,7 @@ export function ShopHeader({
         ) : null}
         <Link to={shopPath(slug)} className="flex min-w-0 items-center gap-2.5 rounded-full py-1 pr-2 pl-1" aria-label={`${shop.name} home`}>
           <ShopAvatar shop={shop} size={34} />
-          <span className="truncate font-display text-[17px] font-extrabold tracking-tight text-ink sm:max-w-[14rem]">{shop.name}</span>
+          <span className="truncate font-display text-[17px] font-semibold tracking-tight text-ink sm:max-w-[14rem]">{shop.name}</span>
         </Link>
 
         <div className="mx-auto hidden max-w-xl flex-1 sm:block">

@@ -54,7 +54,7 @@ export function Testimonials() {
           viewport={{ once: true, margin: '-100px' }}
           className="text-center mb-16"
         >
-          <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-surface-900 dark:text-white">
+          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-surface-900 dark:text-white">
             Loved by creators
           </h2>
           <p className="mt-2 text-surface-500 dark:text-surface-400 text-lg">

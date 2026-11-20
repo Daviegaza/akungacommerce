@@ -136,7 +136,7 @@ describe('verification and buyer proof (demo)', () => {
     expect(trust.phoneVerified).toBe(false)
     expect(trust.mpesaName).toBeNull()
     expect(trust.documentsApproved).toBe(false)
-    expect(trust.onRafuSince).toMatch(/^\d{4}-/)
+    expect(trust.onPlatformSince).toMatch(/^\d{4}-/)
     expect(trust.completedOrders === null || trust.completedOrders >= 5).toBe(true)
   })
 

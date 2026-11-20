@@ -38,7 +38,7 @@ function PaymentReceipts({ token, paidMinor, locale, timezone }: Omit<TrackTrust
 
   return (
     <section aria-labelledby="rafu-receipts" className="rounded-[var(--radius-card)] bg-panel p-4 shadow-[var(--shadow-card)] sm:p-5 ak-rise">
-      <h2 id="rafu-receipts" className="flex items-center gap-2 text-lg font-extrabold tracking-tight">
+      <h2 id="rafu-receipts" className="flex items-center gap-2 text-lg font-semibold tracking-tight">
         <ReceiptText className="size-5 text-ink-2" aria-hidden />
         {list.length === 1 ? 'Payment receipt' : 'Payment receipts'}
       </h2>

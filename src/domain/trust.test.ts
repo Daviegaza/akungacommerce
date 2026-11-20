@@ -4,13 +4,13 @@ import {
   completedOrdersLabel,
   maskReceipt,
   normaliseBusinessName,
-  onRafuSinceLabel,
+  onPlatformSinceLabel,
   publicCompletedOrders,
   trustBadges,
   type ShopTrustFacts,
 } from './trust'
 
-const NONE: ShopTrustFacts = { phoneVerified: false, mpesaName: null, documentsApproved: false, onRafuSince: '2026-03-02T08:00:00Z', completedOrders: null }
+const NONE: ShopTrustFacts = { phoneVerified: false, mpesaName: null, documentsApproved: false, onPlatformSince: '2026-03-02T08:00:00Z', completedOrders: null }
 
 describe('business name matching', () => {
   it('ignores case, punctuation, spacing, accents and the shortcode prefix', () => {
@@ -51,7 +51,7 @@ describe('trust badges', () => {
     const badges = trustBadges({ ...NONE, phoneVerified: true, mpesaName: 'MTO HOME LIMITED', documentsApproved: true }, 'Mto Home')
     expect(badges.map((b) => b.id)).toEqual(['mpesa_name', 'documents', 'phone'])
     expect(badges[0].explanation).toContain('Payments go to the M-Pesa business name MTO HOME LIMITED')
-    expect(badges[1].explanation).toContain('Rafu reviewer approved')
+    expect(badges[1].explanation).toContain('Fungua reviewer approved')
   })
 })
 
@@ -63,8 +63,8 @@ describe('shop age and completed orders', () => {
     expect(completedOrdersLabel(null)).toBe('Fewer than 5 completed orders so far')
     expect(completedOrdersLabel(1234)).toBe('1,234 completed orders')
   })
-  it('formats "on Rafu since" as month and year', () => {
-    expect(onRafuSinceLabel('2026-03-02T08:00:00Z', 'en-KE', 'Africa/Nairobi')).toBe('March 2026')
-    expect(onRafuSinceLabel('not a date')).toBe('')
+  it('formats "on Fungua since" as month and year', () => {
+    expect(onPlatformSinceLabel('2026-03-02T08:00:00Z', 'en-KE', 'Africa/Nairobi')).toBe('March 2026')
+    expect(onPlatformSinceLabel('not a date')).toBe('')
   })
 })

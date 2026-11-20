@@ -18,7 +18,7 @@ function markerText(m: MapMarker): string {
 function Pin({ color, label }: { color: string; label: string }) {
   return (
     <div title={label}>
-      <svg width="30" height="38" viewBox="0 0 36 46" className="drop-shadow-[0_3px_5px_rgb(22_15_30/0.35)]" aria-hidden>
+      <svg width="30" height="38" viewBox="0 0 36 46" className="drop-shadow-[0_3px_5px_rgb(14_20_32/0.35)]" aria-hidden>
         <path d="M18 45c-1.2-6-14-15.5-14-27a14 14 0 1 1 28 0c0 11.5-12.8 21-14 27Z" fill={color} stroke="#fff" strokeWidth="2.5" />
         <circle cx="18" cy="18" r="5.5" fill="#fff" />
       </svg>
@@ -32,12 +32,12 @@ function MarkerBody({ marker }: { marker: MapMarker }) {
     return (
       <span
         title={label}
-        className="block size-3.5 rounded-full border-2 border-white shadow-[0_1px_3px_rgb(22_15_30/0.4)]"
-        style={{ background: MAP_COLORS.mango }}
+        className="block size-3.5 rounded-full border-2 border-white shadow-[0_1px_3px_rgb(14_20_32/0.4)]"
+        style={{ background: MAP_COLORS.amber }}
       />
     )
   }
-  // Shop = hibiscus pin, drop-off = ink pin (white stroke keeps it visible on dark tiles).
+  // Shop = cobalt (brand) pin, drop-off = ink pin (white stroke keeps it visible on dark tiles).
   return <Pin color={marker.kind === 'shop' ? 'var(--ak-brand)' : MAP_COLORS.ink} label={label} />
 }
 
@@ -81,12 +81,12 @@ export default function StaticMapView({
         style={{ width: '100%', height: '100%' }}
       >
         {zones.length > 0 && (
-          <Source id="rafu-zones" type="geojson" data={geojson}>
-            <Layer id="rafu-zones-fill" type="fill" paint={{ 'fill-color': MAP_COLORS.hibiscus, 'fill-opacity': 0.08 }} />
+          <Source id="fungua-zones" type="geojson" data={geojson}>
+            <Layer id="fungua-zones-fill" type="fill" paint={{ 'fill-color': MAP_COLORS.cobalt, 'fill-opacity': 0.08 }} />
             <Layer
-              id="rafu-zones-line"
+              id="fungua-zones-line"
               type="line"
-              paint={{ 'line-color': MAP_COLORS.hibiscus, 'line-width': 1.5, 'line-opacity': 0.7, 'line-dasharray': [2, 2] }}
+              paint={{ 'line-color': MAP_COLORS.cobalt, 'line-width': 1.5, 'line-opacity': 0.7, 'line-dasharray': [2, 2] }}
             />
           </Source>
         )}

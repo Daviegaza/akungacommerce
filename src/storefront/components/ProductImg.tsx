@@ -23,7 +23,7 @@ export function ProductImg({
   if (!src || failedSrc === src) {
     return (
       <div role="img" aria-label={name} className={cn('grid place-items-center bg-brand-soft text-brand select-none', className)}>
-        <span className={cn('font-display text-4xl font-extrabold leading-none', initialClassName)} aria-hidden>
+        <span className={cn('font-display text-4xl font-semibold leading-none', initialClassName)} aria-hidden>
           {initialOf(name)}
         </span>
       </div>

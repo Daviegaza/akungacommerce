@@ -91,8 +91,8 @@ export interface ShopTrustFacts {
   /** The M-Pesa business name, present only when it matched the registered name on a verified record. */
   mpesaName: string | null
   documentsApproved: boolean
-  /** When the business joined Rafu (ISO). */
-  onRafuSince: string
+  /** When the business joined Fungua (ISO). */
+  onPlatformSince: string
   /** Delivered orders; null when fewer than COMPLETED_ORDERS_MIN. */
   completedOrders: number | null
 }
@@ -112,14 +112,14 @@ export function trustBadges(facts: ShopTrustFacts, shopName: string): TrustBadge
     out.push({
       id: 'mpesa_name',
       title: 'M-Pesa name checked',
-      explanation: `Payments go to the M-Pesa business name ${facts.mpesaName}. Rafu matched it against a confirmed M-Pesa record.`,
+      explanation: `Payments go to the M-Pesa business name ${facts.mpesaName}. Fungua matched it against a confirmed M-Pesa record.`,
     })
   }
   if (facts.documentsApproved) {
     out.push({
       id: 'documents',
       title: 'Business documents reviewed',
-      explanation: `${shopName} sent business documents and a Rafu reviewer approved them.`,
+      explanation: `${shopName} sent business documents and a Fungua reviewer approved them.`,
     })
   }
   if (facts.phoneVerified) {
@@ -132,8 +132,8 @@ export function trustBadges(facts: ShopTrustFacts, shopName: string): TrustBadge
   return out
 }
 
-/** "On Rafu since March 2026" style label in the shop's locale. */
-export function onRafuSinceLabel(iso: string, locale = 'en', timeZone?: string): string {
+/** "On Fungua since March 2026" style label in the shop's locale. */
+export function onPlatformSinceLabel(iso: string, locale = 'en', timeZone?: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   try {

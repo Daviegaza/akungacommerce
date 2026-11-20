@@ -1,11 +1,13 @@
 /**
- * Single source of truth for the product brand. Proposed name: "Rafu"
- * (Swahili for "shelf"). Change it here and the whole app follows.
+ * Single source of truth for the product brand. Proposed name: "Fungua" (Swahili: "open",
+ * "unfasten"). Pending trademark and domain clearance: never present it as registered.
+ * Change it here and the whole app follows. Guidelines: docs/BRAND_GUIDELINES.md.
  */
 export const BRAND = {
-  name: 'Rafu',
-  tagline: 'Your shop, open everywhere.',
+  name: 'Fungua',
+  tagline: 'Open commerce. Everywhere.',
   description:
-    'Rafu gives social sellers a beautiful shop link, M-Pesa and WhatsApp checkout, delivery maps and a live back office — in any country and currency.',
-  domainPlaceholder: 'rafu.shop',
+    'Fungua is a commerce operating system: sell through your own storefront, social channels and in person, and run products, orders, inventory, customers, payments and fulfilment from one workspace.',
+  /** Placeholder only. No domain has been registered or checked for availability. */
+  domainPlaceholder: 'your-store.example',
 } as const

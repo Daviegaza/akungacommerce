@@ -62,13 +62,13 @@ describe('tracking RPC mappers', () => {
     expect(
       mapTrackBankTransfer({
         provider: 'paystack_dva',
-        account: { bank_name: 'Wema Bank', account_number: '9930012345', account_name: 'Shop / Rafu' },
+        account: { bank_name: 'Wema Bank', account_number: '9930012345', account_name: 'Shop / Fungua' },
         due_now_minor: 2450000,
         reference: 1042,
       }),
     ).toEqual({
       provider: 'paystack_dva',
-      account: { bankName: 'Wema Bank', accountNumber: '9930012345', accountName: 'Shop / Rafu' },
+      account: { bankName: 'Wema Bank', accountNumber: '9930012345', accountName: 'Shop / Fungua' },
       dueNowMinor: 2450000,
       reference: 1042,
       simulated: false,
