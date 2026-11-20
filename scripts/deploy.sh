@@ -13,7 +13,7 @@
 #   2. show pending migrations (db push --dry-run), then apply them
 #   3. set Edge Function secrets from SECRETS_FILE (KEY=value lines; never committed)
 #   4. deploy every Edge Function with the right JWT setting
-#   5. store the two Vault secrets the scheduled jobs need (rafu_functions_url, rafu_service_role_key)
+#   5. store the two scheduler Vault secrets (legacy internal identifiers retained for migration compatibility)
 #      when SUPABASE_SERVICE_ROLE_KEY and SUPABASE_DB_URL are in the environment
 #   6. call /health and print the result
 #
@@ -63,7 +63,7 @@ for f in $WITH_JWT; do run $SUPA functions deploy "$f" --project-ref "$REF"; don
 # 5. Vault secrets for pg_cron -> Edge Function calls (jobs are no-ops until these exist).
 FUNCTIONS_URL="https://${REF}.supabase.co/functions/v1"
 if [ -n "${SUPABASE_DB_URL:-}" ] && [ -n "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
-  echo "+ psql \$SUPABASE_DB_URL: upsert vault secrets rafu_functions_url, rafu_service_role_key"
+  echo "+ psql \$SUPABASE_DB_URL: upsert scheduler Vault secrets (legacy internal identifiers)"
   if [ "$APPLY" = 1 ]; then
     psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -q \
       -v url="$FUNCTIONS_URL" -v key="$SUPABASE_SERVICE_ROLE_KEY" <<'SQL'
