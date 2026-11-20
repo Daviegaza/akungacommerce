@@ -99,9 +99,18 @@ The exact names each function reads are listed at the top of its `index.ts` and 
    ```
 
    The management tool records its own application timestamp in the remote history, while preserving the
-   repository migration name. Do not re-run the SQL or use `db reset` on hosted staging to fix this.
-   Once history is aligned, use normal forward-only `db push` for new migrations. There are no down
-   migrations (see Rollback).
+   repository migration name. Consequently, `migration list` can show both REMOTE-only tool-generated
+   timestamps and LOCAL-only filename timestamps. Reconcile both sides without re-running SQL:
+
+   - For each REMOTE-only timestamp (the management-tool application record), run
+     `npx supabase migration repair --status reverted <remote-only-version>`.
+   - For each LOCAL-only filename timestamp whose migration SQL is already present in staging, run
+     `npx supabase migration repair --status applied <local-file-timestamp>`.
+
+   Repeat until `npx supabase migration list` shows LOCAL and REMOTE aligned. `migration repair` changes
+   history only; it does not apply or revert SQL. Verify each migration name/schema before repairing. Do not
+   re-run the SQL or use `db reset` on hosted staging to fix this. Once history is aligned, use normal
+   forward-only `db push` for new migrations. There are no down migrations (see Rollback).
 4. Create the platform admin row (Fungua reviewers) with the SQL editor, as the service role. No UI does this.
 5. Storage: the `product-images` (public, 5 MB, raster images only) and `verification-docs` (private) buckets
    and their policies are created by migrations. Check them in the dashboard after `db push`.
