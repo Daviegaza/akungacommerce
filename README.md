@@ -221,7 +221,7 @@ Everything below needs an account, a person or a decision. The code side for eac
    its label changes. For M-Pesa: each shop needs a registered Till/Paybill and an approved Daraja app;
    Pochi/personal numbers need an aggregator (none verified).
 3. **Scheduler secrets.** The HTTP jobs (WhatsApp retry, STK query, photo cleanup, domain re-check) stay idle
-   until `rafu_functions_url` and `rafu_service_role_key` are in Vault on the hosted project (deploy script does it).
+   until the two scheduler Vault secrets are in place on the hosted project (the deploy script sets them). Their current identifiers, `rafu_functions_url` and `rafu_service_role_key`, are legacy internal names retained for migration/job compatibility; they are not part of the Fungua customer-facing brand.
 4. **Ops.** An external uptime monitor on `/health` with alerts, and a restore drill against a staging copy.
    Note: a logical restore does not bring back Vault secrets (shops would re-enter M-Pesa keys); use Supabase
    backups/PITR for disaster recovery.
