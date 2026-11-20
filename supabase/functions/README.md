@@ -1,17 +1,18 @@
 # Edge Functions
 
-Nothing here is deployed or connected. Every integration is **adapter only** (code exists and is unit-tested,
-but no credentials, provider registration or end-to-end test). Do not relabel an integration as
-"connected and verified" until a real end-to-end test has passed.
+All 10 Edge Functions are deployed to the dedicated `fungua-staging` project (ref `vlliyapedfzuzgxkgmmt`)
+and report ACTIVE. No provider credentials, webhook registrations or real provider end-to-end tests exist.
+Every integration remains **adapter only**. Do not relabel an integration as "connected and verified"
+until a real end-to-end test has passed. This is staging, not production.
 
 Shared, runtime-agnostic code lives in `_shared/` (Web Crypto only) and is tested with vitest:
 `npx vitest run supabase/functions`. Every function type-checks with Deno
 (`deno check supabase/functions/*/index.ts`, also run in CI).
 
 **What has actually been run:** unit tests of the shared code, database tests of every SQL function the
-functions call, `deno check` of all nine functions, and (2026-11-20) a boot of all nine in the local
+functions call, `deno check` of all ten functions, and (2026-11-20) a boot of all ten in the local
 Supabase edge runtime, where they refused unconfigured or unsigned requests. **No function has been called
-by a real provider (Meta, Safaricom, Stripe, Paystack, Resend, Twilio), and none is deployed.**
+by a real provider (Meta, Safaricom, Stripe, Paystack, Resend, Twilio).**
 
 ## Functions
 
@@ -24,9 +25,9 @@ by a real provider (Meta, Safaricom, Stripe, Paystack, Resend, Twilio), and none
 | `mpesa-callback` | Daraja STK result callback: shared-secret check, dedupe, then `reconcile_mpesa_stk` (auto-match, mismatch/late to review queue). | adapter_only |
 | `mpesa-c2b` | Daraja C2B confirmation (customer paid the Till/Paybill directly): shared-secret check, dedupe, then `reconcile_mpesa_c2b`. | adapter_only |
 | `mpesa-stk-query` | Scheduled fallback for lost STK callbacks: asks Daraja's STK Push Query API about prompts pending 2 min – 24 h (each shop with its own keys), then `apply_mpesa_stk_query`. A "paid" answer never records money (no receipt/amount in the query). Service-role bearer only. | adapter_only, scheduled by pg_cron (idle until the Vault secrets exist) |
-| `media-cleanup` | Deletes orphaned product photos (in `product-images`, referenced by no product or shop, older than 24 h) through the Storage API. Scheduled daily by pg_cron; see "Orphaned photo cleanup". | built, not deployed; scheduled (idle until the Vault secrets exist) |
-| `health` | `GET`: `{ ok, db, time }` for uptime monitors (503 if the database does not answer). With the service-role key as Bearer: which integrations have their secrets set (booleans and missing secret **names**, never values) and the scheduled job status. | built, not deployed; called against the local stack |
-| `verify-custom-domain` | Merchant "Check now" (rate-limited) or a scheduled run: resolves the CNAME/A and ownership TXT records over DNS-over-HTTPS and sets the domain status. DNS only, no certificate or hosting. See "Custom domain DNS check". | built, not deployed |
+| `media-cleanup` | Deletes orphaned product photos (in `product-images`, referenced by no product or shop, older than 24 h) through the Storage API. Scheduled daily by pg_cron; see "Orphaned photo cleanup". | deployed to staging; scheduled (idle until the Vault secrets exist) |
+| `health` | `GET`: `{ ok, db, time }` for uptime monitors (503 if the database does not answer). With the service-role key as Bearer: which integrations have their secrets set (booleans and missing secret **names**, never values) and the scheduled job status. | deployed to staging; HTTP smoke test still required |
+| `verify-custom-domain` | Merchant "Check now" (rate-limited) or a scheduled run: resolves the CNAME/A and ownership TXT records over DNS-over-HTTPS and sets the domain status. DNS only, no certificate or hosting. See "Custom domain DNS check". | deployed to staging; DNS target secrets not configured |
 
 ## Environment variables (placeholders only)
 
@@ -48,7 +49,7 @@ Set the rest with `supabase secrets set NAME=value` — never commit values.
   current IP list from Safaricom; none is shipped here. Which header carries the real caller IP on Supabase
   hosting has **not** been verified.
 
-## Deploy (not run yet)
+## Deployment status and command
 
 ```sh
 supabase functions deploy whatsapp-webhook --no-verify-jwt   # Meta cannot send a Supabase JWT
@@ -64,7 +65,9 @@ supabase functions deploy health --no-verify-jwt             # uptime monitors s
 ```
 
 `scripts/deploy.sh` runs all of the above (plus `db push`, secrets and the scheduler's Vault secrets); it is a
-dry run unless given `--apply`.
+dry run unless given `--apply`. All ten functions have already been deployed to staging through the Supabase
+management API. The script's `--apply` path has not been run against staging; reconcile the CLI migration
+history first (see `docs/OPERATIONS.md` §3), and do not set provider secrets until sandbox credentials are ready.
 
 ## Webhook URLs to register (after deploy)
 
