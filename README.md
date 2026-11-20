@@ -9,9 +9,7 @@ A commerce operating system for businesses that sell through WhatsApp, Instagram
 person. Merchants get a public shop link with checkout and order tracking, plus a back office for catalogue,
 orders, stock, payments, fulfilment and customers, in any country and currency.
 
-> **Status: not in production.** Nothing is deployed to a production environment. There is no hosted Supabase
-> project, and no payment or messaging provider is connected. Every provider integration is **adapter only**.
-> See [Production blockers](#production-blockers).
+> **Status: staging deployed, not in production.** A dedicated hosted Supabase staging project exists, all 10 Edge Functions are deployed there, and this branch has a Vercel preview wired to staging. No production environment or real payment/messaging provider is connected; every provider integration remains **adapter only**. See [Production blockers](#production-blockers).
 
 ## Two data modes, and what each one is
 
@@ -75,12 +73,12 @@ workspace share the same browser-local state, so a product created in the demo w
 | Abuse protection on public checkout (IP/phone/shop limits, ≤3 open unpaid orders per phone, stale-order release, expected-total check) | Built | Unit, DB |
 | Analytics per currency, CSV exports (decimal-exact, formula-injection safe) | Built | Unit |
 | eTIMS-style tax invoices (manual entry, nothing sent to KRA) | Built | Unit, DB |
-| Custom domains (DNS check only; no certificate or hosting) | Built, not deployed | Unit, DB |
+| Custom domains (DNS check only; no certificate or hosting) | Deployed to staging; DNS target configuration still needed | Unit, DB |
 | Per-shop M-Pesa keys (payout model): each shop saves its own Daraja keys, stored in Supabase Vault; money goes to the shop's own Till/Paybill; prompts switch on only after a real test payment | Built, adapter only (no Daraja account) | Unit, DB, browser screenshots (demo) |
 | Scheduled jobs (pg_cron): stale orders, rate-limit pruning, tracking-link expiry, webhook payload retention, WhatsApp retry, STK query, photo cleanup, domain re-check | Built; SQL jobs run on migrate, HTTP jobs idle until two Vault secrets are set | DB; scheduler → function calls returned 200 against the local stack |
 | Tracking links expire N days after the order closes (shop setting, 7–3650, default 90) | Built | DB, Unit (demo) |
 | Webhook payloads (phone numbers) redacted after 30 days | Built | DB |
-| `GET /health` (uptime; operator view shows which integrations have secrets set, never values) | Built, not deployed | Unit, called against the local stack |
+| `GET /health` (uptime; operator view shows which integrations have secrets set, never values) | Deployed to staging; hosted HTTP smoke test pending | Unit, called against the local stack |
 | Backup-restore drill (`scripts/backup-restore-drill.sh`) and backend deploy script (`scripts/deploy.sh`, dry run by default) | Built | Drill: PASS locally. Deploy: dry run only. |
 
 ## Architecture
@@ -203,20 +201,17 @@ exists and is tested against fixtures, but no provider account, credentials or e
 | CSV export / import | Works (both modes) | |
 | Meta Pixel / Google Analytics 4 | Works, no account verified | Loaded on the shop only after the shopper taps Allow; never in the staff app |
 | Custom domains | DNS check built, not deployed | `verified` means DNS only. There is no certificate or hosting. |
-| Product image storage (Supabase Storage) | Built, not deployed | Policies DB-tested; no hosted bucket exists |
+| Product image storage (Supabase Storage) | Staging bucket and policies created by migrations | Policies DB-tested; hosted upload smoke test pending |
 | KRA eTIMS | Not implemented (manual) | Printable numbered tax invoices and a CSV for manual eTIMS Lite entry. Nothing is submitted to KRA. |
 
-Edge Functions: [`supabase/functions/README.md`](supabase/functions/README.md). **No Edge Function is deployed.**
-All ten type-check with Deno and have run in the local edge runtime, but none has received a real provider call.
+Edge Functions: [`supabase/functions/README.md`](supabase/functions/README.md). All ten are deployed to Fungua staging and report ACTIVE. They type-check with Deno and have run in the local edge runtime, but none has received a real provider call.
 
 ## Production blockers
 
 Everything below needs an account, a person or a decision. The code side for each is built (see
 [docs/OPERATIONS.md](docs/OPERATIONS.md)).
 
-1. **Hosted infrastructure.** No hosted Supabase project, deployed Edge Functions, production domain or
-   production auth email (SMTP) exist. Only Vercel preview builds of this branch exist (demo mode).
-   `scripts/deploy.sh` is ready (dry run tested); it has never been run with `--apply`.
+1. **Hosted infrastructure.** A hosted staging Supabase project and all ten Edge Functions are deployed; the feature-branch Vercel preview is wired to staging. No production Supabase project, production domain or production auth email (SMTP) exists. The CLI migration history must be reconciled before running `supabase db push` against staging. `scripts/deploy.sh` is ready (dry run tested); it has never been run with `--apply`.
 2. **Provider accounts.** Each integration needs a real account, secrets and a passing end-to-end test before
    its label changes. For M-Pesa: each shop needs a registered Till/Paybill and an approved Daraja app;
    Pochi/personal numbers need an aggregator (none verified).
