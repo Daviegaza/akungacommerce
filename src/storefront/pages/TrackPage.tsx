@@ -64,7 +64,8 @@ function errorMessage(err: unknown): string {
   return 'Something went wrong. Please try again.'
 }
 
-function statusLabel(status: string, method: 'pickup' | 'delivery'): string {
+function statusLabel(status: string, method: 'pickup' | 'delivery', returned = false): string {
+  if (status === 'cancelled' && returned) return 'Returned to the shop'
   if (status === 'pending_confirmation' || status === 'draft') return 'Order placed'
   if (method === 'delivery' && status === 'dispatched') return 'Out for delivery'
   if (method === 'pickup' && status === 'ready') return 'Ready for pickup'
@@ -892,7 +893,7 @@ function buildSteps(order: TrackedOrder): TimelineStep[] {
       seen.add(k)
       steps.push({ key: k, label: statusLabel(k, method), at: h.at, state: 'done' })
     }
-    steps.push({ key: status, label: statusLabel(status, method), at: lastAt.get(status) ?? null, state: 'stopped' })
+    steps.push({ key: status, label: statusLabel(status, method, Boolean(order.delivery?.returnedAt)), at: lastAt.get(status) ?? null, state: 'stopped' })
     return steps
   }
 

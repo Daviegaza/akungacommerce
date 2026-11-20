@@ -26,8 +26,11 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
 }
 
 /**
- * Allowed manual transitions. `refunded` is set automatically when refunds
- * reach the amount paid, never chosen directly. Mirrors SQL `order_transition_allowed`.
+ * The status machine. `refunded` is set automatically when refunds reach the
+ * amount paid, never chosen directly. dispatched -> cancelled is the "returned to
+ * shop" end state: it is only reachable through the return flow (stock back,
+ * refund suggestion), never as a plain status change — see needsReturnFlow.
+ * Mirrors SQL `order_transition_allowed` / `order_transition_needs_return_flow`.
  */
 export const ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
   draft: ['pending_confirmation', 'confirmed', 'cancelled'],
@@ -35,7 +38,7 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
   confirmed: ['preparing', 'ready', 'cancelled'],
   preparing: ['ready', 'cancelled'],
   ready: ['dispatched', 'delivered', 'cancelled'],
-  dispatched: ['delivered'],
+  dispatched: ['delivered', 'cancelled'],
   delivered: [],
   cancelled: [],
   refunded: [],
@@ -43,6 +46,16 @@ export const ORDER_TRANSITIONS: Record<OrderStatus, readonly OrderStatus[]> = {
 
 export function canTransition(from: OrderStatus, to: OrderStatus): boolean {
   return ORDER_TRANSITIONS[from].includes(to)
+}
+
+/** Transitions that must go through a dedicated flow (returned to shop), not a plain status change. */
+export function needsReturnFlow(from: OrderStatus, to: OrderStatus): boolean {
+  return from === 'dispatched' && to === 'cancelled'
+}
+
+/** Status changes a person can pick directly (excludes the ones owned by a dedicated flow). */
+export function manualTransitions(from: OrderStatus): OrderStatus[] {
+  return ORDER_TRANSITIONS[from].filter((to) => !needsReturnFlow(from, to))
 }
 
 /** Stock is reserved while an order is live, committed once it leaves the shop. */

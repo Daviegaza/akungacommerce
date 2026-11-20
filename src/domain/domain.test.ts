@@ -11,7 +11,7 @@ import {
   toMajorString,
   totalsByCurrency,
 } from './money'
-import { canTransition, computeOrderTotals, holdsReservation } from './orders'
+import { canTransition, computeOrderTotals, holdsReservation, manualTransitions, needsReturnFlow } from './orders'
 import { refundableMinor, summarisePayments, validateRefund, type PaymentRecord } from './payments'
 import { adjust, commit, release, reserve, stockHealth } from './inventory'
 import { businessDate, formatDateTime, isValidTimezone, toE164 } from './locale'
@@ -114,7 +114,13 @@ describe('order totals', () => {
   it('follows the status state machine', () => {
     expect(canTransition('confirmed', 'preparing')).toBe(true)
     expect(canTransition('confirmed', 'delivered')).toBe(false)
-    expect(canTransition('dispatched', 'cancelled')).toBe(false)
+    // Out for delivery -> cancelled exists only as "returned to shop" (stock back, refund suggestion).
+    expect(canTransition('dispatched', 'cancelled')).toBe(true)
+    expect(needsReturnFlow('dispatched', 'cancelled')).toBe(true)
+    expect(needsReturnFlow('ready', 'cancelled')).toBe(false)
+    expect(manualTransitions('dispatched')).toEqual(['delivered'])
+    expect(manualTransitions('ready')).toContain('cancelled')
+    expect(canTransition('delivered', 'cancelled')).toBe(false)
     expect(canTransition('delivered', 'refunded')).toBe(false) // automatic only
     expect(holdsReservation('ready')).toBe(true)
     expect(holdsReservation('draft')).toBe(false)

@@ -1,6 +1,6 @@
 import { Suspense, useState, type ReactNode } from 'react'
-import { AlertTriangle, CheckCircle2, Clock, Map as MapIcon, MapPin, Package, Store, Truck } from 'lucide-react'
-import { FAILED_REASON_BUYER_TEXT, policyText } from '@/domain/delivery-policy'
+import { AlertTriangle, CheckCircle2, Clock, Map as MapIcon, MapPin, Package, Store, Truck, Undo2 } from 'lucide-react'
+import { FAILED_REASON_BUYER_TEXT, policyText, returnedToShopBuyerText } from '@/domain/delivery-policy'
 import { formatDateTime } from '@/domain/locale'
 import type { TrackedDelivery } from '@/gateway/delivery'
 import type { TrackedOrder } from '@/gateway/storefront'
@@ -146,6 +146,25 @@ export function DeliveryUpdates({ order, money }: { order: TrackedOrder; money(m
       </li>,
     )
   }
+  if (d.returnedAt) {
+    const text = returnedToShopBuyerText({ attempts: d.attempts, forfeitedMinor: d.forfeitedMinor, refund: d.refund ?? null }, money)
+    items.push(
+      <li key="returned" className="flex items-start gap-2.5 rounded-xl bg-sunken p-3">
+        <Undo2 className="mt-0.5 size-4 shrink-0 text-ink-2" aria-hidden />
+        <div>
+          <p className="font-semibold text-ink">{text.title}</p>
+          {text.lines.map((l) => (
+            <p key={l} className="text-ink-2">
+              {l}
+            </p>
+          ))}
+          <p className="text-xs text-ink-3 tnum">
+            <time dateTime={d.returnedAt}>{formatDateTime(d.returnedAt, locale || 'en', timezone)}</time>
+          </p>
+        </div>
+      </li>,
+    )
+  }
   if (failed.length > 0 && order.status === 'dispatched') {
     items.push(
       <li key="next" className="rounded-xl bg-sunken p-3 text-ink-2">
@@ -160,7 +179,7 @@ export function DeliveryUpdates({ order, money }: { order: TrackedOrder; money(m
   return (
     <section className="rounded-[var(--radius-card)] bg-panel p-4 shadow-[var(--shadow-card)] sm:p-5 ak-rise" aria-labelledby="delivery-updates">
       <h2 id="delivery-updates" className="mb-3 text-lg font-extrabold tracking-tight">
-        {failed.length > 0 ? 'Delivery updates' : 'How your order reaches you'}
+        {failed.length > 0 || d.returnedAt ? 'Delivery updates' : 'How your order reaches you'}
       </h2>
       {items.length > 0 && <ul className="flex flex-col gap-3 text-sm">{items}</ul>}
       {policyLines.length > 0 && (

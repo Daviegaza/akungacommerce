@@ -47,7 +47,15 @@ export interface PickupPointSnapshot {
   feeMinor: number
 }
 
-export type DeliveryEventKind = 'failed' | 'picked_up' | 'delivered' | 'rider_accepted' | 'rider_link_created' | 'rider_link_revoked' | 'handoff_set'
+export type DeliveryEventKind =
+  | 'failed'
+  | 'picked_up'
+  | 'delivered'
+  | 'rider_accepted'
+  | 'rider_link_created'
+  | 'rider_link_revoked'
+  | 'handoff_set'
+  | 'returned'
 
 export interface DeliveryEvent {
   kind: DeliveryEventKind
@@ -92,6 +100,35 @@ export interface OrderDelivery {
   events: DeliveryEvent[]
   /** Most recent rider link (the token itself is only shown once, when created). */
   riderLink: RiderLinkInfo | null
+  /** When the order came back to the shop (status cancelled); null otherwise. */
+  returnedAt?: string | null
+  /** What the shop owes the buyer after a return (latest suggestion). */
+  refundSuggestion?: RefundSuggestion | null
+}
+
+export type RefundSuggestionStatus = 'pending' | 'confirmed' | 'dismissed'
+
+/** A refund the merchant should make after a return. Rafu never moves money: confirming records a refund. */
+export interface RefundSuggestion {
+  id: string
+  amountMinor: number
+  /** Delivery fee kept under the agreed policy. */
+  keptMinor: number
+  currency: string
+  reason: string
+  status: RefundSuggestionStatus
+  resolutionNote: string | null
+  createdAt: string
+  resolvedAt: string | null
+}
+
+export interface ReturnToShopResult {
+  orderId: string
+  returnedAt: string | null
+  keptMinor: number
+  refundMinor: number
+  refundSuggestionId: string | null
+  replayed: boolean
 }
 
 export interface HandoffInput {
@@ -129,6 +166,11 @@ export interface DeliveryAdminGateway {
   markDeliveryFailed(orgId: string, orderId: string, input: FailedDeliveryInput, idempotencyKey: string): Promise<FailedDeliveryResult>
   createRiderLink(orgId: string, orderId: string, opts: { riderName: string | null; hours: number }): Promise<CreatedRiderLink>
   revokeRiderLink(orgId: string, orderId: string): Promise<void>
+  /** Out for delivery -> returned to shop: stock back, order cancelled, refund suggested (never paid out). */
+  returnToShop(orgId: string, orderId: string, input: { note: string | null }, idempotencyKey: string): Promise<ReturnToShopResult>
+  /** The merchant refunded the buyer outside Rafu: record it against the order's payments. */
+  confirmRefundSuggestion(orgId: string, suggestionId: string, idempotencyKey: string): Promise<void>
+  dismissRefundSuggestion(orgId: string, suggestionId: string, reason: string): Promise<void>
 }
 
 /* ───────────── Shopper / rider side (implemented on StorefrontGateway) ───────────── */
@@ -149,8 +191,12 @@ export interface TrackedDelivery {
   maxAttempts: number
   agreedPolicy: ShopPolicy | null
   handoff: Handoff
-  /** Buyer-relevant events only (failed / picked up / delivered). */
+  /** Buyer-relevant events only (failed / picked up / delivered / returned). */
   events: DeliveryEvent[]
+  /** Set when the order went back to the shop after delivery failed. */
+  returnedAt?: string | null
+  /** Money owed back to the buyer after a return (no staff notes). */
+  refund?: { amountMinor: number; keptMinor: number; status: RefundSuggestionStatus } | null
 }
 
 export type RiderAction = 'picked_up' | 'delivered' | 'failed'

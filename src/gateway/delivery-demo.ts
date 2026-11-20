@@ -17,13 +17,14 @@ import {
   computeDeposit,
   isWellFormedRiderToken,
   maskPhone,
+  planReturnToShop,
   riderLinkHours,
   riderLinkState,
   validateShopPolicy,
   type FailedReason,
   type ShopPolicy,
 } from '@/domain/delivery-policy'
-import { canTransition, holdsReservation, type OrderStatus } from '@/domain/orders'
+import { canTransition, holdsReservation, needsReturnFlow, type OrderStatus } from '@/domain/orders'
 import { demoInternals, randomToken, type DemoState, type StoredOrder } from './demo'
 import type {
   CheckoutOptions,
@@ -38,6 +39,8 @@ import type {
   PickupPoint,
   PickupPointInput,
   PickupPointSnapshot,
+  RefundSuggestion,
+  ReturnToShopResult,
   RiderAction,
   RiderJob,
   TrackedDelivery,
@@ -53,6 +56,13 @@ interface OrderExt {
   handoff: HandoffKind | null
   carrier: string | null
   pickupPoint: PickupPointSnapshot | null
+  /** Set when the order came back to the shop (optional: older saved demo states lack it). */
+  returnedAt?: string | null
+}
+
+interface StoredRefundSuggestion extends RefundSuggestion {
+  orgId: string
+  orderId: string
 }
 
 interface StoredEvent extends DeliveryEvent {
@@ -82,6 +92,8 @@ interface DeliveryExt {
   orders: Record<string, OrderExt>
   events: StoredEvent[]
   riderLinks: StoredRiderLink[]
+  /** Optional so demo states saved before "returned to shop" still load. */
+  refundSuggestions?: StoredRefundSuggestion[]
 }
 
 type ExtState = DemoState & { deliveryExt?: DeliveryExt }
@@ -212,7 +224,25 @@ function eventsOf(s: DemoState, orderId: string): DeliveryEvent[] {
     })
 }
 
-const BUYER_EVENT_KINDS: readonly DeliveryEventKind[] = ['failed', 'picked_up', 'delivered']
+const BUYER_EVENT_KINDS: readonly DeliveryEventKind[] = ['failed', 'picked_up', 'delivered', 'returned']
+
+function suggestionsOf(s: DemoState): StoredRefundSuggestion[] {
+  const e = ext(s)
+  e.refundSuggestions ??= []
+  return e.refundSuggestions
+}
+
+function latestSuggestion(s: DemoState, orderId: string): StoredRefundSuggestion | null {
+  const list = suggestionsOf(s).filter((x) => x.orderId === orderId)
+  return list.length ? list[list.length - 1] : null
+}
+
+function publicSuggestion(x: StoredRefundSuggestion): RefundSuggestion {
+  const { orgId: _o, orderId: _id, ...rest } = x
+  void _o
+  void _id
+  return { ...rest }
+}
 
 export function demoTrackedDelivery(s: DemoState, order: StoredOrder): TrackedDelivery {
   const o = orderExt(s, order.id)
@@ -227,7 +257,15 @@ export function demoTrackedDelivery(s: DemoState, order: StoredOrder): TrackedDe
     maxAttempts: maxAttemptsFor(s, order),
     agreedPolicy: o.agreedPolicy ? { ...o.agreedPolicy } : null,
     handoff: handoffOf(s, order.id),
-    events: eventsOf(s, order.id).filter((e) => BUYER_EVENT_KINDS.includes(e.kind)),
+    // Buyer view: no staff notes (same as storefront_track_delivery).
+    events: eventsOf(s, order.id)
+      .filter((e) => BUYER_EVENT_KINDS.includes(e.kind))
+      .map((e) => ({ ...e, note: null })),
+    returnedAt: o.returnedAt ?? null,
+    refund: (() => {
+      const x = latestSuggestion(s, order.id)
+      return x ? { amountMinor: x.amountMinor, keptMinor: x.keptMinor, status: x.status } : null
+    })(),
   }
 }
 
@@ -238,7 +276,7 @@ function pushEvent(s: DemoState, order: StoredOrder, e: Omit<StoredEvent, 'orgId
 /** Mirrors public._transition_order_core: the status machine and stock rules, without a staff permission check. */
 function transitionAsSystem(s: DemoState, order: StoredOrder, to: OrderStatus, note: string | null): void {
   const from = order.status
-  if (!canTransition(from, to)) fail(`An order cannot move from ${from} to ${to}`)
+  if (!canTransition(from, to) || needsReturnFlow(from, to)) fail(`An order cannot move from ${from} to ${to}`)
   if (!holdsReservation(from) && holdsReservation(to)) I().orderStock(s, order, 'reserve')
   else if (holdsReservation(from) && to === 'cancelled') I().orderStock(s, order, 'release')
   else if (holdsReservation(from) && (to === 'dispatched' || to === 'delivered')) I().orderStock(s, order, 'commit')
@@ -536,6 +574,11 @@ export function createDemoDeliveryAdmin(): DeliveryAdminGateway {
                 createdAt: link.createdAt,
               }
             : null,
+          returnedAt: orderExt(s, order.id).returnedAt ?? null,
+          refundSuggestion: (() => {
+            const x = latestSuggestion(s, order.id)
+            return x ? publicSuggestion(x) : null
+          })(),
         }
       }),
 
@@ -619,7 +662,146 @@ export function createDemoDeliveryAdmin(): DeliveryAdminGateway {
         }
         if (any) pushEvent(s, order, { kind: 'rider_link_revoked', actor: 'staff', reason: null, note: null, attempt: null, forfeitedMinor: 0, idempotencyKey: null })
       }),
+
+    returnToShop: (orgId, orderId, input, idempotencyKey) => I().tx((s) => returnOrderToShop(s, orgId, orderId, input.note, idempotencyKey)),
+
+    confirmRefundSuggestion: (orgId, suggestionId, idempotencyKey) =>
+      I().tx((s) => {
+        I().requireMember(s, orgId)
+        const x = suggestionsOf(s).find((r) => r.id === suggestionId && r.orgId === orgId) ?? fail('Refund not found', 'not_found')
+        I().requirePermission(s, orgId, 'refunds.create')
+        if (typeof idempotencyKey !== 'string' || idempotencyKey.length < 8) fail('Missing idempotency key')
+        if (x.status === 'confirmed') return
+        if (x.status !== 'pending') fail('This refund was dismissed')
+        // Newest payment first; each part is an ordinary refund record. All or nothing (tx discards on failure).
+        let left = x.amountMinor
+        const payments = s.payments
+          .filter((p) => p.orderId === x.orderId && p.orgId === orgId && p.status === 'succeeded' && p.currency === x.currency)
+          .sort((a, b) => b.receivedAt.localeCompare(a.receivedAt))
+        let i = 0
+        for (const p of payments) {
+          if (left <= 0) break
+          const already = s.refunds.filter((r) => r.paymentId === p.id && r.status !== 'failed').reduce((a, r) => a + r.amountMinor, 0)
+          const amt = Math.min(left, p.amountMinor - already)
+          if (amt <= 0) continue
+          I().recordRefund(s, orgId, { paymentId: p.id, amountMinor: amt, currency: x.currency, reason: x.reason }, `${idempotencyKey}:${i}`)
+          left -= amt
+          i++
+        }
+        if (left > 0) fail('The payments on this order no longer cover this refund. Record what you refunded on Payments instead.')
+        x.status = 'confirmed'
+        x.resolvedAt = I().nowIso()
+        const order = I().getOrderRow(s, orgId, x.orderId)
+        s.history.push({
+          id: I().uuid(),
+          orgId,
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus: order.status,
+          note: 'Refund to the buyer recorded for the returned order.',
+          createdAt: I().nowIso(),
+        })
+        I().writeAudit(s, orgId, 'refund_suggestions', x.id, 'update', { status: 'pending' }, { status: 'confirmed' })
+      }),
+
+    dismissRefundSuggestion: (orgId, suggestionId, reason) =>
+      I().tx((s) => {
+        I().requireMember(s, orgId)
+        const x = suggestionsOf(s).find((r) => r.id === suggestionId && r.orgId === orgId) ?? fail('Refund not found', 'not_found')
+        I().requirePermission(s, orgId, 'refunds.create')
+        if (x.status !== 'pending') fail('This refund is already settled')
+        const why = clip(reason, 300)
+        if (!why) fail('Say why no refund is due')
+        x.status = 'dismissed'
+        x.resolutionNote = why
+        x.resolvedAt = I().nowIso()
+        const order = I().getOrderRow(s, orgId, x.orderId)
+        s.history.push({
+          id: I().uuid(),
+          orgId,
+          orderId: order.id,
+          fromStatus: order.status,
+          toStatus: order.status,
+          note: `Suggested refund dismissed: ${why}`,
+          createdAt: I().nowIso(),
+        })
+        I().writeAudit(s, orgId, 'refund_suggestions', x.id, 'update', { status: 'pending' }, { status: 'dismissed', reason: why })
+      }),
   }
+}
+
+/** Mirrors public.return_order_to_shop. */
+function returnOrderToShop(s: DemoState, orgId: string, orderId: string, note: string | null, idempotencyKey: string): ReturnToShopResult {
+  I().requireMember(s, orgId)
+  const order = I().getOrderRow(s, orgId, orderId)
+  I().requirePermission(s, orgId, 'refunds.create')
+  if (typeof idempotencyKey !== 'string' || idempotencyKey.length < 8) fail('Missing idempotency key')
+  const o = orderExt(s, order.id)
+  const result = (replayed: boolean): ReturnToShopResult => {
+    const x = latestSuggestion(s, order.id)
+    const plan = planReturnToShop({ netPaidMinor: netPaid(s, order.id), forfeitedMinor: o.forfeitedMinor })
+    return {
+      orderId: order.id,
+      returnedAt: o.returnedAt ?? null,
+      keptMinor: x ? x.keptMinor : plan.keptMinor,
+      refundMinor: x ? x.amountMinor : 0,
+      refundSuggestionId: x ? x.id : null,
+      replayed,
+    }
+  }
+  if (ext(s).events.some((e) => e.orgId === orgId && e.idempotencyKey === idempotencyKey)) return result(true)
+  if (order.status !== 'dispatched') fail('Only an order that is out for delivery can be returned to the shop')
+  const f = s.fulfilments.find((x) => x.orderId === order.id)
+  if (f?.method !== 'delivery') fail('Pickup orders are not delivered')
+  const cleanNote = clip(note, 300)
+
+  // 1. Everything not yet returned goes back on the shelf (same rules as "Return items to stock").
+  const lines = s.lines
+    .filter((l) => l.orderId === order.id && l.quantity > l.returnedQuantity)
+    .sort((a, b) => a.position - b.position)
+    .map((l) => ({ lineId: l.id, quantity: l.quantity - l.returnedQuantity }))
+  if (lines.length) I().returnItems(s, orgId, { orderId: order.id, note: cleanNote ?? 'Returned to shop after delivery', lines }, idempotencyKey)
+
+  // 2. dispatched -> cancelled: the one place this transition is allowed.
+  if (!canTransition(order.status, 'cancelled')) fail(`An order cannot move from ${order.status} to cancelled`)
+  const ts = I().nowIso()
+  order.status = 'cancelled'
+  order.updatedAt = ts
+  o.returnedAt = ts
+  s.history.push({
+    id: I().uuid(),
+    orgId,
+    orderId: order.id,
+    fromStatus: 'dispatched',
+    toStatus: 'cancelled',
+    note: `Returned to shop after ${o.attempts} failed delivery attempt${o.attempts === 1 ? '' : 's'}. Items back in stock.${cleanNote ? ` ${cleanNote}` : ''}`,
+    createdAt: ts,
+  })
+  for (const l of ext(s).riderLinks) if (l.orderId === order.id && !l.revokedAt) l.revokedAt = ts
+
+  // 3. Money: the kept delivery fee stays with the shop; the rest is suggested as a refund, never moved.
+  const plan = planReturnToShop({ netPaidMinor: netPaid(s, order.id), forfeitedMinor: o.forfeitedMinor })
+  if (plan.refundMinor > 0) {
+    suggestionsOf(s).push({
+      id: I().uuid(),
+      orgId,
+      orderId: order.id,
+      amountMinor: plan.refundMinor,
+      keptMinor: plan.keptMinor,
+      currency: order.currency,
+      reason:
+        plan.keptMinor > 0
+          ? 'Order returned to shop. Delivery fee kept per the agreed policy; the rest is refundable.'
+          : 'Order returned to shop. Everything the buyer paid is refundable.',
+      status: 'pending',
+      resolutionNote: null,
+      createdAt: ts,
+      resolvedAt: null,
+    })
+  }
+  pushEvent(s, order, { kind: 'returned', actor: 'staff', reason: null, note: cleanNote, attempt: o.attempts, forfeitedMinor: 0, idempotencyKey })
+  I().writeAudit(s, orgId, 'orders', order.id, 'returned_to_shop', { status: 'dispatched' }, { status: 'cancelled', refundMinor: plan.refundMinor, keptMinor: plan.keptMinor })
+  return result(false)
 }
 
 /** Deposit for a quote (exported for storefront-demo.ts). */

@@ -17,6 +17,9 @@ import type {
   OrderDelivery,
   PickupPoint,
   PickupPointSnapshot,
+  RefundSuggestion,
+  RefundSuggestionStatus,
+  ReturnToShopResult,
   RiderJob,
   TrackedDelivery,
 } from './delivery'
@@ -89,8 +92,36 @@ function mapEvent(r: Row): DeliveryEvent {
   }
 }
 
+const SUGGESTION_STATUSES: readonly RefundSuggestionStatus[] = ['pending', 'confirmed', 'dismissed']
+const suggestionStatus = (v: unknown): RefundSuggestionStatus =>
+  (SUGGESTION_STATUSES as readonly string[]).includes(String(v)) ? (String(v) as RefundSuggestionStatus) : 'pending'
+
+export function mapRefundSuggestion(v: unknown): RefundSuggestion | null {
+  if (!v || typeof v !== 'object') return null
+  const r = v as Row
+  return {
+    id: String(r.id),
+    amountMinor: n(r.amount_minor),
+    keptMinor: n(r.kept_minor),
+    currency: String(r.currency ?? ''),
+    reason: String(r.reason ?? ''),
+    status: suggestionStatus(r.status),
+    resolutionNote: s(r.resolution_note),
+    createdAt: String(r.created_at),
+    resolvedAt: s(r.resolved_at),
+  }
+}
+
+function mapTrackedRefund(v: unknown): TrackedDelivery['refund'] {
+  if (!v || typeof v !== 'object') return null
+  const r = v as Row
+  return { amountMinor: n(r.amount_minor), keptMinor: n(r.kept_minor), status: suggestionStatus(r.status) }
+}
+
 export function mapTrackedDelivery(r: Row): TrackedDelivery {
   return {
+    returnedAt: s(r.returned_at),
+    refund: mapTrackedRefund(r.refund),
     depositDueMinor: n(r.deposit_due_minor),
     depositPaidMinor: n(r.deposit_paid_minor),
     balanceDueMinor: n(r.balance_due_minor),
@@ -144,6 +175,17 @@ export function mapRiderJob(r: Row): RiderJob {
   }
 }
 
+export function mapReturnResult(r: Row): ReturnToShopResult {
+  return {
+    orderId: String(r.order_id),
+    returnedAt: s(r.returned_at),
+    keptMinor: n(r.kept_minor),
+    refundMinor: n(r.refund_minor),
+    refundSuggestionId: s(r.refund_suggestion_id),
+    replayed: Boolean(r.replayed),
+  }
+}
+
 function check<T>(res: { data: T | null; error: { message: string; code?: string } | null }): T {
   if (res.error) throw new GatewayError(res.error.message ?? 'Something went wrong', res.error.code)
   return res.data as T
@@ -178,11 +220,15 @@ export function createSupabaseDeliveryAdmin(sb: SupabaseClient): DeliveryAdminGa
       check(await sb.rpc('archive_pickup_point', { p_org: orgId, p_point: pointId }))
     },
     async getOrderDelivery(_orgId, orderId): Promise<OrderDelivery> {
-      const r = check(await sb.rpc('order_delivery', { p_order: orderId })) as Row
+      const [main, ret] = await Promise.all([sb.rpc('order_delivery', { p_order: orderId }), sb.rpc('order_return_state', { p_order: orderId })])
+      const r = check(main) as Row
+      const rs = (check(ret) ?? {}) as Row
       const t = mapTrackedDelivery(r)
       const link = r.rider_link as Row | null
       return {
         ...t,
+        returnedAt: s(rs.returned_at),
+        refundSuggestion: mapRefundSuggestion(rs.refund_suggestion),
         currency: String(r.currency),
         totalMinor: n(r.total_minor),
         deliveryFeeMinor: n(r.delivery_fee_minor),
@@ -218,6 +264,16 @@ export function createSupabaseDeliveryAdmin(sb: SupabaseClient): DeliveryAdminGa
     },
     async revokeRiderLink(_orgId, orderId) {
       check(await sb.rpc('revoke_rider_link', { p_order: orderId }))
+    },
+    async returnToShop(_orgId, orderId, input, idempotencyKey) {
+      const r = check(await sb.rpc('return_order_to_shop', { p_order: orderId, p_note: input.note, p_idempotency_key: idempotencyKey })) as Row
+      return mapReturnResult(r)
+    },
+    async confirmRefundSuggestion(_orgId, suggestionId, idempotencyKey) {
+      check(await sb.rpc('confirm_refund_suggestion', { p_suggestion: suggestionId, p_idempotency_key: idempotencyKey }))
+    },
+    async dismissRefundSuggestion(_orgId, suggestionId, reason) {
+      check(await sb.rpc('dismiss_refund_suggestion', { p_suggestion: suggestionId, p_reason: reason }))
     },
   }
 }
