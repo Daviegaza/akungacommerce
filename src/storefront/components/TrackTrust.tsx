@@ -99,7 +99,7 @@ function MarketingOptOut({ token, shopName }: { token: string; shopName: string 
         className="inline-flex min-h-11 items-center gap-2 rounded-lg text-sm font-medium text-ink-3 hover:text-ink disabled:opacity-60"
       >
         <BellOff className="size-4" aria-hidden />
-        {optOut.isPending ? 'Saving…' : `Stop offers from ${shopName}`}
+        {optOut.isPending ? 'Saving…' : `Never send me offers from ${shopName}`}
       </button>
       {optOut.isError && (
         <p role="alert" className="text-sm text-neg">

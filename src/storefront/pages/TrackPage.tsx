@@ -342,12 +342,19 @@ function OrderView({
             label={fulfilment.method === 'pickup' ? 'Pickup' : 'Delivery'}
             value={order.deliveryFeeMinor === 0 ? 'Free' : money(order.deliveryFeeMinor)}
           />
-          {order.paidMinor > 0 && <TotalRow label="Paid" value={money(order.paidMinor)} />}
         </dl>
         <div className="mt-3 flex items-baseline justify-between">
           <span className="text-sm font-semibold">Total</span>
           <span className="font-display text-2xl font-extrabold tracking-tight tnum">{money(order.totalMinor)}</span>
         </div>
+        {order.paidMinor > 0 && (
+          <dl className="mt-2 flex flex-col gap-1.5 text-sm">
+            <TotalRow label="Paid" value={money(order.paidMinor)} />
+            {order.totalMinor - order.paidMinor > 0 && (
+              <TotalRow label="Left to pay" value={money(order.totalMinor - order.paidMinor)} />
+            )}
+          </dl>
+        )}
       </Card>
 
       <TrackTrust token={token} paidMinor={order.paidMinor} shopName={shop.name} locale={locale} timezone={shop.timezone} />

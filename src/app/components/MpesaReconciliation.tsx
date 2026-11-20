@@ -516,6 +516,9 @@ export function MpesaReconciliation() {
 
   return (
     <>
+      {/* M-Pesa route and code checks are Kenya-only; NGN shops get bank-transfer accounts below. */}
+      {!ngn && (
+        <>
       <Section title="How you get paid" description="Which M-Pesa route your shop uses, and whether it is really connected." icon={<Radio className="size-4" aria-hidden />}>
         {settings.isPending || integrations.isPending ? (
           <Skeleton className="h-24 w-full max-w-xl" />
@@ -533,6 +536,8 @@ export function MpesaReconciliation() {
       >
         <VerifyCode />
       </Section>
+        </>
+      )}
 
       {ngn && <BankTransferAccounts />}
 
