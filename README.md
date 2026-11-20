@@ -200,7 +200,7 @@ exists and is tested against fixtures, but no provider account, credentials or e
 | Xero, QuickBooks Online | Not implemented | |
 | CSV export / import | Works (both modes) | |
 | Meta Pixel / Google Analytics 4 | Works, no account verified | Loaded on the shop only after the shopper taps Allow; never in the staff app |
-| Custom domains | DNS check built, not deployed | `verified` means DNS only. There is no certificate or hosting. |
+| Custom domains | DNS check deployed to staging | `verified` means DNS only. There is no certificate or hosting. |
 | Product image storage (Supabase Storage) | Staging bucket and policies created by migrations | Policies DB-tested; hosted upload smoke test pending |
 | KRA eTIMS | Not implemented (manual) | Printable numbered tax invoices and a CSV for manual eTIMS Lite entry. Nothing is submitted to KRA. |
 
