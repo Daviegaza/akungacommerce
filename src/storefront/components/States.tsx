@@ -15,6 +15,14 @@ export function PoweredBy() {
         Powered by <RafuLogo size={20} />
       </a>
       <p className="mt-1 text-center text-[11px] text-ink-3">{BRAND.tagline}</p>
+      <nav aria-label="Legal" className="mt-3 flex justify-center gap-1 text-[11px] text-ink-3">
+        <Link to="/legal/privacy" className="rounded-md px-2 py-1 hover:text-ink hover:underline hover:underline-offset-2">
+          Privacy
+        </Link>
+        <Link to="/legal/terms" className="rounded-md px-2 py-1 hover:text-ink hover:underline hover:underline-offset-2">
+          Terms
+        </Link>
+      </nav>
     </footer>
   )
 }

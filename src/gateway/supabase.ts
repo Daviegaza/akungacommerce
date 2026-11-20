@@ -56,6 +56,7 @@ export function mapShopSettings(r: Row): ShopSettings {
     mpesaTill: s(r.mpesa_till),
     mpesaPaybill: s(r.mpesa_paybill),
     returnPolicy: s(r.return_policy),
+    trackingLinkDays: r.tracking_link_days == null ? 90 : Number(r.tracking_link_days),
   }
 }
 
@@ -611,6 +612,9 @@ export function createSupabaseGateway(url: string, anonKey: string): CommerceGat
     },
     async saveShopSettings(orgId, settings) {
       check(await sb.rpc('save_shop_settings', { p_org: orgId, p_settings: shopSettingsPayload(settings) }))
+      if (settings.trackingLinkDays != null) {
+        check(await sb.rpc('set_tracking_link_days', { p_org: orgId, p_days: settings.trackingLinkDays }))
+      }
     },
     async setProductMerchandising(orgId, productId, m) {
       check(

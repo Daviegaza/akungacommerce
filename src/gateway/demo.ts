@@ -1016,6 +1016,11 @@ const ops = {
       if (t !== null && !/^[0-9]{5,8}$/.test(t)) fail(`${label} must be 5–8 digits`, 'invalid')
       return t
     }
+    const trackingDays = (v: number | undefined) => {
+      if (v === undefined) return 90
+      if (!Number.isInteger(v) || v < 7 || v > 3650) fail('Keep tracking links for 7 to 3650 days', 'invalid')
+      return v
+    }
     const coord = (v: number | null | undefined, max: number, label: string) => {
       if (v === null || v === undefined) return null
       if (typeof v !== 'number' || !Number.isFinite(v) || v < -max || v > max) fail(`${label} is out of range`, 'invalid')
@@ -1044,6 +1049,7 @@ const ops = {
       mpesaTill: digits(input.mpesaTill, 'M-Pesa Till'),
       mpesaPaybill: digits(input.mpesaPaybill, 'M-Pesa Paybill'),
       returnPolicy: maxLen(trimOrNull(input.returnPolicy), 2000, 'Return policy'),
+      trackingLinkDays: trackingDays(input.trackingLinkDays),
       updatedAt: nowIso(),
     }
     if (next.published && next.deliveryEnabled && (next.locationLat === null || next.locationLng === null)) {

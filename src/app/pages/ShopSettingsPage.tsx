@@ -82,6 +82,7 @@ interface Form {
   mpesaTill: string
   mpesaPaybill: string
   returnPolicy: string
+  trackingLinkDays: string
 }
 
 type FieldKey =
@@ -96,6 +97,7 @@ type FieldKey =
   | 'mpesaTill'
   | 'mpesaPaybill'
   | 'payments'
+  | 'trackingLinkDays'
 type Errors = Partial<Record<FieldKey, string>> & { bandRows?: Record<string, { km?: string; fee?: string }> }
 
 function toForm(s: ShopSettings | null, orgName: string, currency: string): Form {
@@ -122,6 +124,7 @@ function toForm(s: ShopSettings | null, orgName: string, currency: string): Form
     mpesaTill: s?.mpesaTill ?? '',
     mpesaPaybill: s?.mpesaPaybill ?? '',
     returnPolicy: s?.returnPolicy ?? '',
+    trackingLinkDays: String(s?.trackingLinkDays ?? 90),
   }
 }
 
@@ -145,6 +148,8 @@ function validate(f: Form, countryCode: string, currency: string): { errors: Err
 
   if (f.mpesaTill.trim() && !MPESA_RE.test(f.mpesaTill.trim())) errors.mpesaTill = 'A Till number is 5–8 digits.'
   if (f.mpesaPaybill.trim() && !MPESA_RE.test(f.mpesaPaybill.trim())) errors.mpesaPaybill = 'A Paybill number is 5–8 digits.'
+  const days = Number(f.trackingLinkDays.trim())
+  if (!/^\d+$/.test(f.trackingLinkDays.trim()) || days < 7 || days > 3650) errors.trackingLinkDays = 'Enter a whole number of days from 7 to 3650.'
 
   const bandRows: NonNullable<Errors['bandRows']> = {}
   const bands: ShopSettings['deliveryBands'] = []
@@ -201,6 +206,7 @@ function validate(f: Form, countryCode: string, currency: string): { errors: Err
           mpesaTill: orNull(f.mpesaTill),
           mpesaPaybill: orNull(f.mpesaPaybill),
           returnPolicy: orNull(f.returnPolicy),
+          trackingLinkDays: Number(f.trackingLinkDays),
         }
       : null,
   }
@@ -591,6 +597,17 @@ function ShopForm({ saved }: { saved: ShopSettings | null }) {
         <Section title="Returns policy" description="Plain words beat legal text. Buyers read this before they pay.">
           <Field label="Returns policy" optional hint="e.g. “Exchange within 7 days if unused, with the tags on. Buyer pays return delivery.”">
             {(p) => <Textarea {...p} rows={4} maxLength={1500} value={form.returnPolicy} onChange={(e) => set('returnPolicy', e.target.value)} />}
+          </Field>
+        </Section>
+
+        <Section title="Order tracking links" description="How long a buyer's tracking link keeps working after the order is delivered or cancelled.">
+          <Field
+            label="Days after the order closes"
+            error={errors.trackingLinkDays}
+            hint="7 to 3650. After this the link shows “not found”, so old links shared in chats stop revealing order details."
+            className="max-w-xs"
+          >
+            {(p) => <Input {...p} inputMode="numeric" value={form.trackingLinkDays} onChange={(e) => set('trackingLinkDays', e.target.value)} />}
           </Field>
         </Section>
       </fieldset>

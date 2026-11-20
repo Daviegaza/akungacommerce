@@ -23,7 +23,7 @@ import {
 } from '@/domain/reconciliation'
 import type { demoInternals as DemoInternalsValue, DemoState, StoredOrder } from './demo'
 import { demoTrackedDelivery } from './delivery-demo'
-import type { CollectionsAdminGateway, CollectionsSettings, MpesaPrompt, MpesaReceipt, VirtualAccountRecord } from './collections'
+import type { CollectionsAdminGateway, CollectionsSettings, MpesaCredentialsSummary, MpesaPrompt, MpesaReceipt, VirtualAccountRecord } from './collections'
 import type { PaymentOptions, PromptStatusResult, SimulatedOutcome, StkResult, TrackedBankTransfer, TrackedPaymentEvent } from './storefront'
 
 type Internals = typeof DemoInternalsValue
@@ -43,6 +43,8 @@ export interface DemoCollectionsState {
   mpesaReceipts?: StoredMpesaReceipt[]
   /** orgId -> settings; missing = Daraja (simulated) so the demo can show the full flow. */
   collections?: Record<string, CollectionsSettings>
+  /** orgId -> credential SUMMARY only. The demo never stores the secret values. */
+  mpesaCredentials?: Record<string, Extract<MpesaCredentialsSummary, { configured: true }>>
   /** SIMULATED dedicated bank accounts (NGN demo businesses). */
   virtualAccounts?: StoredVirtualAccount[]
 }
@@ -329,6 +331,44 @@ export function createDemoCollections(I: Internals): Required<CollectionsAdminGa
         if (!s.shopSettings.some((x) => x.orgId === orgId)) I.fail('Set up your shop link first (My shop), then choose how you get paid', 'invalid')
         s.collections ??= {}
         s.collections[orgId] = { provider: settings.provider, aggregator: settings.provider === 'aggregator' ? settings.aggregator : null }
+      }),
+    getMpesaCredentials: (orgId) =>
+      I.read((s): MpesaCredentialsSummary => {
+        I.requireMember(s, orgId)
+        const c = s.mpesaCredentials?.[orgId]
+        return c ? { ...c } : { configured: false }
+      }),
+    saveMpesaCredentials: (orgId, input) =>
+      I.tx((s): MpesaCredentialsSummary => {
+        I.requirePermission(s, orgId, 'integrations.manage')
+        const old = s.mpesaCredentials?.[orgId]
+        if (input.environment !== 'sandbox' && input.environment !== 'production') I.fail('Choose sandbox or production', 'invalid')
+        if (!/^[0-9]{5,8}$/.test(input.shortcode.trim())) I.fail('The shortcode is 5 to 8 digits', 'invalid')
+        if (input.partyB && !/^[0-9]{5,8}$/.test(input.partyB.trim())) I.fail('The till number is 5 to 8 digits', 'invalid')
+        const key = input.consumerKey.trim()
+        if (!old && (!key || !input.consumerSecret.trim() || !input.passkey.trim())) I.fail('Enter the consumer key, consumer secret and passkey', 'invalid')
+        const summary = {
+          configured: true as const,
+          environment: input.environment,
+          shortcode: input.shortcode.trim(),
+          transactionType: input.transactionType,
+          partyB: input.partyB?.trim() || null,
+          keyHint: key ? `…${key.slice(-4)}` : (old?.keyHint ?? ''),
+          updatedAt: I.nowIso(),
+        }
+        s.mpesaCredentials ??= {}
+        s.mpesaCredentials[orgId] = summary
+        return { ...summary }
+      }),
+    clearMpesaCredentials: (orgId) =>
+      I.tx((s) => {
+        I.requirePermission(s, orgId, 'integrations.manage')
+        if (s.mpesaCredentials) delete s.mpesaCredentials[orgId]
+      }),
+    markMpesaVerified: (orgId) =>
+      I.tx((s) => {
+        I.requirePermission(s, orgId, 'integrations.manage')
+        I.fail('The demo cannot verify a real M-Pesa account. In a live workspace this unlocks after a real test payment reaches Rafu.', 'invalid')
       }),
     listMpesaPrompts: (orgId) =>
       I.tx((s) => {

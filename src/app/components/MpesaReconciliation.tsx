@@ -17,6 +17,7 @@ import { INTEGRATION_LABEL_TEXT } from '@/integrations/registry'
 import { usePendingPoll } from '@/lib/usePendingPoll'
 import { useAction, useGateway, useIntegrations, useOrders, useOrg, useOrgQuery } from '../context'
 import { BankTransferAccounts } from './BankTransferAccounts'
+import { DarajaCredentials } from './DarajaCredentials'
 import { EmptyState, ErrorNotice, Section } from '../ui/layout'
 import { Money, When } from '../ui/format'
 import { Badge, Button, Input, PillTabs, Select, Skeleton, type Tone } from '../ui/primitives'
@@ -125,6 +126,7 @@ function ProviderPanel({ settings, integrations, demo }: { settings: Collections
       ) : (
         <p className="text-xs text-ink-3">Only an owner or admin can change this.</p>
       )}
+      {settings.provider === 'daraja' && <DarajaCredentials verified={label === 'connected_verified'} />}
     </div>
   )
 }

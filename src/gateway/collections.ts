@@ -60,9 +60,39 @@ export interface SimulatedIncomingInput {
   accountRef: string | null
 }
 
+/** What staff may see about a shop's own Daraja credentials. Secrets never leave the server. */
+export type MpesaCredentialsSummary =
+  | { configured: false }
+  | {
+      configured: true
+      environment: 'sandbox' | 'production'
+      shortcode: string
+      transactionType: 'CustomerPayBillOnline' | 'CustomerBuyGoodsOnline'
+      partyB: string | null
+      keyHint: string
+      updatedAt: string
+    }
+
+export interface MpesaCredentialsInput {
+  environment: 'sandbox' | 'production'
+  shortcode: string
+  transactionType: 'CustomerPayBillOnline' | 'CustomerBuyGoodsOnline'
+  partyB: string | null
+  /** Blank = keep the stored value. */
+  consumerKey: string
+  consumerSecret: string
+  passkey: string
+}
+
 export interface CollectionsAdminGateway {
   getCollectionsSettings(orgId: string): Promise<CollectionsSettings>
   setCollectionsProvider(orgId: string, settings: CollectionsSettings): Promise<void>
+  /* The shop's own Daraja credentials (migration 20261122000100): money goes to the shop's own Till/Paybill. */
+  getMpesaCredentials(orgId: string): Promise<MpesaCredentialsSummary>
+  saveMpesaCredentials(orgId: string, input: MpesaCredentialsInput): Promise<MpesaCredentialsSummary>
+  clearMpesaCredentials(orgId: string): Promise<void>
+  /** Owner/admin confirms a live test payment reached Rafu; prompts start only after this. */
+  markMpesaVerified(orgId: string): Promise<void>
   listMpesaPrompts(orgId: string): Promise<MpesaPrompt[]>
   listMpesaReceipts(orgId: string): Promise<MpesaReceipt[]>
   /** Attach a queued (unmatched / mismatch / late) receipt to an order. Returns the payment id. */

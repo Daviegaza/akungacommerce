@@ -17,6 +17,9 @@ const RiderPage = lazy(() => import('@/storefront/pages/RiderPage'))
 // only: it uses mock products and invented testimonials, so production builds show a not-found page.
 const ClassicStorefront = lazy(() => import('@/ClassicStorefront'))
 const PublicNotFound = lazy(() => import('@/storefront/components/States').then((m) => ({ default: m.PublicNotFound })))
+// Public legal pages (draft, pending legal review). Same in demo and Supabase modes.
+const PrivacyPage = lazy(() => import('@/legal/LegalPage').then((m) => ({ default: m.PrivacyPage })))
+const TermsPage = lazy(() => import('@/legal/LegalPage').then((m) => ({ default: m.TermsPage })))
 
 /** Calm full-screen placeholder for the Rafu surfaces while their code loads. */
 function RafuLoader() {
@@ -63,6 +66,22 @@ export default function App() {
               element={
                 <Suspense fallback={<RafuLoader />}>
                   <RiderPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/legal/privacy"
+              element={
+                <Suspense fallback={<RafuLoader />}>
+                  <PrivacyPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/legal/terms"
+              element={
+                <Suspense fallback={<RafuLoader />}>
+                  <TermsPage />
                 </Suspense>
               }
             />

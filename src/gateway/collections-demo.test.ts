@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { __setDemoRole, createDemoGateway, resetDemoWorkspace } from './demo'
+import { __setDemoRole, createDemoGateway, demoInternals, resetDemoWorkspace } from './demo'
 import { newIdempotencyKey } from './gateway'
 import { createDemoStorefront } from './storefront-demo'
 import type { PlaceOrderInput, SimulatedOutcome } from './storefront'
@@ -222,5 +222,51 @@ describe('unmatched queue and receipt verification (demo)', () => {
     await expect(gw.dismissMpesaReceipt(org.id, r.id, 'x')).rejects.toThrow(/cannot record payments/)
     await expect(gw.setCollectionsProvider(org.id, { provider: 'manual', aggregator: null })).rejects.toThrow(/cannot manage integrations/)
     expect((await gw.verifyMpesaReceipt(org.id, 'QZZ0000000')).state).toBe('not_found')
+  })
+})
+
+describe('shop M-Pesa keys (demo)', () => {
+  const input = {
+    environment: 'sandbox' as const,
+    shortcode: '600111',
+    transactionType: 'CustomerBuyGoodsOnline' as const,
+    partyB: '654321',
+    consumerKey: 'demo-key-WXYZ',
+    consumerSecret: 'demo-secret',
+    passkey: 'demo-passkey',
+  }
+
+  it('keeps only a summary, never the secret values', async () => {
+    const org = await mto()
+    expect(await gw.getMpesaCredentials(org.id)).toEqual({ configured: false })
+    const saved = await gw.saveMpesaCredentials(org.id, input)
+    expect(saved).toMatchObject({ configured: true, shortcode: '600111', partyB: '654321', keyHint: '…WXYZ' })
+    expect(JSON.stringify(saved)).not.toMatch(/demo-secret|demo-passkey/)
+    const state = await demoInternals.read((st) => JSON.stringify(st))
+    expect(state).not.toMatch(/demo-secret|demo-passkey/)
+    expect(state).toContain('600111')
+    // Blank secrets keep the saved summary.
+    const again = await gw.saveMpesaCredentials(org.id, { ...input, consumerKey: '', consumerSecret: '', passkey: '' })
+    expect(again).toMatchObject({ keyHint: '…WXYZ' })
+    await gw.clearMpesaCredentials(org.id)
+    expect(await gw.getMpesaCredentials(org.id)).toEqual({ configured: false })
+  })
+
+  it('validates input, needs owner/admin, and never claims a verified account', async () => {
+    const org = await mto()
+    await expect(gw.saveMpesaCredentials(org.id, { ...input, consumerKey: '' })).rejects.toThrow(/consumer key/)
+    await expect(gw.saveMpesaCredentials(org.id, { ...input, shortcode: '12' })).rejects.toThrow(/5 to 8 digits/)
+    await gw.saveMpesaCredentials(org.id, input)
+    await expect(gw.markMpesaVerified(org.id)).rejects.toThrow(/cannot verify/)
+    __setDemoRole(org.id, 'manager')
+    await expect(gw.saveMpesaCredentials(org.id, input)).rejects.toThrow()
+  })
+
+  it('stores the tracking-link window and validates it', async () => {
+    const org = await mto()
+    const base = (await gw.getShopSettings(org.id))!
+    await gw.saveShopSettings(org.id, { ...base, trackingLinkDays: 30 })
+    expect((await gw.getShopSettings(org.id))!.trackingLinkDays).toBe(30)
+    await expect(gw.saveShopSettings(org.id, { ...base, trackingLinkDays: 3 })).rejects.toThrow(/7 to 3650/)
   })
 })

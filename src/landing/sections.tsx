@@ -359,6 +359,12 @@ export function LandingFooter() {
           <Link to="/app" className="hover:text-ink">
             Sign in
           </Link>
+          <Link to="/legal/privacy" className="hover:text-ink">
+            Privacy
+          </Link>
+          <Link to="/legal/terms" className="hover:text-ink">
+            Terms
+          </Link>
         </nav>
       </div>
       <p className="mx-auto mt-6 max-w-6xl text-xs text-ink-3">

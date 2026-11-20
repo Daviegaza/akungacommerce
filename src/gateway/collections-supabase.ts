@@ -6,7 +6,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { COLLECTIONS_PROVIDERS, PROMPT_STATUSES, RECEIPT_STATUSES, verdictFor, type ReceiptVerification } from '@/domain/reconciliation'
 import { GatewayError } from './gateway'
-import type { CollectionsAdminGateway, CollectionsSettings, MpesaPrompt, MpesaReceipt, VirtualAccountRecord } from './collections'
+import type { CollectionsAdminGateway, CollectionsSettings, MpesaCredentialsSummary, MpesaPrompt, MpesaReceipt, VirtualAccountRecord } from './collections'
 
 type Row = Record<string, unknown>
 const s = (v: unknown) => (v == null ? null : String(v))
@@ -79,6 +79,19 @@ export function mapVirtualAccount(r: Row): VirtualAccountRecord {
   }
 }
 
+export function mapMpesaCredentials(r: Row | null): MpesaCredentialsSummary {
+  if (!r || r.configured !== true) return { configured: false }
+  return {
+    configured: true,
+    environment: r.environment === 'production' ? 'production' : 'sandbox',
+    shortcode: String(r.shortcode),
+    transactionType: r.transaction_type === 'CustomerBuyGoodsOnline' ? 'CustomerBuyGoodsOnline' : 'CustomerPayBillOnline',
+    partyB: s(r.party_b),
+    keyHint: String(r.key_hint ?? ''),
+    updatedAt: String(r.updated_at),
+  }
+}
+
 /** verify_mpesa_receipt jsonb -> verdict (shared rules in the domain module). */
 export function mapVerification(code: string, r: Row | null): ReceiptVerification {
   const provider = COLLECTIONS_PROVIDERS.find((x) => x === r?.provider) ?? 'manual'
@@ -121,6 +134,30 @@ export function createSupabaseCollections(sb: SupabaseClient): CollectionsAdminG
           p_aggregator: settings.provider === 'aggregator' ? settings.aggregator : null,
         }),
       )
+    },
+    async getMpesaCredentials(orgId) {
+      return mapMpesaCredentials(check(await sb.rpc('mpesa_credentials_summary', { p_org: orgId })) as Row | null)
+    },
+    async saveMpesaCredentials(orgId, input) {
+      const r = check(
+        await sb.rpc('set_mpesa_credentials', {
+          p_org: orgId,
+          p_environment: input.environment,
+          p_shortcode: input.shortcode,
+          p_transaction_type: input.transactionType,
+          p_party_b: input.partyB,
+          p_consumer_key: input.consumerKey,
+          p_consumer_secret: input.consumerSecret,
+          p_passkey: input.passkey,
+        }),
+      ) as Row | null
+      return mapMpesaCredentials(r)
+    },
+    async clearMpesaCredentials(orgId) {
+      check(await sb.rpc('clear_mpesa_credentials', { p_org: orgId }))
+    },
+    async markMpesaVerified(orgId) {
+      check(await sb.rpc('mark_mpesa_verified', { p_org: orgId }))
     },
     async listMpesaPrompts(orgId) {
       const rows = check(

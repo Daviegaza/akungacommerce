@@ -37,6 +37,8 @@ export interface ShopSettings {
   mpesaTill: string | null
   mpesaPaybill: string | null
   returnPolicy: string | null
+  /** Days a closed order's buyer tracking link keeps working (7..3650, default 90). Staff-side only. */
+  trackingLinkDays?: number
 }
 
 export interface ProductImage {
