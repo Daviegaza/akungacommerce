@@ -262,6 +262,14 @@ export interface ShopAdminGateway {
    * Demo: a data URL (persisted only when the product is saved).
    */
   uploadProductImage(orgId: string, image: Blob, opts?: ImageUploadOptions): Promise<string>
+  /**
+   * Best-effort delete of a photo uploaded in this editing session that was
+   * never saved to a product. Supabase: removes the object from this org's
+   * folder in 'product-images' (anything else is ignored). Demo: nothing to do
+   * (data URLs live only in the editor until saved). Leftovers are removed by
+   * the scheduled media-cleanup function.
+   */
+  deleteProductImage(orgId: string, url: string): Promise<void>
 }
 
 /** Pure helper mirrored by SQL delivery_fee_for + haversine_km (tested for parity). */

@@ -10,7 +10,16 @@ import { DOMAIN_STATUSES } from '@/domain/custom-domain'
 import { INVITE_STATUSES } from '@/domain/team-invites'
 import type { InvoiceLine, TaxInvoiceRecord } from '@/domain/etims'
 import { GatewayError } from './gateway'
-import type { CustomDomain, ExpansionAdminGateway, ImportResult, InvitePreview, StorefrontExtras, StorefrontExtrasGateway, TeamInvite } from './expansion'
+import type {
+  CustomDomain,
+  DomainCheckResult,
+  ExpansionAdminGateway,
+  ImportResult,
+  InvitePreview,
+  StorefrontExtras,
+  StorefrontExtrasGateway,
+  TeamInvite,
+} from './expansion'
 
 type Row = Record<string, unknown>
 const s = (v: unknown) => (v == null ? null : String(v))
@@ -45,6 +54,21 @@ export function mapDomain(r: Row): CustomDomain {
     lastCheckedAt: s(r.last_checked_at),
     verifiedAt: s(r.verified_at),
     createdAt: String(r.created_at),
+  }
+}
+
+const ROUTING = ['ok', 'missing', 'wrong', 'not_configured', 'unknown'] as const
+const OWNERSHIP = ['ok', 'missing', 'wrong', 'unknown'] as const
+
+export function mapDomainCheck(r: Row): DomainCheckResult {
+  const status = r.status === 'error' ? 'error' : (DOMAIN_STATUSES.find((x) => x === r.status) ?? 'error')
+  return {
+    status,
+    routing: ROUTING.find((x) => x === r.routing) ?? 'unknown',
+    ownership: OWNERSHIP.find((x) => x === r.ownership) ?? 'unknown',
+    reason: s(r.reason),
+    checkedAt: typeof r.checkedAt === 'string' ? r.checkedAt : new Date().toISOString(),
+    simulated: false,
   }
 }
 
@@ -140,6 +164,26 @@ export function createSupabaseExpansion(sb: SupabaseClient): ExpansionAdminGatew
     },
     async removeCustomDomain(orgId) {
       check(await sb.rpc('remove_custom_domain', { p_org: orgId }))
+    },
+    async checkCustomDomain(orgId) {
+      const { data, error } = await sb.functions.invoke('verify-custom-domain', { body: { org_id: orgId } })
+      if (error) {
+        // Non-2xx: the function answers { error } (429 = rate limited, 403 = not allowed, 503 = not deployed/configured).
+        let message = 'The DNS check is not available right now.'
+        let code: string | undefined
+        const ctx = (error as { context?: unknown }).context
+        if (ctx instanceof Response) {
+          code = ctx.status === 429 ? 'rate_limited' : ctx.status === 403 ? 'forbidden' : ctx.status === 503 ? 'not_configured' : undefined
+          try {
+            const body = (await ctx.json()) as Row
+            if (typeof body.error === 'string') message = body.error
+          } catch {
+            /* keep the generic message */
+          }
+        }
+        throw new GatewayError(message, code)
+      }
+      return mapDomainCheck((data ?? {}) as Row)
     },
 
     async listInvites(orgId) {

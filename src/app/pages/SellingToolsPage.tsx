@@ -7,7 +7,7 @@ import { BANK_TRANSFER_DESCRIPTORS, bankTransferEligible, type BankTransferProvi
 import { KRA_SUBMISSION, formatInvoiceNumber, invoicesCsv, normaliseKraPin } from '@/domain/etims'
 import { downloadCsv } from '@/integrations/csv'
 import { INTEGRATION_LABEL_TEXT } from '@/integrations/registry'
-import type { ShopExtras } from '@/gateway/expansion'
+import type { DomainCheckResult, ShopExtras } from '@/gateway/expansion'
 import { useAction, useGateway, useOrg, useOrgQuery } from '../context'
 import { ErrorNotice, Notice, PageHeader, Section, Table, Td, Th } from '../ui/layout'
 import { Money, When } from '../ui/format'
@@ -103,6 +103,7 @@ function DomainSection({ editable }: { editable: boolean }) {
   const add = useAction((g, o, h: string) => g.setCustomDomain(o, h))
   const remove = useAction((g, o) => g.removeCustomDomain(o))
   const simulate = useAction((g, o, outcome: 'verified' | 'failed') => (g.simulateDomainCheck ? g.simulateDomainCheck(o, outcome) : Promise.resolve()))
+  const check = useAction<void, DomainCheckResult>((g, o) => g.checkCustomDomain(o))
   const targets = dnsTargetsFromEnv(import.meta.env as Record<string, unknown>)
 
   async function submit(e: FormEvent) {
@@ -129,8 +130,8 @@ function DomainSection({ editable }: { editable: boolean }) {
       actions={<Badge tone="info">Not connected</Badge>}
     >
       <Notice tone="warn">
-        Rafu does not check DNS or issue certificates yet, so a domain stays “Waiting for DNS” and your shop keeps working on its Rafu link. Save it now and
-        it will connect once domain hosting is switched on.
+        Rafu can check your DNS records, but certificates and hosting for custom domains are not set up yet. Even with DNS verified, your domain does not
+        open your shop yet; your Rafu link keeps working.
       </Notice>
       <div className="mt-4">
         {domain.isPending ? (
@@ -145,7 +146,21 @@ function DomainSection({ editable }: { editable: boolean }) {
                 {DOMAIN_STATUS_LABEL[domain.data.status]}
               </Badge>
             </div>
-            {domain.data.failureReason && <p className="text-sm text-neg">{domain.data.failureReason}</p>}
+            {domain.data.status === 'verified' ? (
+              <p className="text-sm text-ink-2">
+                DNS is set up correctly. <span className="font-semibold text-ink">Certificate and hosting are not set up yet</span>, so this domain does not
+                serve your shop yet.
+              </p>
+            ) : (
+              domain.data.failureReason && <p className="text-sm text-neg">{domain.data.failureReason}</p>
+            )}
+            {domain.data.lastCheckedAt && (
+              <p className="-mt-2 text-xs text-ink-3">
+                Last checked <When iso={domain.data.lastCheckedAt} />
+                {check.data?.simulated && ' · simulated in the demo, no real DNS lookup'}
+              </p>
+            )}
+            {check.data?.status === 'error' && <Notice tone="warn">{check.data.reason ?? 'The DNS lookup did not finish. Try again in a few minutes.'}</Notice>}
             <div>
               <p className="mb-2 text-[13px] font-semibold text-ink">Add these records at your domain provider</p>
               <Table>
@@ -181,6 +196,9 @@ function DomainSection({ editable }: { editable: boolean }) {
             </div>
             {editable && (
               <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="primary" loading={check.isPending} onClick={() => check.mutate()}>
+                  Check now
+                </Button>
                 <Button size="sm" variant="ghost" loading={remove.isPending} onClick={() => remove.mutate(undefined)}>
                   Remove domain
                 </Button>
@@ -196,7 +214,7 @@ function DomainSection({ editable }: { editable: boolean }) {
                 )}
               </div>
             )}
-            {(remove.error ?? simulate.error) && <ErrorNotice error={remove.error ?? simulate.error} />}
+            {(check.error ?? remove.error ?? simulate.error) && <ErrorNotice error={check.error ?? remove.error ?? simulate.error} />}
           </div>
         ) : editable ? (
           <form onSubmit={submit} noValidate className="flex max-w-xl flex-col gap-3">

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { DB_URL, addMember, asUser, closeDb, createOrg, createProduct, createUser, db, key, one, type TestUser } from './helpers'
 import { guestOrder, randomIp, receiveStock, saveShop, sf, sfKey, uniqueSlug } from './storefront-helpers'
@@ -60,6 +61,10 @@ const failDelivery = (user: TestUser, orderId: string, reason: string) =>
 const returnToShop = (user: TestUser, orderId: string, k = key(), note: string | null = null) =>
   one<{ r: Record<string, unknown> }>(user, `select public.return_order_to_shop($1, $2, $3) as r`, [orderId, note, k]).then((x) => x.r)
 
+afterAll(async () => {
+  if (DB_URL) await closeDb()
+})
+
 run('returned to shop (database)', () => {
   let owner: TestUser, manager: TestUser, fulfilment: TestUser, stranger: TestUser
   let org: string, slug: string, variantId: string
@@ -73,10 +78,6 @@ run('returned to shop (database)', () => {
     await addMember(owner, org, manager, 'manager')
     await addMember(owner, org, fulfilment, 'fulfilment')
     await createOrg(stranger)
-  })
-
-  afterAll(async () => {
-    await closeDb()
   })
 
   it('SQL status machine matches TypeScript, including the return-flow-only transition', async () => {
@@ -246,5 +247,113 @@ run('storefront consent source (database)', () => {
 
   it('the wrapped order core is not callable by browsers', async () => {
     await expect(asUser(owner, `select public._storefront_place_order_core('x', '{}'::jsonb, 'abcdefghij')`)).rejects.toThrow(/permission denied/)
+  })
+})
+
+run('orphaned product photos (database)', () => {
+  let owner: TestUser
+  let org: string
+  const names: string[] = []
+  const base = 'http://127.0.0.1:58321/storage/v1/object/public/product-images/'
+
+  /** Insert an object row directly (as the DB owner) with a chosen age. */
+  async function object(name: string, ageHours: number) {
+    await db().query(`insert into storage.objects (bucket_id, name, created_at) values ('product-images', $1, now() - make_interval(hours => $2))`, [name, ageHours])
+    names.push(name)
+    return name
+  }
+
+  async function orphans(minAge = '24 hours') {
+    const { rows } = await db().query<{ name: string; org_id: string }>(`select name, org_id from public.list_orphan_product_images($1::interval, 1000)`, [minAge])
+    return rows.filter((r) => names.includes(r.name))
+  }
+
+  beforeAll(async () => {
+    owner = await createUser('media-owner')
+    org = await createOrg(owner, 'KES', { country: 'KE', tz: 'Africa/Nairobi', locale: 'en-KE' })
+  })
+
+  afterAll(async () => {
+    const client = await db().connect()
+    try {
+      await client.query('begin')
+      await client.query(`select set_config('storage.allow_delete_query', 'true', true)`)
+      await client.query(`delete from storage.objects where bucket_id = 'product-images' and name = any($1)`, [names])
+      await client.query('commit')
+    } finally {
+      client.release()
+    }
+  })
+
+  it('lists only old objects that no product or shop references', async () => {
+    const { productId } = await createProduct(owner, org, 1000)
+    const used = await object(`${org}/${randomUUID()}.webp`, 48)
+    const orphan = await object(`${org}/${randomUUID()}.webp`, 48)
+    const young = await object(`${org}/${randomUUID()}.webp`, 2)
+    const nested = await object(`${org}/nested/${randomUUID()}.webp`, 48)
+    const noOrg = await object(`not-an-org/${randomUUID()}.webp`, 48)
+    await asUser(owner, `select public.set_product_merchandising($1, $2, $3::jsonb, false, null)`, [org, productId, JSON.stringify([{ url: base + used }])])
+
+    const listed = (await orphans()).map((r) => r.name)
+    expect(listed).toContain(orphan)
+    expect(listed).not.toContain(used)
+    expect(listed).not.toContain(young)
+    expect(listed).not.toContain(nested)
+    expect(listed).not.toContain(noOrg)
+    expect((await orphans()).find((r) => r.name === orphan)?.org_id).toBe(org)
+
+    // Removing the photo from the product makes it an orphan; the minimum age never drops below 1 hour.
+    await asUser(owner, `select public.set_product_merchandising($1, $2, '[]'::jsonb, false, null)`, [org, productId])
+    expect((await orphans()).map((r) => r.name)).toContain(used)
+    expect((await orphans('1 minute')).map((r) => r.name)).toContain(young)
+    const fresh = await object(`${org}/${randomUUID()}.webp`, 0)
+    expect((await orphans('0 seconds')).map((r) => r.name)).not.toContain(fresh)
+  })
+
+  it('is for the service role only', async () => {
+    await expect(asUser(owner, `select * from public.list_orphan_product_images()`)).rejects.toThrow(/permission denied/)
+    await expect(asUser(null, `select * from public.list_orphan_product_images()`)).rejects.toThrow(/permission denied/)
+  })
+})
+
+run('custom domain check (database)', () => {
+  let owner: TestUser, manager: TestUser
+  let org: string
+  let host: string
+
+  beforeAll(async () => {
+    owner = await createUser('dom-owner')
+    manager = await createUser('dom-manager')
+    org = await createOrg(owner, 'KES', { country: 'KE', tz: 'Africa/Nairobi', locale: 'en-KE' })
+    await addMember(owner, org, manager, 'manager')
+    await saveShop(owner, org, { slug: uniqueSlug('dom') })
+    host = `shop-${randomUUID().slice(0, 8)}.mtohome.co.ke`
+  })
+
+  it('"Check now" needs org.manage and a domain, and is limited to 5 per 15 minutes per shop', async () => {
+    await expect(asUser(owner, `select public.request_custom_domain_check($1)`, [org])).rejects.toThrow(/Add a domain first/)
+    await asUser(owner, `select public.set_custom_domain($1, $2)`, [org, host])
+    await expect(asUser(manager, `select public.request_custom_domain_check($1)`, [org])).rejects.toThrow(/permission/)
+    await expect(asUser(null, `select public.request_custom_domain_check($1)`, [org])).rejects.toThrow(/permission denied/)
+    for (let i = 0; i < 5; i++) {
+      const r = await one<{ r: { hostname: string; verification_token: string; status: string } }>(owner, `select public.request_custom_domain_check($1) as r`, [org])
+      expect(r.r).toMatchObject({ hostname: host, status: 'pending_dns' })
+      expect(r.r.verification_token).toMatch(/^[a-f0-9]{32}$/)
+    }
+    await expect(asUser(owner, `select public.request_custom_domain_check($1)`, [org])).rejects.toThrow(/Too many attempts/)
+  })
+
+  it('the scheduled list covers pending/failed domains not checked in the last hour; marking is service-role only', async () => {
+    const listed = async () => (await db().query<{ hostname: string }>(`select hostname from public.list_custom_domains_to_check(100)`)).rows.map((r) => r.hostname)
+    expect(await listed()).toContain(host)
+    await db().query(`select public.mark_custom_domain_status($1, 'failed', 'No CNAME record found yet.')`, [host])
+    expect(await listed()).not.toContain(host) // just checked
+    await db().query(`update public.custom_domains set last_checked_at = now() - interval '2 hours' where hostname = $1`, [host])
+    expect(await listed()).toContain(host)
+    await db().query(`select public.mark_custom_domain_status($1, 'verified', null)`, [host])
+    await db().query(`update public.custom_domains set last_checked_at = now() - interval '2 hours' where hostname = $1`, [host])
+    expect(await listed()).not.toContain(host) // verified domains are not re-checked on schedule
+    await expect(asUser(owner, `select * from public.list_custom_domains_to_check(10)`)).rejects.toThrow(/permission denied/)
+    await expect(asUser(owner, `select public.mark_custom_domain_status($1, 'verified', null)`, [host])).rejects.toThrow(/permission denied/)
   })
 })

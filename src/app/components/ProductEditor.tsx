@@ -1,11 +1,11 @@
-import { useId, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
 import type { Product, ProductInput, ProductStatus, VariantInput } from '@/gateway/types'
 import type { ProductMerchandising as ProductMerch, VariantMerchandising } from '@/gateway/storefront'
 import { currencyExponent, money, parseMajor, toMajorString } from '@/domain/money'
-import { useAction, useOrg } from '../context'
+import { useAction, useGateway, useOrg } from '../context'
 import { useNow } from '../live/clock'
 import {
   ProductMerchandising,
@@ -14,7 +14,7 @@ import {
   isoToLocalInput,
   localInputToIso,
 } from './ProductMerchandising'
-import { imageDraftError, photosBusy, type ImageDraft } from './ProductPhotos'
+import { imageDraftError, photosBusy, unsavedUploads, type ImageDraft } from './ProductPhotos'
 import { ErrorNotice, Notice, Sheet } from '../ui/layout'
 import { Button, Field, Input, Select, Switch, Textarea } from '../ui/primitives'
 import { cn } from '@/lib/utils'
@@ -190,11 +190,17 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
   const nowMs = useNow()
   // Id of a product created in this sheet, so a retry after a storefront error never creates a duplicate.
   const [createdId, setCreatedId] = useState<string | null>(null)
+  const gateway = useGateway()
+  // Image URLs the product references on the server; anything else uploaded in this session is deleted on close.
+  const savedImages = useRef(new Set((product?.images ?? []).map((i) => i.url)))
   const save = useAction(async (g, o, { input, merch, variantMerch }: SavePayload) => {
     const id = await g.saveProduct(o, input)
     if (!input.id) setCreatedId(id)
     try {
-      if (merch) await g.setProductMerchandising(o, id, merch)
+      if (merch) {
+        await g.setProductMerchandising(o, id, merch)
+        savedImages.current = new Set(merch.images.map((i) => i.url))
+      }
       for (const vm of variantMerch) await g.setVariantMerchandising(o, vm.variantId, vm.m)
     } catch (err) {
       void qc.invalidateQueries({ queryKey: [o] })
@@ -216,6 +222,22 @@ export function ProductEditorSheet({ product, readOnly, onClose }: { product?: P
   )
   const [images, setImages] = useState<ImageDraft[]>(() =>
     (product?.images ?? []).map((i) => ({ key: crypto.randomUUID(), url: i.url, alt: i.alt ?? '' })),
+  )
+  // Closing the editor (save, cancel or navigating away): delete photos uploaded here that never got saved.
+  const imagesRef = useRef(images)
+  useEffect(() => {
+    imagesRef.current = images
+  }, [images])
+  const cleanupCtx = useRef({ gateway, orgId: org.id })
+  useEffect(() => {
+    cleanupCtx.current = { gateway, orgId: org.id }
+  }, [gateway, org.id])
+  useEffect(
+    () => () => {
+      const { gateway: g, orgId } = cleanupCtx.current
+      for (const url of unsavedUploads(imagesRef.current, savedImages.current)) void g.deleteProductImage(orgId, url).catch(() => undefined)
+    },
+    [],
   )
   const [featured, setFeatured] = useState(product?.featured ?? false)
   const [dropAt, setDropAt] = useState(() => isoToLocalInput(product?.availableFrom ?? null))

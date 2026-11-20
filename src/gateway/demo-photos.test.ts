@@ -108,4 +108,36 @@ describe('demo storage quota', () => {
     expect(after.images).toEqual(before.images)
     expect(after.featured).toBe(before.featured)
   })
+
+  it('a removed or never-saved photo leaves no copy in localStorage; deleteProductImage is a permission-checked no-op', async () => {
+    const store = new Map<string, string>()
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (k: string) => store.get(k) ?? null,
+        setItem: (k: string, v: string) => void store.set(k, v),
+        removeItem: (k: string) => store.delete(k),
+      },
+    })
+    resetDemoWorkspace()
+    const { org, product } = await setup()
+    const stored = () => [...store.values()].join('\n')
+    const save = (urls: string[]) =>
+      gw.setProductMerchandising(org.id, product.id, { images: urls.map((u) => ({ url: u })), featured: false, availableFrom: null })
+    const keep = 'https://images.example.test/keep.jpg'
+
+    const unsaved = await gw.uploadProductImage(org.id, webp(700))
+    expect(stored()).not.toContain(unsaved.slice(-40)) // an upload alone is never persisted
+
+    const url = await gw.uploadProductImage(org.id, webp(900))
+    await save([url, keep])
+    expect(stored()).toContain(url)
+    await save([keep])
+    expect(stored()).not.toContain(url) // no audit/history copy of image data either
+    expect(stored()).toContain(keep)
+
+    await expect(gw.deleteProductImage(org.id, url)).resolves.toBeUndefined()
+    __setDemoRole(org.id, 'sales')
+    await expect(gw.deleteProductImage(org.id, url)).rejects.toThrow(/cannot/)
+  })
 })

@@ -28,6 +28,13 @@ export interface ImageDraft {
   upload?: PhotoUpload
   /** Local object URL of the compressed photo, shown while (and after) it uploads. */
   preview?: string
+  /** Uploaded in this editing session and not saved to the product yet. */
+  fresh?: boolean
+}
+
+/** Photos uploaded in this session that the product does not reference: safe to delete when the editor closes. */
+export function unsavedUploads(images: ImageDraft[], saved: ReadonlySet<string>): string[] {
+  return images.filter((i) => i.fresh && i.url && !saved.has(i.url)).map((i) => i.url)
 }
 
 /** Only absolute https URLs are accepted for pasted photo links. */
@@ -143,7 +150,7 @@ export function ProductPhotos({
         },
       })
       if (ctrl.signal.aborted) return
-      patchDraft(key, { url, upload: undefined })
+      patchDraft(key, { url, upload: undefined, fresh: true })
     } catch (e) {
       if (!ctrl.signal.aborted) patchDraft(key, { upload: { status: 'error', progress: 0, error: errorMessage(e), file } })
     } finally {
@@ -188,6 +195,8 @@ export function ProductPhotos({
   function remove(img: ImageDraft) {
     controllers.current.get(img.key)?.abort()
     onImagesChange((list) => list.filter((x) => x.key !== img.key))
+    // Uploaded in this session and never saved: delete it now (best effort; the scheduled cleanup catches misses).
+    if (img.fresh && img.url) void gateway.deleteProductImage(org.id, img.url).catch(() => undefined)
   }
 
   function retry(img: ImageDraft) {

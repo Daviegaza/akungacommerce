@@ -121,6 +121,20 @@ describe('demo custom domains', () => {
     await gw.removeCustomDomain(org.id)
     expect(await gw.getCustomDomain(org.id)).toBeNull()
   })
+
+  it('"Check now" is simulated and labelled as such, owner/admin only, and rate-limited like the server', async () => {
+    const org = await orgOf('KES')
+    await expect(gw.checkCustomDomain(org.id)).rejects.toThrow(/Add a domain first/)
+    await gw.setCustomDomain(org.id, 'shop.mtohome.co.ke')
+    __setDemoRole(org.id, 'manager')
+    await expect(gw.checkCustomDomain(org.id)).rejects.toThrow(/cannot/)
+    __setDemoRole(org.id, 'owner')
+    const r = await gw.checkCustomDomain(org.id)
+    expect(r).toMatchObject({ status: 'verified', simulated: true })
+    expect(await gw.getCustomDomain(org.id)).toMatchObject({ status: 'verified', lastCheckedAt: expect.any(String) })
+    for (let i = 0; i < 4; i++) await gw.checkCustomDomain(org.id)
+    await expect(gw.checkCustomDomain(org.id)).rejects.toThrow(/Too many attempts/)
+  })
 })
 
 describe('demo team invites', () => {

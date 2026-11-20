@@ -1586,6 +1586,11 @@ export function createDemoGateway(): CommerceGateway {
       opts?.onProgress?.(1)
       return url
     },
+    // Demo photos are data URLs held by the editor until the product is saved, and saving
+    // replaces the product's image list, so a removed or unsaved photo is never left in storage.
+    deleteProductImage: async (orgId) => {
+      await read((s) => requirePermission(s, orgId, 'catalogue.write'))
+    },
 
     ...createDemoCollections(demoInternals),
 
