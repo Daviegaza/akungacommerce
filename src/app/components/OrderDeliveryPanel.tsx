@@ -35,6 +35,7 @@ export function OrderDeliveryPanel({ order }: { order: OrderDetail }) {
 function PanelBody({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
   const { can } = useOrg()
   const canEdit = can('fulfilment.update') && !['delivered', 'cancelled', 'refunded'].includes(order.status)
+  const closed = order.status === 'cancelled' || order.status === 'refunded'
   const delivery = order.fulfilment.method === 'delivery'
   const [failOpen, setFailOpen] = useState(false)
   const [returnOpen, setReturnOpen] = useState(false)
@@ -67,7 +68,10 @@ function PanelBody({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
     >
       <DefinitionList
         items={[
-          ...(d.depositDueMinor > 0
+          // A closed order (cancelled, returned, refunded) owes nothing more: no deposit or balance to chase.
+          ...(closed
+            ? []
+            : d.depositDueMinor > 0
             ? [
                 {
                   label: d.depositDueMinor >= d.totalMinor ? 'Due before dispatch' : 'Deposit due',
@@ -80,7 +84,7 @@ function PanelBody({ order, d }: { order: OrderDetail; d: OrderDelivery }) {
                 },
               ]
             : [{ label: 'Deposit', value: <span className="text-ink-3">None on this order</span> }]),
-          { label: 'Balance due', value: <Money minor={d.balanceDueMinor} currency={d.currency} /> },
+          ...(closed ? [] : [{ label: 'Balance due', value: <Money minor={d.balanceDueMinor} currency={d.currency} /> }]),
           ...(delivery ? [{ label: 'Delivery attempts', value: `${d.attempts} of ${d.maxAttempts}` }] : []),
           ...(d.forfeitedMinor > 0 ? [{ label: 'Kept for failed trips', value: <Money minor={d.forfeitedMinor} currency={d.currency} /> }] : []),
           ...(delivery && d.handoff.kind ? [{ label: 'Handoff', value: handoffText(d) }] : []),

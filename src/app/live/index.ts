@@ -5,4 +5,4 @@ export { useLiveFeed, buildFeed, type FeedItem, type FeedKind } from './feed'
 export { useShopSettings, shopUrl } from './shop'
 export { useLocalString } from './storage'
 export { FeedList, LiveFeedSheet } from './LiveFeed'
-export { Celebration } from './Celebration'
+// Celebration is imported lazily by AppShell (it pulls in framer-motion); import it from './Celebration' directly.
