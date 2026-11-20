@@ -85,8 +85,10 @@ The exact names each function reads are listed at the top of its `index.ts` and 
    ```
 
    Every migration has been applied from an empty database locally with `npx supabase db reset`, and CI
-   repeats that on every push. The hosted staging project currently has all 26 repository migrations applied
-   through the Supabase management migration tool. **Before using `supabase db push` or
+   repeats that on every push. The hosted staging project currently has all 26 current repository migration files applied
+   through the Supabase management migration tool. The remote history also contains superseded records from
+   the initial placement of the two hardening migrations; those SQL changes are re-applied under the correctly
+   ordered final filenames. **Before using `supabase db push` or
    `scripts/deploy.sh --apply` against this staging project, reconcile the CLI migration history:**
 
    ```sh
