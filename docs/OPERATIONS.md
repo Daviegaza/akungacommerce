@@ -128,6 +128,8 @@ select vault.create_secret('https://<ref>.supabase.co/functions/v1', 'rafu_funct
 select vault.create_secret('<service role key>', 'rafu_service_role_key');
 ```
 
+**Naming note:** `rafu_functions_url` and `rafu_service_role_key` are legacy internal Vault identifiers retained for migration/job compatibility. They are not customer-facing brand names. Do not rename them without a forward migration that updates the scheduled functions and deployment tooling together.
+
 `scripts/deploy.sh --apply` creates or updates both. Verified locally (2026-11-20): with both secrets set, the
 `whatsapp-webhook` retry and `mpesa-stk-query` jobs reached the locally served functions and got HTTP 200;
 without them `_invoke_edge_job` returns null and sends nothing. To pause a job:
