@@ -73,8 +73,10 @@ export function usePageView(pageName?: string) {
 
 // ─── Ecommerce events ───
 
-export function useProductView(productId: string, productName: string, price: number) {
+/** Tracks a product view once per product. Pass undefined while the product is unknown (no event). */
+export function useProductView(productId: string | undefined, productName: string, price: number) {
   useEffect(() => {
+    if (!productId) return
     track({
       name: 'product_view',
       properties: { productId, productName, price },

@@ -298,8 +298,12 @@ export async function fetchUser(): Promise<User> {
   return mockUser
 }
 
-export async function loginUser(email: string, _password: string): Promise<{ user: User; token: string }> {
+export async function loginUser(email: string, password: string): Promise<{ user: User; token: string }> {
   await delay(400)
+
+  if (password.length === 0) {
+    throw new ApiError('Enter your password', 400)
+  }
 
   if (!email.includes('@')) {
     throw new ApiError('Invalid email address', 400)

@@ -20,9 +20,7 @@ export default function ProductDetailPage() {
   const product = id ? getProductById(id) : undefined
 
   usePageView(product ? `Product: ${product.name}` : 'Product Detail')
-  if (product) {
-    useProductView(product.id, product.name, product.price)
-  }
+  useProductView(product?.id, product?.name ?? '', product?.price ?? 0)
   useRecentlyViewed(id)
 
   if (!id) {

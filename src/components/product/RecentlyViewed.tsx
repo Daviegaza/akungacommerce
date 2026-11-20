@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Clock } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -7,12 +7,9 @@ import { useRecentlyViewedStore } from '@/hooks/useRecentlyViewed'
 import { formatPrice } from '@/lib/utils'
 
 export function RecentlyViewed() {
-  const [products, setProducts] = useState<Product[]>([])
+  // Read once when mounted (the store persists to localStorage).
+  const [products, setProducts] = useState<Product[]>(() => useRecentlyViewedStore.getState().getProducts())
   const clearAll = useRecentlyViewedStore((s) => s.clearAll)
-
-  useEffect(() => {
-    setProducts(useRecentlyViewedStore.getState().getProducts())
-  }, [])
 
   if (products.length === 0) return null
 
