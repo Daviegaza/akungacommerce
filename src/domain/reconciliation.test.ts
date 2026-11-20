@@ -139,6 +139,23 @@ describe('decideC2bReceipt', () => {
     expect(decideC2bReceipt({ receiptKnown: true, accountRef: '9', order: order(), amountMinor: 150_000 })).toEqual({ kind: 'duplicate' })
   })
 
+  it('also matches the deposit due now, without calling it fully paid', () => {
+    expect(
+      decideC2bReceipt({ receiptKnown: false, accountRef: '#1042', order: order(), amountMinor: 50_000, dueNowMinor: 50_000 }),
+    ).toEqual({ kind: 'record', amountMinor: 50_000, fullyPaid: false, autoConfirm: true })
+    // The full balance still matches when a deposit is due.
+    expect(
+      decideC2bReceipt({ receiptKnown: false, accountRef: '#1042', order: order(), amountMinor: 150_000, dueNowMinor: 50_000 }),
+    ).toMatchObject({ kind: 'record', fullyPaid: true })
+    // Anything else is queued; a zero due-now never matches.
+    expect(
+      decideC2bReceipt({ receiptKnown: false, accountRef: '#1042', order: order(), amountMinor: 70_000, dueNowMinor: 50_000 }),
+    ).toEqual({ kind: 'unmatched', reason: 'balance_differs' })
+    expect(
+      decideC2bReceipt({ receiptKnown: false, accountRef: '#1042', order: order({ netPaidMinor: 150_000 }), amountMinor: 50_000, dueNowMinor: 0 }),
+    ).toEqual({ kind: 'unmatched', reason: 'balance_differs' })
+  })
+
   it('parses account references', () => {
     expect(orderNumberFromRef(' #12 ')).toBe(12)
     expect(orderNumberFromRef('INV-12')).toBeNull()
