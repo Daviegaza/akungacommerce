@@ -90,7 +90,7 @@ One accent, used sparingly. Graphite gives structure; neutral off-white surfaces
 | Warning | `warn` | `#A15C07` | `#F2B85C` |
 | Negative | `neg` | `#C8322B` | `#FF8A80` |
 
-Logo colours: F `#0E1420` with frame `#2F5BEA` on light; F `#FFFFFF` with frame `#7B9BFF` on dark.
+Logo colours: F `#0E1420` with exit path `#2F5BEA` on light; F `#FFFFFF` with exit path `#9DB5FF` on dark.
 
 **Accessibility (WCAG 2.2 AA, measured):**
 - White on cobalt `#2F5BEA` is 5.5:1, and dark text on dark-mode cobalt `#7B9BFF` passes too.
