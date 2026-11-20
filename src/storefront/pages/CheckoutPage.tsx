@@ -28,6 +28,8 @@ import { useStorefront } from '@/storefront/components/hooks'
 import { ProductImg } from '@/storefront/components/ProductImg'
 import { fmtMoney, isNotFoundError } from '@/storefront/components/storefront-utils'
 import { MapFallback, PinPicker, StaticMap, type LatLng } from '@/maps'
+import { useBankTransferOption } from '@/storefront/components/bankTransfer'
+import { emitStorefrontEvent } from '@/storefront/analytics/events'
 
 /* ───────────── Device-only conveniences (never required, never shared) ───────────── */
 const BUYER_KEY = 'rafu-buyer'
@@ -237,7 +239,12 @@ function CheckoutForm({
     retry: false,
   })
   const stk = payOptions.data?.stk === true
-  const payments: PaymentChoice[] = [...(hasMpesa ? (['mpesa'] as const) : []), ...(shop.codEnabled ? (['cod'] as const) : [])]
+  const bankTransfer = useBankTransferOption(slug, shop)
+  const payments: PaymentChoice[] = [
+    ...(hasMpesa ? (['mpesa'] as const) : []),
+    ...(bankTransfer.available ? (['bank_transfer'] as const) : []),
+    ...(shop.codEnabled ? (['cod'] as const) : []),
+  ]
   const payment: PaymentChoice =
     chosenPayment && payments.includes(chosenPayment) ? chosenPayment : (payments[0] ?? 'other')
 
@@ -303,6 +310,14 @@ function CheckoutForm({
         } satisfies SavedAddress)
       }
       onPlaced(placed.trackingToken)
+      emitStorefrontEvent({
+        type: 'purchase',
+        orderNumber: placed.number,
+        productIds: [...new Set(cart.lines.map((l) => l.productId))],
+        numItems: cart.count,
+        valueMinor: placed.totalMinor,
+        currency: placed.currency,
+      })
       cart.clear()
       navigate(`/t/${placed.trackingToken}?new=1`)
     },
@@ -530,7 +545,9 @@ function CheckoutForm({
                         ? `We send a payment prompt to ${phoneResult.ok ? phoneResult.e164 : 'your phone'} after you order${payOptions.data?.simulated ? ' (simulated in the demo)' : ''}. Or pay by ${shop.mpesaTill ? 'Till' : 'Paybill'}.`
                         : `Pay by ${shop.mpesaTill ? 'Till' : 'Paybill'} after ordering. We show you the steps.`,
                     }
-                  : {
+                  : p === 'bank_transfer'
+                    ? bankTransfer.option
+                    : {
                       value: p,
                       label: method === 'pickup' ? 'Pay when you collect' : 'Cash on delivery',
                       icon: <Banknote className="size-4" aria-hidden />,

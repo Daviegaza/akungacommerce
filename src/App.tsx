@@ -9,6 +9,7 @@ import { ScrollProgress } from '@/components/shared/ScrollProgress'
 import { ToastContainer } from '@/components/ui/toast'
 import { KeyboardShortcuts } from '@/components/shared/KeyboardShortcuts'
 import { ProductDetailSkeleton } from '@/components/ui/skeleton'
+import { HostHome } from '@/storefront/HostHome'
 
 const HomePage = lazy(() => import('@/pages/HomePage'))
 const ProductListPage = lazy(() => import('@/pages/ProductListPage'))
@@ -86,7 +87,8 @@ export default function App() {
               path="/"
               element={
                 <Suspense fallback={<RafuLoader />}>
-                  <LandingPage />
+                  {/* On a verified custom domain, "/" opens that merchant's shop. */}
+                  <HostHome landing={<LandingPage />} />
                 </Suspense>
               }
             />

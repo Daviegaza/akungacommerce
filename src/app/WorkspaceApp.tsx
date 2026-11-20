@@ -20,6 +20,10 @@ const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const ShopSettingsPage = lazy(() => import('./pages/ShopSettingsPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
+const ProductImportPage = lazy(() => import('./pages/ProductImportPage'))
+const SellingToolsPage = lazy(() => import('./pages/SellingToolsPage'))
+const InvoicePage = lazy(() => import('./pages/InvoicePage'))
+const JoinTeamPage = lazy(() => import('./pages/JoinTeamPage'))
 
 function FullPageLoader() {
   return (
@@ -57,7 +61,10 @@ function Gate() {
                   <Route path="orders" element={<OrdersPage />} />
                   <Route path="orders/new" element={<NewOrderPage />} />
                   <Route path="orders/:orderId" element={<OrderDetailPage />} />
+                  <Route path="orders/:orderId/invoice" element={<InvoicePage />} />
                   <Route path="products" element={<ProductsPage />} />
+                  <Route path="products/import" element={<ProductImportPage />} />
+                  <Route path="tools" element={<SellingToolsPage />} />
                   <Route path="inventory" element={<InventoryPage />} />
                   <Route path="customers" element={<CustomersPage />} />
                   <Route path="customers/:customerId" element={<CustomerDetailPage />} />
@@ -80,7 +87,18 @@ function Gate() {
 export default function WorkspaceApp() {
   return (
     <AppProviders fallback={<FullPageLoader />}>
-      <Gate />
+      <Routes>
+        {/* Staff invitation links work before the person belongs to any business. */}
+        <Route
+          path="join/:token"
+          element={
+            <Suspense fallback={<FullPageLoader />}>
+              <JoinTeamPage />
+            </Suspense>
+          }
+        />
+        <Route path="*" element={<Gate />} />
+      </Routes>
     </AppProviders>
   )
 }

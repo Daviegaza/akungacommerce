@@ -21,6 +21,7 @@ import {
   Users,
   Volume2,
   VolumeX,
+  Wrench,
 } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { RafuLogo, RafuMark } from '@/brand/RafuLogo'
@@ -60,6 +61,7 @@ const NAV: NavItem[] = [
   { to: '/app/customers', label: 'Customers', icon: Users },
   { to: '/app/payments', label: 'Payments', icon: CreditCard },
   { to: '/app/analytics', label: 'Analytics', icon: BarChart3 },
+  { to: '/app/tools', label: 'Selling tools', icon: Wrench },
   { to: '/app/settings', label: 'Settings', icon: Settings },
 ]
 

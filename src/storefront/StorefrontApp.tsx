@@ -12,6 +12,7 @@ import { fmtMoney, isNotFoundError, shopPath } from './components/storefront-uti
 import ProductPage from './pages/ProductPage'
 import ShopHome from './pages/ShopHome'
 import WishlistPage from './pages/WishlistPage'
+import { StorefrontAnalytics } from './analytics/StorefrontAnalytics'
 
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 
@@ -74,6 +75,7 @@ function StorefrontShell() {
         <Route path="wishlist" element={<WishlistPage slug={slug} data={data} />} />
         <Route path="*" element={<ProductNotFound homeHref={shopPath(slug)} />} />
       </Routes>
+      <StorefrontAnalytics slug={slug} data={data} />
       <CartDrawer slug={slug} shop={data.shop} />
       {!onProduct && !onCheckout && <CartPill slug={slug} shop={data.shop} />}
     </>
