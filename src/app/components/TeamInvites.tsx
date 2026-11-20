@@ -21,7 +21,7 @@ export function RolePicker({ value, onChange, roles }: { value: Role; onChange: 
       <legend className="mb-1 text-[13px] font-semibold text-ink">Role</legend>
       {roles.map((r) => (
         <label key={r} className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border p-3 ${value === r ? 'border-brand bg-brand-soft/50' : 'border-line hover:bg-sunken'}`}>
-          <input type="radio" name="invite-role" checked={value === r} onChange={() => onChange(r)} className="mt-1 size-4 accent-[var(--ak-brand)]" />
+          <input type="radio" name="invite-role" checked={value === r} onChange={() => onChange(r)} className="mt-1 size-4 shrink-0 accent-[var(--ak-brand)]" />
           <span className="text-sm">
             <span className="font-semibold text-ink">{ROLE_PLAIN[r].title}</span>
             <span className="block text-ink-3">{ROLE_PLAIN[r].summary}</span>

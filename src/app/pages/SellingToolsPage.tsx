@@ -126,7 +126,7 @@ function DomainSection({ editable }: { editable: boolean }) {
       icon={<Globe className="size-4" aria-hidden />}
       title="Custom domain"
       description="Use your own address, like shop.yourbrand.com, instead of the Rafu link."
-      actions={<Badge tone="info">{INTEGRATION_LABEL_TEXT.not_implemented}: not connected yet</Badge>}
+      actions={<Badge tone="info">Not connected</Badge>}
     >
       <Notice tone="warn">
         Rafu does not check DNS or issue certificates yet, so a domain stays “Waiting for DNS” and your shop keeps working on its Rafu link. Save it now and
@@ -246,7 +246,7 @@ function BankTransferSection({ extras }: { extras: ShopExtras }) {
                 name="bank-provider"
                 checked={extras.bankTransferProvider === d.id}
                 onChange={() => save.mutate(d.id)}
-                className="mt-1 size-4 accent-[var(--ak-brand)]"
+                className="mt-1 size-4 shrink-0 accent-[var(--ak-brand)]"
               />
               <span className="text-sm">
                 <span className="font-semibold text-ink">{d.name}</span>

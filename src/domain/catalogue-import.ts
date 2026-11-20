@@ -143,14 +143,14 @@ export function parseImportCsv(text: string, opts: { currency: string; maxRows?:
     else {
       const p = parsePriceCell(priceRaw, opts.currency)
       if (p.ok) priceMinor = p.minor
-      else errors.push(`Price ${p.error}`)
+      else errors.push(`Price: ${p.error}`)
     }
 
     let compareAtMinor: number | null = null
     const compareRaw = clean(cell(rec, 'compareAtPrice'))
     if (compareRaw) {
       const p = parsePriceCell(compareRaw, opts.currency)
-      if (!p.ok) errors.push(`Compare-at price ${p.error}`)
+      if (!p.ok) errors.push(`Compare-at price: ${p.error}`)
       else if (priceMinor !== null && p.minor <= priceMinor) errors.push('Compare-at price must be higher than the price (it is shown as the "was" price)')
       else compareAtMinor = p.minor
     }

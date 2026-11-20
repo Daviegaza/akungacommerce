@@ -222,7 +222,7 @@ export default function ProductImportPage() {
           ) : (
             <div className="flex flex-col gap-4">
               <ul className="flex flex-wrap gap-2" aria-label="Summary">
-                <li><Badge tone="pos">{plan.counts.create} new variants ({plan.newProducts} products)</Badge></li>
+                <li><Badge tone="pos">{plan.counts.create} new {plan.counts.create === 1 ? 'variant' : 'variants'} ({plan.newProducts} {plan.newProducts === 1 ? 'product' : 'products'})</Badge></li>
                 <li><Badge tone="info">{plan.counts.update} to update</Badge></li>
                 {plan.counts.skip > 0 && <li><Badge>{plan.counts.skip} skipped</Badge></li>}
                 {plan.counts.error > 0 && <li><Badge tone="neg">{plan.counts.error} with problems</Badge></li>}
@@ -236,7 +236,7 @@ export default function ProductImportPage() {
                   <legend className="mb-1 text-[13px] font-semibold text-ink">Some SKUs already exist in your shop</legend>
                   {(['update', 'skip'] as const).map((m) => (
                     <label key={m} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl p-2 hover:bg-sunken">
-                      <input type="radio" name="dup" value={m} checked={mode === m} onChange={() => { setMode(m); setDryRun(null) }} className="mt-1 size-4 accent-[var(--ak-brand)]" />
+                      <input type="radio" name="dup" value={m} checked={mode === m} onChange={() => { setMode(m); setDryRun(null) }} className="mt-1 size-4 shrink-0 accent-[var(--ak-brand)]" />
                       <span className="text-sm">
                         <span className="font-semibold text-ink">{m === 'update' ? 'Update them' : 'Leave them as they are'}</span>
                         <span className="block text-ink-3">
@@ -280,7 +280,7 @@ export default function ProductImportPage() {
                     <tr>
                       <Th>Line</Th>
                       <Th>Product</Th>
-                      <Th>SKU</Th>
+                      <Th className="hidden sm:table-cell">SKU</Th>
                       <Th align="right">Price</Th>
                       <Th align="right">Stock</Th>
                       <Th>Result</Th>
@@ -292,7 +292,12 @@ export default function ProductImportPage() {
                         <Td className="tnum text-ink-3">{r.line}</Td>
                         <Td>
                           <p className="font-medium text-ink">{r.name || <span className="text-ink-3">No name</span>}</p>
-                          {r.variantName && <p className="text-xs text-ink-3">{r.variantName}</p>}
+                          {(r.variantName || r.sku) && (
+                            <p className="text-xs text-ink-3">
+                              {r.variantName}
+                              {r.sku && <span className="sm:hidden">{r.variantName ? ' · ' : ''}{r.sku}</span>}
+                            </p>
+                          )}
                           {r.errors.length > 0 && (
                             <ul className="mt-1 text-xs text-neg">
                               {r.errors.map((e) => (
@@ -307,7 +312,7 @@ export default function ProductImportPage() {
                             </p>
                           )}
                         </Td>
-                        <Td className="text-xs text-ink-2">{r.sku ?? '—'}</Td>
+                        <Td className="hidden text-xs text-ink-2 sm:table-cell">{r.sku ?? '—'}</Td>
                         <Td align="right" className="tnum whitespace-nowrap">
                           {r.priceMinor !== null ? <Money minor={r.priceMinor} currency={org.baseCurrency} /> : '—'}
                           {r.compareAtMinor !== null && (

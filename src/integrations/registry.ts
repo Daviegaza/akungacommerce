@@ -54,7 +54,7 @@ const STATUSES: readonly IntegrationStatus[] = [
     name: 'Paystack',
     label: 'adapter_only',
     detail:
-      'Webhook signature verification and verified-payment recording exist. Needs a secret key, the webhook URL registered and an end-to-end test.',
+      'Webhook signature verification and verified-payment recording exist, plus a parser for Dedicated Virtual Account credits (charge.success, dedicated_nuban) for NGN bank transfers (not yet wired into the webhook function, so bank transfers are not matched to orders automatically). DVA account creation is not called. Needs a secret key, the webhook URL registered and an end-to-end test.',
     lastTestedAt: null,
   },
   {
@@ -87,9 +87,10 @@ const STATUSES: readonly IntegrationStatus[] = [
   {
     provider: 'flutterwave',
     kind: 'payment',
-    name: 'Flutterwave',
-    label: 'not_implemented',
-    detail: 'Not built.',
+    name: 'Flutterwave (NGN bank-transfer virtual accounts)',
+    label: 'adapter_only',
+    detail:
+      'Webhook check (verif-hash secret) is built. The virtual-account payment event format could not be confirmed from official docs, so no payment is recorded from it. No API is called. Needs a secret hash, the webhook URL registered, confirmed event format and an end-to-end test.',
     lastTestedAt: null,
   },
   {
@@ -98,6 +99,15 @@ const STATUSES: readonly IntegrationStatus[] = [
     name: 'Courier / delivery APIs',
     label: 'not_implemented',
     detail: 'No courier API is connected. Manual assignee and tracking reference are built in.',
+    lastTestedAt: null,
+  },
+  {
+    provider: 'kra_etims',
+    kind: 'accounting',
+    name: 'KRA eTIMS (Kenya e-invoicing)',
+    label: 'not_implemented',
+    detail:
+      'Numbered tax invoices per order and a CSV for manual entry into eTIMS Lite are built (Selling tools). Direct submission to KRA (OSCU/VSCU API) is not built; nothing is sent to KRA.',
     lastTestedAt: null,
   },
   {

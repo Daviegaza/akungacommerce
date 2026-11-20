@@ -8,7 +8,6 @@ import { useGateway, useSessionUser } from '../context'
 import { DemoBanner } from '../AppShell'
 import { SignInPage } from './AuthPages'
 import { ErrorNotice, Notice } from '../ui/layout'
-import { When } from '../ui/format'
 import { Button, Skeleton, buttonClass } from '../ui/primitives'
 
 const ORG_KEY = 'akunga.currentOrg'
@@ -70,7 +69,7 @@ export default function JoinTeamPage() {
               As <strong>{ROLE_PLAIN[p.role].title}</strong>: {ROLE_PLAIN[p.role].summary}
             </p>
             <p className="mt-1 text-xs text-ink-3">
-              Sent to {p.contactHint} · {p.status === 'pending' ? <>valid until <When iso={p.expiresAt} dateOnly /></> : null}
+              Sent to {p.contactHint} · {p.status === 'pending' ? <>valid until {new Date(p.expiresAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</> : null}
             </p>
             {caps.can.length > 0 && (
               <ul className="mt-3 list-disc space-y-0.5 pl-5 text-sm text-ink-2">

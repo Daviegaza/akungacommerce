@@ -72,7 +72,7 @@ describe('CSV product import', () => {
     expect(rows[0]).toMatchObject({ line: 2, name: 'Towel', priceMinor: 250000, compareAtMinor: 300000, stock: 12, errors: [] })
     expect(rows[1].line).toBe(3)
     expect(rows[1].errors.join(' ')).toMatch(/Name is missing/)
-    expect(rows[1].errors.join(' ')).toMatch(/Price use numbers only/)
+    expect(rows[1].errors.join(' ')).toMatch(/Price: use numbers only/)
     const e3 = rows[2].errors.join(' | ')
     expect(e3).toMatch(/also on line 2/)
     expect(e3).toMatch(/Compare-at price must be higher/)
