@@ -9,6 +9,7 @@ import type { StorefrontTrustGateway } from './trust'
 
 import type { CheckoutOptions, PickupPointSnapshot, RiderAction, RiderJob, TrackedDelivery } from './delivery'
 import type { PaymentMode } from '@/domain/delivery-policy'
+import type { StorefrontExtrasGateway } from './expansion'
 
 export interface DeliveryBand {
   maxKm: number
@@ -227,7 +228,7 @@ export interface PromptStatusResult {
   resultCode: number | null
 }
 
-export interface StorefrontGateway extends StorefrontTrustGateway {
+export interface StorefrontGateway extends StorefrontTrustGateway, StorefrontExtrasGateway {
   readonly mode: 'supabase' | 'demo'
   getStorefront(slug: string): Promise<StorefrontData>
   listReviews(slug: string, productId: string): Promise<PublicReview[]>

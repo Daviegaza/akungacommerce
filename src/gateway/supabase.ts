@@ -27,6 +27,7 @@ import { createSupabaseCollections } from './collections-supabase'
 import { createSupabaseDeliveryAdmin } from './delivery-supabase'
 import { createSupabaseTrust } from './trust-supabase'
 import { CONSENT_SOURCES } from '@/domain/marketing'
+import { createSupabaseExpansion } from './expansion-supabase'
 
 /* Row shapes returned by PostgREST (snake_case). Only the columns we select. */
 type Row = Record<string, unknown>
@@ -649,5 +650,6 @@ export function createSupabaseGateway(url: string, anonKey: string): CommerceGat
     // Deposits, failed deliveries and handoff (delivery-supabase.ts).
     ...createSupabaseDeliveryAdmin(sb),
     ...createSupabaseTrust(sb),
+    ...createSupabaseExpansion(sb),
   }
 }

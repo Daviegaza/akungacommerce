@@ -10,7 +10,8 @@
 | `/s/:slug` | Public shop: home, product pages, cart, wishlist, checkout (demo shops: `/s/mto-home`, `/s/atelier-lumen`) |
 | `/t/:token` | Buyer order tracking. No login: status timeline, deposit/balance, delivery updates, map on demand, payment instructions, verified reviews |
 | `/r/:token` | Rider job link for the shop's own rider. No account: pickup and drop-off, buyer phone masked until accepted, picked up / delivered / failed. Expires (1–72 h, default 12) |
-| `/app` | Merchant workspace (Today, orders, products, My shop, inventory, customers, payments, analytics, settings) |
+| `/app` | Merchant workspace (Today, orders, products, My shop, inventory, customers, payments, analytics, selling tools, settings) |
+| `/app/join/:token` | Accept a staff invitation (works before the person belongs to any business) |
 | `/classic` | Original storefront template, kept for reference |
 
 ## Storefront features
@@ -149,15 +150,19 @@ Every integration carries exactly one of four labels: **connected and verified**
 | Email (Resend) | Adapter only | Not configured |
 | SMS (Twilio) | Adapter only | Not configured |
 | Stripe | Adapter only | Webhook signature verification and replay window. Akunga never creates charges. |
-| Paystack | Adapter only | Webhook signature verification |
+| Paystack | Adapter only | Webhook signature verification. NGN Dedicated Virtual Account credit parser (`_shared/bank-transfer.ts`), not yet wired into `payment-webhook` |
 | M-Pesa Daraja (STK, callback, C2B) | Adapter only | Automatic reconciliation built and tested (unit + DB). Needs a registered Till/Paybill, Daraja keys and an end-to-end sandbox test. |
 | IntaSend, Pesapal (aggregators) | Adapter only | Interface only; no API verified or called. |
-| Flutterwave | Not implemented | |
 | Courier / delivery APIs | Not implemented | Built in without any API: rider links, your own pick-up point list, manual carrier + tracking number |
 | Pick Up Mtaani | Not implemented | Agents can be listed by hand as your own pick-up points; nothing is synced |
 | Bolt Send | Not implemented | Book trips yourself and record the carrier and reference |
+| Flutterwave (NGN virtual accounts) | Adapter only | `verif-hash` webhook check only; payment event format not confirmed, so nothing is recorded from it |
 | Xero, QuickBooks Online | Not implemented | |
 | CSV export (orders, payments, refunds) | Works locally | Exact decimal amounts with a currency column, protected against formula injection |
+| CSV product import | Works (both modes) | Up to 2,000 rows, row-level preview, update/skip by SKU, server dry run, all-or-nothing `import_products` RPC |
+| Meta Pixel / Google Analytics 4 | Works, no account verified | IDs validated server-side; loaded on the storefront only after the shopper taps Allow; never in the staff app |
+| Custom domains | Not implemented (model only) | Domain, DNS instructions and status are stored; no DNS check or certificate. `/` resolves only `verified` domains, which only the service role can set |
+| KRA eTIMS | Not implemented (manual) | Numbered tax invoices per order, printable, CSV for manual eTIMS Lite entry. Nothing is submitted to KRA |
 
 Setup and deploy instructions for the functions are in [`supabase/functions/README.md`](supabase/functions/README.md). Nothing has been deployed.
 
@@ -166,7 +171,7 @@ Setup and deploy instructions for the functions are in [`supabase/functions/READ
 1. **A hosted Supabase project.** It has not been created, migrated or deployed. Hosting is not deployed either.
 2. **Per-organisation payment provider credentials.** Today a single platform secret plus the connection, balance and order guards limit misuse. Stripe Connect or Paystack subaccounts are needed before merchants connect their own accounts.
 3. **Integration verification.** Each integration needs real provider accounts, configured secrets and end-to-end tests. Message templates must be approved, and outbound messages need logging and rate limits.
-4. **Team invitations by email.** Today a person needs an existing account before an admin can add them.
+4. **Invitation delivery.** Staff invitations (email or phone, link token, revoke, roles) are built, but Rafu does not send them: the owner shares the link via WhatsApp, SMS or email. Phone invites are bearer links (single use, 7 days).
 5. **Product image upload UI.** The private storage bucket and its policies exist, but there is no upload UI yet.
 6. **Public storefront and catalogue.** The storefront template is still mock data and is not wired to the catalogue or order intake. It needs rate limiting on public order endpoints.
 7. **Ops.** Backups and restore drills, monitoring, auth rate limits on the hosted project, and production email (SMTP) for auth.

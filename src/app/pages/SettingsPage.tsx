@@ -10,6 +10,7 @@ import { useAction, useAudit, useGateway, useIntegrations, useMembers, useOrg, u
 import { DefinitionList, EmptyState, ErrorNotice, PageHeader, Section, Sheet, Table, Td, Th } from '../ui/layout'
 import { When } from '../ui/format'
 import { Badge, Button, Field, Input, Select, Skeleton, type Tone } from '../ui/primitives'
+import { TeamInvites } from '../components/TeamInvites'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -429,8 +430,8 @@ function TeamSection() {
       description={manage ? 'Who can work in this business and what they can do.' : 'Only owners and admins can add people or change roles.'}
       actions={
         manage && (
-          <Button size="sm" onClick={() => setAdding(true)}>
-            Add member
+          <Button size="sm" variant="ghost" onClick={() => setAdding(true)}>
+            Add existing account
           </Button>
         )
       }
@@ -487,6 +488,7 @@ function TeamSection() {
           </ul>
         </>
       )}
+      <TeamInvites />
       <RoleMatrix />
       {adding && <AddMemberSheet open={adding} onOpenChange={setAdding} />}
     </Section>

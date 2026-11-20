@@ -66,6 +66,7 @@ import { dataUrlBytes } from '@/media/compress'
 import { DEMO_DATA_URL_RE, DEMO_MAX_IMAGE_BYTES, DEMO_MAX_UPLOADED_IMAGES, blobToDataUrl } from '@/media/upload'
 import { createDemoCollections, type DemoCollectionsState } from './collections-demo'
 import { createDemoTrust, type DemoTrustState } from './trust-demo'
+import { createDemoExpansion, type DemoExpansionState } from './expansion-demo'
 
 export const DEMO_NOTICE = 'Demo workspace · fictional data · stored only in this browser'
 
@@ -189,7 +190,7 @@ interface StoredReview {
 }
 
 /** M-Pesa collections fields are optional so older saved demo states stay valid. */
-interface DemoState extends DemoCollectionsState, DemoTrustState {
+interface DemoState extends DemoCollectionsState, DemoTrustState, DemoExpansionState {
   version: number
   signedIn: boolean
   orgs: StoredOrg[]
@@ -1589,6 +1590,7 @@ export function createDemoGateway(): CommerceGateway {
     // Deposits, failed deliveries and handoff (delivery-demo.ts).
     ...createDemoDeliveryAdmin(),
     ...createDemoTrust(demoInternals),
+    ...createDemoExpansion(demoInternals),
   }
 }
 
@@ -1612,6 +1614,10 @@ export const demoInternals = {
   requirePermission,
   getOrderRow,
   writeAudit,
+  orderDetail,
+  saveProduct: ops.saveProduct,
+  adjustStock: ops.adjustStock,
+  setVariantMerchandising: ops.setVariantMerchandising,
 }
 export type {
   DemoState,

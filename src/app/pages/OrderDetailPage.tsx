@@ -76,6 +76,10 @@ function OrderView({ order }: { order: OrderDetail }) {
         description={
           <>
             Placed <When iso={order.createdAt} /> · {CHANNEL_LABEL[order.channel]} · {order.fulfilmentMethod === 'delivery' ? 'Delivery' : 'Pickup'}
+            {' · '}
+            <Link to={`/app/orders/${order.id}/invoice`} className="font-semibold text-ink-2 underline underline-offset-2 hover:text-ink">
+              Tax invoice
+            </Link>
           </>
         }
         actions={<StatusActions order={order} />}

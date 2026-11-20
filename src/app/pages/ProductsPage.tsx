@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { CalendarClock, LayoutGrid, List, Package, Plus, Search, Star } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { CalendarClock, LayoutGrid, List, Package, Plus, Search, Star, Upload } from 'lucide-react'
 import type { Product, ProductStatus } from '@/gateway/types'
 import { available, stockHealth, type StockHealth } from '@/domain/inventory'
 import { formatDateTime } from '@/domain/locale'
@@ -7,7 +8,7 @@ import { cn } from '@/lib/utils'
 import { useOrg, useProducts } from '../context'
 import { EmptyState, ErrorNotice, PageHeader } from '../ui/layout'
 import { Money } from '../ui/format'
-import { Badge, Button, Input, PillTabs, Skeleton, Thumb } from '../ui/primitives'
+import { Badge, Button, Input, PillTabs, Skeleton, Thumb, buttonClass } from '../ui/primitives'
 import { ProductEditorSheet } from '../components/ProductEditor'
 import { useLocalString, useNow } from '../live'
 
@@ -262,9 +263,14 @@ export default function ProductsPage() {
         description="Your shelf. Photos, prices and stock here feed your shop and every new order."
         actions={
           canWrite && (
-            <Button variant="brand" icon={<Plus className="size-4" strokeWidth={2.5} aria-hidden />} onClick={() => setOpen(null)}>
-              Add product
-            </Button>
+            <>
+              <Link to="/app/products/import" className={buttonClass('secondary', 'md')}>
+                <Upload className="size-4" aria-hidden /> Import CSV
+              </Link>
+              <Button variant="brand" icon={<Plus className="size-4" strokeWidth={2.5} aria-hidden />} onClick={() => setOpen(null)}>
+                Add product
+              </Button>
+            </>
           )
         }
       />

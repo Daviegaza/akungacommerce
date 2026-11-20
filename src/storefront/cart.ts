@@ -5,6 +5,7 @@
 import { useMemo } from 'react'
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
+import { emitStorefrontEvent } from './analytics/events'
 
 export interface CartLine {
   variantId: string
@@ -93,6 +94,15 @@ const useCartStore = create<CartState>()(
             [slug]: existing ? lines.map((l) => (l.variantId === line.variantId ? next : l)) : [...lines, next],
           },
         }))
+        // Consent-gated: dropped unless the shopper allowed measurement (analytics/StorefrontAnalytics.tsx).
+        if (quantity > (existing?.quantity ?? 0)) emitStorefrontEvent({
+          type: 'add_to_cart',
+          productId: line.productId,
+          variantId: line.variantId,
+          quantity: quantity - (existing?.quantity ?? 0),
+          unitPriceMinor: line.unitPriceMinor,
+          currency: line.currency,
+        })
         return true
       },
       setQuantity(slug, variantId, qty) {

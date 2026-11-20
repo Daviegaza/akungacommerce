@@ -39,6 +39,7 @@ import {
   demoTrackedDelivery,
 } from './delivery-demo'
 import { createDemoStorefrontTrust, stampConsent } from './trust-demo'
+import { createDemoStorefrontExtras } from './expansion-demo'
 
 const { tx, read, uuid, now, nowIso, level, getOrg, createOrderCore } = demoInternals
 
@@ -483,5 +484,6 @@ export function createDemoStorefront(): StorefrontGateway {
     riderAccept: (token, name) => tx((s) => demoRiderAccept(s, token, name)),
     riderAction: (token, action, reason) => tx((s) => demoRiderAction(s, token, action, reason)),
     ...createDemoStorefrontTrust(demoInternals),
+    ...createDemoStorefrontExtras(demoInternals),
   }
 }
