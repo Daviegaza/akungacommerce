@@ -9,6 +9,8 @@ type Step = 'shipping' | 'payment' | 'confirmed'
 
 export function CheckoutForm() {
   const [step, setStep] = useState<Step>('shipping')
+  // Prototype reference, fixed for the life of this form (not recomputed on every render).
+  const [orderRef] = useState(() => Date.now().toString(36).toUpperCase())
 
   const steps = [
     { key: 'shipping' as const, label: 'Shipping', icon: Truck },
@@ -118,12 +120,12 @@ export function CheckoutForm() {
           <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30 mb-2">
             <Check className="h-10 w-10 text-green-600 dark:text-green-400" />
           </div>
-          <h2 className="text-2xl font-black text-surface-900 dark:text-white">Order Confirmed!</h2>
+          <h2 className="text-2xl font-semibold text-surface-900 dark:text-white">Order Confirmed!</h2>
           <p className="text-surface-500 dark:text-surface-400 max-w-sm mx-auto">
             Thank you for your order. You will receive a confirmation email shortly with your order details and tracking information.
           </p>
           <div className="rounded-2xl bg-surface-50 dark:bg-surface-800/50 p-5 max-w-xs mx-auto">
-            <p className="text-sm font-semibold text-surface-900 dark:text-white">Order #AK-{Date.now().toString(36).toUpperCase()}</p>
+            <p className="text-sm font-semibold text-surface-900 dark:text-white">Order #AK-{orderRef}</p>
             <p className="text-xs text-surface-400 mt-1">Estimated delivery: 3-5 business days</p>
           </div>
         </motion.div>

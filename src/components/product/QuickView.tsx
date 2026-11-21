@@ -127,7 +127,7 @@ export function QuickView({ product, isOpen, onClose }: QuickViewProps) {
                 </div>
 
                 <div className="flex items-baseline gap-2 mt-3">
-                  <span className="text-2xl font-black text-surface-900 dark:text-white">{formatPrice(product.price)}</span>
+                  <span className="text-2xl font-semibold text-surface-900 dark:text-white">{formatPrice(product.price)}</span>
                   {product.compareAtPrice && (
                     <span className="text-sm text-surface-400 line-through">{formatPrice(product.compareAtPrice)}</span>
                   )}

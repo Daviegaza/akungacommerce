@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 @theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
 
   --color-brand-50: #f0f7ff;
   --color-brand-100: #e0effe;
@@ -130,4 +130,181 @@
 
 .dark .glass-strong {
   background: rgba(15, 23, 42, 0.85);
+}
+
+/* ───────────────────────── Fungua design tokens ─────────────────────────
+   Structured and calm: graphite structure, neutral off-white surfaces, one cobalt accent used
+   sparingly, restrained status colours. Components use semantic names only.
+   Spec: docs/DESIGN.md · Brand: docs/BRAND_GUIDELINES.md */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --font-display: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-canvas: var(--ak-canvas);
+  --color-panel: var(--ak-panel);
+  --color-sunken: var(--ak-sunken);
+  --color-ink: var(--ak-ink);
+  --color-ink-2: var(--ak-ink-2);
+  --color-ink-3: var(--ak-ink-3);
+  --color-line: var(--ak-line);
+  --color-line-strong: var(--ak-line-strong);
+  --color-primary: var(--ak-primary);
+  --color-on-primary: var(--ak-on-primary);
+  --color-brand: var(--ak-brand);
+  --color-brand-strong: var(--ak-brand-strong);
+  --color-brand-soft: var(--ak-brand-soft);
+  --color-on-brand: var(--ak-on-brand);
+  /* "mango" is kept as the token name for deal accents (compare-at prices, drops). Restrained amber now. */
+  --color-mango: var(--ak-mango);
+  --color-mango-soft: var(--ak-mango-soft);
+  --color-on-mango: #1d1300;
+  --color-accent: var(--ak-accent);
+  --color-accent-soft: var(--ak-accent-soft);
+  --color-pos: var(--ak-pos);
+  --color-pos-soft: var(--ak-pos-soft);
+  --color-warn: var(--ak-warn);
+  --color-warn-soft: var(--ak-warn-soft);
+  --color-neg: var(--ak-neg);
+  --color-neg-soft: var(--ak-neg-soft);
+  --color-info: var(--ak-info);
+  --color-info-soft: var(--ak-info-soft);
+  --shadow-card: 0 1px 2px rgb(14 20 32 / 0.05);
+  --shadow-lift: 0 1px 2px rgb(14 20 32 / 0.06), 0 8px 24px rgb(14 20 32 / 0.08);
+  --radius-card: 0.75rem;
+}
+
+:root {
+  --ak-canvas: #f7f7f4;
+  --ak-panel: #ffffff;
+  --ak-sunken: #f0f1f3;
+  --ak-ink: #0e1420;
+  --ak-ink-2: #475063;
+  --ak-ink-3: #646d80;
+  --ak-line: #e5e7eb;
+  --ak-line-strong: #d3d7de;
+  --ak-primary: #0e1420;
+  --ak-on-primary: #ffffff;
+  --ak-brand: #2f5bea;
+  --ak-brand-strong: #2449c7;
+  --ak-brand-soft: #eaf0fe;
+  --ak-on-brand: #ffffff;
+  --ak-mango: #e8a33a;
+  --ak-mango-soft: #fdf3e1;
+  --ak-accent: #2f5bea;
+  --ak-accent-soft: #eaf0fe;
+  --ak-pos: #0b7d56;
+  --ak-pos-soft: #e3f4ec;
+  --ak-warn: #a15c07;
+  --ak-warn-soft: #fdf1dc;
+  --ak-neg: #c8322b;
+  --ak-neg-soft: #fce9e7;
+  --ak-info: #2f5bea;
+  --ak-info-soft: #eaf0fe;
+  --ak-logo-ink: #0e1420;
+  --ak-logo-accent: #2f5bea;
+}
+
+.dark {
+  --ak-canvas: #0b0f17;
+  --ak-panel: #121826;
+  --ak-sunken: #080b12;
+  --ak-ink: #edf0f5;
+  --ak-ink-2: #b4bccb;
+  --ak-ink-3: #8892a4;
+  --ak-line: #1f2636;
+  --ak-line-strong: #2c3446;
+  --ak-primary: #edf0f5;
+  --ak-on-primary: #0e1420;
+  --ak-brand: #7b9bff;
+  --ak-brand-strong: #9db5ff;
+  --ak-brand-soft: #18213a;
+  --ak-on-brand: #0b0f17;
+  --ak-mango: #f2b85c;
+  --ak-mango-soft: #2e2412;
+  --ak-accent: #7b9bff;
+  --ak-accent-soft: #18213a;
+  --ak-pos: #3dd598;
+  --ak-pos-soft: #0f2a20;
+  --ak-warn: #f2b85c;
+  --ak-warn-soft: #2e2412;
+  --ak-neg: #ff8a80;
+  --ak-neg-soft: #34171a;
+  --ak-info: #7b9bff;
+  --ak-info-soft: #18213a;
+  --ak-logo-ink: #edf0f5;
+  --ak-logo-accent: #9db5ff;
+}
+
+.ak-root {
+  font-family: var(--font-body);
+  background: var(--ak-canvas);
+  color: var(--ak-ink);
+}
+.ak-root h1, .ak-root h2, .ak-root h3, .ak-root .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.025em;
+}
+.ak-root :focus-visible {
+  outline: 2px solid var(--ak-brand);
+  outline-offset: 2px;
+}
+.tnum { font-variant-numeric: tabular-nums; }
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+@keyframes ak-pop { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+@keyframes ak-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes ak-pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.ak-pop { animation: ak-pop 360ms cubic-bezier(.2,.8,.2,1); }
+.ak-rise { animation: ak-rise 320ms cubic-bezier(.2,.8,.2,1) both; }
+.ak-live-dot { animation: ak-pulse-dot 1.6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ak-root *, .ak-root *::before, .ak-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+
+/* ───────────── Product finish ───────────── */
+::selection { background: color-mix(in srgb, var(--ak-brand) 18%, transparent); color: var(--ak-ink); }
+.ak-root {
+  min-height: 100dvh;
+  text-rendering: optimizeLegibility;
+}
+.ak-root a, .ak-root button, .ak-root input, .ak-root select, .ak-root textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+.ak-root a:not([class*="button"]):not([class*="bg-"]) {
+  text-underline-offset: 3px;
+}
+.ak-root button, .ak-root [role="button"], .ak-root a {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+  transition-duration: 160ms;
+  transition-timing-function: cubic-bezier(.2,.8,.2,1);
+}
+.ak-root button:disabled, .ak-root [aria-disabled="true"] {
+  cursor: not-allowed;
+}
+.ak-root :focus-visible {
+  outline: 2px solid var(--ak-brand);
+  outline-offset: 3px;
+}
+.ak-root .tnum, .ak-root [data-numeric="true"] {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+@media (max-width: 767px) {
+  .ak-root main {
+    scroll-margin-top: 4rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .ak-root a, .ak-root button, .ak-root input, .ak-root select, .ak-root textarea {
+    transition-duration: 0.01ms !important;
+  }
 }

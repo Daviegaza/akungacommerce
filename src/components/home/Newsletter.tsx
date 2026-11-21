@@ -40,7 +40,7 @@ export function Newsletter() {
               <Mail className="h-7 w-7 text-white" />
             </motion.div>
 
-            <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
+            <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-white">
               {subscribed ? 'Welcome to the club!' : 'Stay in the loop'}
             </h2>
             <p className="mt-3 text-surface-300 max-w-md mx-auto text-lg">

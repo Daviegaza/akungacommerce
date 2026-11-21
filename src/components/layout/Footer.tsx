@@ -46,8 +46,8 @@ export function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
           {/* Brand */}
           <div className="col-span-2">
-            <Link to="/" className="flex items-center gap-2 font-extrabold text-xl text-surface-900 dark:text-white mb-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-surface-900 text-white dark:bg-white dark:text-surface-900 text-sm font-black">
+            <Link to="/" className="flex items-center gap-2 font-semibold text-xl text-surface-900 dark:text-white mb-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-surface-900 text-white dark:bg-white dark:text-surface-900 text-sm font-semibold">
                 A
               </span>
               {APP_NAME}

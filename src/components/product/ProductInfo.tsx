@@ -59,7 +59,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
       </div>
 
       {/* Title */}
-      <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-surface-900 dark:text-white leading-tight">
+      <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-surface-900 dark:text-white leading-tight">
         {product.name}
       </h1>
 
@@ -84,7 +84,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
 
       {/* Price */}
       <div className="flex items-baseline gap-3">
-        <span className="text-3xl font-black text-surface-900 dark:text-white">
+        <span className="text-3xl font-semibold text-surface-900 dark:text-white">
           {formatPrice(product.price)}
         </span>
         {product.compareAtPrice && (

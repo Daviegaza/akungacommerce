@@ -47,7 +47,7 @@ export default function CheckoutPage() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="text-3xl sm:text-4xl font-black tracking-tight text-surface-900 dark:text-white mb-8"
+        className="text-3xl sm:text-4xl font-semibold tracking-tight text-surface-900 dark:text-white mb-8"
       >
         Checkout
       </motion.h1>

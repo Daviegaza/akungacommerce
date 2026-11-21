@@ -1,0 +1,313 @@
+/**
+ * Public storefront contract (shopper side) and merchant-side shop settings.
+ * Mirrors supabase/migrations/20261120000007_storefront.sql. Two implementations:
+ * Supabase (anon RPCs) and demo (localStorage, same rules).
+ */
+import type { ImageUploadOptions } from '@/media/upload'
+import type { PromptStatus } from '@/domain/reconciliation'
+import type { StorefrontTrustGateway } from './trust'
+
+import type { CheckoutOptions, PickupPointSnapshot, RiderAction, RiderJob, TrackedDelivery } from './delivery'
+import type { PaymentMode } from '@/domain/delivery-policy'
+import type { StorefrontExtrasGateway } from './expansion'
+
+export interface DeliveryBand {
+  maxKm: number
+  feeMinor: number
+}
+
+export interface ShopSettings {
+  slug: string
+  published: boolean
+  tagline: string | null
+  about: string | null
+  coverUrl: string | null
+  logoUrl: string | null
+  whatsappE164: string | null
+  /** Name the buyer sees on the M-Pesa prompt / Till — main trust signal. */
+  registeredName: string | null
+  locationLat: number | null
+  locationLng: number | null
+  locationLabel: string | null
+  pickupEnabled: boolean
+  deliveryEnabled: boolean
+  deliveryBands: DeliveryBand[]
+  deliveryPromise: string | null
+  codEnabled: boolean
+  mpesaTill: string | null
+  mpesaPaybill: string | null
+  returnPolicy: string | null
+  /** Days a closed order's buyer tracking link keeps working (7..3650, default 90). Staff-side only. */
+  trackingLinkDays?: number
+}
+
+export interface ProductImage {
+  url: string
+  alt?: string
+}
+
+export interface ProductMerchandising {
+  images: ProductImage[]
+  featured: boolean
+  /** Honest scheduled drop: not purchasable before this ISO instant. */
+  availableFrom: string | null
+}
+
+export interface VariantMerchandising {
+  compareAtMinor: number | null
+  swatch: string | null
+}
+
+/* ───────────── Shopper-facing shapes ───────────── */
+
+export interface PublicShop extends Omit<ShopSettings, 'published'> {
+  name: string
+  currency: string
+  locale: string
+  timezone: string
+  countryCode: string
+  taxMode: 'exclusive' | 'inclusive'
+  rating: { average: number; count: number } | null
+}
+
+export interface PublicVariant {
+  id: string
+  name: string
+  priceMinor: number
+  compareAtMinor: number | null
+  currency: string
+  swatch: string | null
+  lowStockThreshold: number
+  /** null = stock not tracked (always available). */
+  available: number | null
+}
+
+export interface PublicProduct {
+  id: string
+  name: string
+  description: string | null
+  category: string | null
+  images: ProductImage[]
+  featured: boolean
+  availableFrom: string | null
+  trackStock: boolean
+  taxRateBps: number
+  createdAt: string
+  /** Delivered units; null when fewer than 5 (never shown below that). */
+  soldCount: number | null
+  rating: { average: number; count: number } | null
+  variants: PublicVariant[]
+}
+
+export interface StorefrontData {
+  shop: PublicShop
+  products: PublicProduct[]
+}
+
+export interface PublicReview {
+  rating: number
+  body: string | null
+  author: string
+  createdAt: string
+}
+
+export interface CartLineInput {
+  variantId: string
+  quantity: number
+}
+
+export interface QuoteInput {
+  lines: CartLineInput[]
+  /** pickup_point = delivered to one of the shop's pick-up points (pickupPointId required). */
+  method: 'pickup' | 'delivery' | 'pickup_point'
+  lat?: number
+  lng?: number
+  pickupPointId?: string
+}
+
+export interface Quote {
+  currency: string
+  taxMode: 'exclusive' | 'inclusive'
+  lines: { variantId: string; name: string; variant: string; quantity: number; unitPriceMinor: number; totalMinor: number }[]
+  subtotalMinor: number
+  taxMinor: number
+  deliveryFeeMinor: number
+  distanceKm: number | null
+  totalMinor: number
+  /** Server-computed from the shop's payment policy (absent from servers without the deposits migration). */
+  depositDueMinor?: number
+  balanceOnDeliveryMinor?: number
+  paymentMode?: PaymentMode
+  pickupPoint?: PickupPointSnapshot | null
+}
+
+export type PaymentChoice = 'mpesa' | 'cod' | 'card' | 'bank_transfer' | 'other'
+
+export interface PlaceOrderInput extends QuoteInput {
+  name: string
+  phoneE164: string
+  payment: PaymentChoice
+  addressLine?: string
+  landmark?: string
+  building?: string
+  instructions?: string
+  note?: string
+  marketingOptIn: boolean
+  channel?: 'storefront' | 'whatsapp' | 'instagram' | 'facebook' | 'tiktok'
+  /** The total the buyer was shown. If the server total differs, the order is refused and nothing is created. */
+  expectedTotalMinor?: number
+}
+
+export interface PlacedOrder {
+  orderId: string
+  number: number
+  trackingToken: string
+  totalMinor: number
+  currency: string
+  /** Amount the payment step charges now (deposit or full amount). */
+  depositDueMinor?: number
+}
+
+export interface TrackedOrder {
+  number: number
+  status: string
+  createdAt: string
+  currency: string
+  subtotalMinor: number
+  taxMinor: number
+  deliveryFeeMinor: number
+  totalMinor: number
+  paidMinor: number
+  paymentPreference: PaymentChoice | null
+  customerFirstName: string
+  /** totalMinor is the pre-tax line amount (adds up to subtotalMinor). */
+  lines: { productId: string | null; name: string; variant: string; quantity: number; unitPriceMinor: number; totalMinor: number }[]
+  history: { status: string; at: string }[]
+  fulfilment: {
+    method: 'pickup' | 'delivery'
+    rider: string | null
+    trackingRef: string | null
+    deliveredAt: string | null
+    dropLat: number | null
+    dropLng: number | null
+    landmark: string | null
+  }
+  shop: {
+    name: string
+    slug: string | null
+    whatsappE164: string | null
+    locationLat: number | null
+    locationLng: number | null
+    locationLabel: string | null
+    mpesaTill: string | null
+    mpesaPaybill: string | null
+    registeredName: string | null
+    locale: string
+    timezone: string
+  }
+  reviewedProductIds: string[]
+  /** Deposit, balance, failed attempts and handoff; absent on servers without the deposits migration. */
+  delivery?: TrackedDelivery
+  /** Every succeeded payment (amount and time only); absent on servers without migration 20261120000061. */
+  payments?: TrackedPaymentEvent[]
+  /** NGN bank-transfer orders only: dedicated account details, or null when none is assigned yet. */
+  bankTransfer?: TrackedBankTransfer | null
+}
+
+export interface TrackedPaymentEvent {
+  amountMinor: number
+  currency: string
+  method: string
+  /** Confirmed by the payment provider (M-Pesa, Paystack, ...) rather than typed in by the shop. */
+  verified: boolean
+  receivedAt: string
+}
+
+export interface TrackedBankTransfer {
+  provider: string | null
+  /** null = no dedicated account assigned yet: the shop will share details. */
+  account: { bankName: string; accountNumber: string; accountName: string | null } | null
+  dueNowMinor: number
+  /** Order number to quote as the transfer reference / narration. */
+  reference: number
+  /** Demo workspace: simulated account, nothing can be paid into it. */
+  simulated: boolean
+}
+
+/** Result of asking the payment adapter to push an M-Pesa prompt. Never "paid" here. */
+export type StkResult =
+  | { status: 'prompt_sent'; checkoutRequestId: string }
+  | { status: 'not_configured' }
+  | { status: 'failed'; error: string }
+
+/** How the shop collects M-Pesa. `stk` = an automatic prompt can be attempted. */
+export interface PaymentOptions {
+  provider: 'manual' | 'daraja' | 'aggregator'
+  stk: boolean
+  /** Demo workspace: prompts are simulated, nothing is charged. */
+  simulated: boolean
+}
+
+/** Demo-only outcome for a simulated STK prompt. Ignored by the real gateway. */
+export type SimulatedOutcome = 'success' | 'cancelled' | 'timeout' | 'wrong_amount' | 'callback_lost'
+
+export interface PromptStatusResult {
+  status: PromptStatus
+  resultCode: number | null
+}
+
+export interface StorefrontGateway extends StorefrontTrustGateway, StorefrontExtrasGateway {
+  readonly mode: 'supabase' | 'demo'
+  getStorefront(slug: string): Promise<StorefrontData>
+  listReviews(slug: string, productId: string): Promise<PublicReview[]>
+  quote(slug: string, input: QuoteInput): Promise<Quote>
+  placeOrder(slug: string, input: PlaceOrderInput, idempotencyKey: string): Promise<PlacedOrder>
+  track(token: string): Promise<TrackedOrder>
+  submitReview(token: string, productId: string, rating: number, body: string | null): Promise<void>
+  /** Ask the configured provider to send an STK push. Returns not_configured until Daraja is set up. */
+  requestMpesaPrompt(trackingToken: string, phoneE164: string, opts?: { simulate?: SimulatedOutcome }): Promise<StkResult>
+  /** Whether this shop can send automatic prompts. */
+  getPaymentOptions(slug: string): Promise<PaymentOptions>
+  /** Status of a prompt, as reported by verified provider callbacks only. */
+  getMpesaPromptStatus(trackingToken: string, checkoutRequestId: string): Promise<PromptStatusResult>
+  /** Payment policy (shown before paying) and active pick-up points. */
+  getCheckoutOptions(slug: string): Promise<CheckoutOptions>
+  /** Account-free rider link (/r/:token). */
+  riderJob(token: string): Promise<RiderJob>
+  riderAccept(token: string, name: string): Promise<RiderJob>
+  riderAction(token: string, action: RiderAction, reason?: string | null): Promise<RiderJob>
+}
+
+/** Merchant-side additions (implemented on CommerceGateway). */
+export interface ShopAdminGateway {
+  getShopSettings(orgId: string): Promise<ShopSettings | null>
+  saveShopSettings(orgId: string, settings: ShopSettings): Promise<void>
+  setProductMerchandising(orgId: string, productId: string, m: ProductMerchandising): Promise<void>
+  setVariantMerchandising(orgId: string, variantId: string, m: VariantMerchandising): Promise<void>
+  /**
+   * Store an already-compressed product photo and return the URL to put in the
+   * product's images. Supabase: public 'product-images' bucket under "<org_id>/".
+   * Demo: a data URL (persisted only when the product is saved).
+   */
+  uploadProductImage(orgId: string, image: Blob, opts?: ImageUploadOptions): Promise<string>
+  /**
+   * Best-effort delete of a photo uploaded in this editing session that was
+   * never saved to a product. Supabase: removes the object from this org's
+   * folder in 'product-images' (anything else is ignored). Demo: nothing to do
+   * (data URLs live only in the editor until saved). Leftovers are removed by
+   * the scheduled media-cleanup function.
+   */
+  deleteProductImage(orgId: string, url: string): Promise<void>
+}
+
+/** Pure helper mirrored by SQL delivery_fee_for + haversine_km (tested for parity). */
+export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const r = (d: number) => (d * Math.PI) / 180
+  const a = Math.sin(r(lat2 - lat1) / 2) ** 2 + Math.cos(r(lat1)) * Math.cos(r(lat2)) * Math.sin(r(lng2 - lng1) / 2) ** 2
+  return 2 * 6371.0088 * Math.asin(Math.sqrt(a))
+}
+
+export function deliveryFeeFor(bands: DeliveryBand[], km: number): number | null {
+  const band = [...bands].sort((a, b) => a.maxKm - b.maxKm).find((b) => b.maxKm >= km)
+  return band ? band.feeMinor : null
+}

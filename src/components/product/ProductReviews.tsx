@@ -27,7 +27,7 @@ export function ProductReviews({ reviews, rating, reviewCount }: ProductReviewsP
         {/* Summary */}
         <div className="flex items-center gap-6">
           <div className="text-center">
-            <div className="text-5xl font-black text-surface-900 dark:text-white">{rating}</div>
+            <div className="text-5xl font-semibold text-surface-900 dark:text-white">{rating}</div>
             <div className="flex items-center justify-center gap-0.5 mt-1">
               {[...Array(filled)].map((_, i) => (
                 <Star key={`s-${i}`} className="h-4 w-4 fill-amber-400 text-amber-400" />

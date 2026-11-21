@@ -51,7 +51,7 @@ export function Stats() {
               <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 mb-4">
                 <Icon className="h-6 w-6" />
               </div>
-              <div className="text-3xl sm:text-4xl font-black tracking-tight text-surface-900 dark:text-white">
+              <div className="text-3xl sm:text-4xl font-semibold tracking-tight text-surface-900 dark:text-white">
                 <AnimatedCounter
                   to={value}
                   suffix={suffix}

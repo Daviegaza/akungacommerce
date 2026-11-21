@@ -86,7 +86,7 @@ export default function ProductListPage() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-surface-900 dark:text-white">
+        <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-surface-900 dark:text-white">
           {searchParams.get('category')
             ? `${searchParams.get('category')!.charAt(0).toUpperCase() + searchParams.get('category')!.slice(1)}`
             : searchParams.get('sale') === 'true'

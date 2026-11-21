@@ -1,0 +1,350 @@
+import { useMemo, useState, type ReactNode } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { ChevronLeft, Plus } from 'lucide-react'
+import type { OrderSummary } from '@/gateway/types'
+import { COUNTRY_PRESETS } from '@/domain/locale'
+import { divRoundHalfUp } from '@/domain/money'
+import { whatsappChatLink } from '@/integrations/whatsapp-link'
+import { useCustomers, useOrders, useOrg } from '../context'
+import { DefinitionList, EmptyState, ErrorNotice, PageHeader, Section, Table, Td, Th } from '../ui/layout'
+import { Money, OrderStatusBadge, PaymentStateBadge, Phone, When, paymentStateOf } from '../ui/format'
+import { Badge, Button, Skeleton, buttonClass } from '../ui/primitives'
+import { CustomerFormSheet } from '../components/CustomerForm'
+import { MarketingConsentPanel } from '../components/MarketingConsentPanel'
+
+interface CurrencyTotal {
+  currency: string
+  totalMinor: number
+  count: number
+}
+
+function BackLink() {
+  return (
+    <Link to="/app/customers" className="inline-flex items-center gap-1 text-sm text-ink-3 hover:text-ink">
+      <ChevronLeft className="size-4" aria-hidden />
+      Customers
+    </Link>
+  )
+}
+
+function safeWhatsappLink(e164: string, name: string): string | null {
+  try {
+    const first = name.trim().split(/\s+/)[0] ?? ''
+    return whatsappChatLink(e164, first ? `Hi ${first}, ` : '')
+  } catch {
+    return null
+  }
+}
+
+function countryName(code: string | null): string | null {
+  if (!code) return null
+  return COUNTRY_PRESETS.find((c) => c.code === code.toUpperCase())?.name ?? code.toUpperCase()
+}
+
+function showsPayment(o: OrderSummary) {
+  return o.status !== 'draft' && o.status !== 'cancelled'
+}
+
+/** One cell of the hairline stat strip. */
+function StripCell({ label, value, foot }: { label: string; value: ReactNode; foot?: ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col bg-panel px-4 py-3.5 sm:px-5">
+      <dt className="text-[13px] text-ink-2">{label}</dt>
+      <dd className="tnum mt-1 min-w-0 truncate font-display text-[clamp(1.05rem,4.6vw,1.375rem)] leading-tight font-semibold tracking-tight text-ink">{value}</dd>
+      {foot && <dd className="mt-1 text-xs text-ink-3">{foot}</dd>}
+    </div>
+  )
+}
+
+export default function CustomerDetailPage() {
+  const { customerId = '' } = useParams()
+  const customers = useCustomers()
+  const orders = useOrders()
+  const { can } = useOrg()
+  const [editing, setEditing] = useState(false)
+
+  const customer = customers.data?.find((c) => c.id === customerId)
+
+  const history = useMemo(
+    () => (orders.data ?? []).filter((o) => o.customerId === customerId).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)),
+    [orders.data, customerId],
+  )
+
+  const totals = useMemo(() => {
+    const map = new Map<string, CurrencyTotal>()
+    for (const o of history) {
+      if (o.status === 'draft' || o.status === 'cancelled') continue
+      const t = map.get(o.currency) ?? { currency: o.currency, totalMinor: 0, count: 0 }
+      t.totalMinor += o.totalMinor
+      t.count += 1
+      map.set(o.currency, t)
+    }
+    return [...map.values()].sort((a, b) => b.count - a.count)
+  }, [history])
+  const countedOrders = totals.reduce((n, t) => n + t.count, 0)
+
+  if (customers.isPending) {
+    return (
+      <div aria-busy="true">
+        <Skeleton className="mb-3 h-4 w-24" />
+        <Skeleton className="mb-8 h-8 w-64" />
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: 5 }, (_, i) => (
+            <Skeleton key={i} className="h-10" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (customers.isError) {
+    return (
+      <>
+        <PageHeader title="Customer" back={<BackLink />} />
+        <ErrorNotice error={customers.error} onRetry={() => customers.refetch()} />
+      </>
+    )
+  }
+
+  if (!customer) {
+    return (
+      <>
+        <PageHeader title="Customer not found" back={<BackLink />} />
+        <EmptyState
+          title="This customer doesn’t exist in this business"
+          body="The link may be wrong, or the customer belongs to another business you can switch to."
+          action={
+            <Link to="/app/customers" className={buttonClass('secondary')}>
+              Back to customers
+            </Link>
+          }
+        />
+      </>
+    )
+  }
+
+  const waLink = customer.phoneE164 ? safeWhatsappLink(customer.phoneE164, customer.name) : null
+  const newOrderHref = `/app/orders/new?customer=${encodeURIComponent(customer.id)}`
+  // History is newest first; drafts and cancelled orders don't count as an order placed.
+  const lastOrderAt = history.find(showsPayment)?.createdAt ?? null
+
+  return (
+    <>
+      <PageHeader
+        title={customer.name}
+        back={<BackLink />}
+        description={
+          <>
+            Customer since <When iso={customer.createdAt} dateOnly />
+          </>
+        }
+        actions={
+          <>
+            {can('customers.write') && (
+              <Button onClick={() => setEditing(true)}>Edit</Button>
+            )}
+            {can('orders.create') && (
+              <Link to={newOrderHref} className={buttonClass('primary')}>
+                <Plus className="size-4" aria-hidden /> New order for this customer
+              </Link>
+            )}
+          </>
+        }
+      />
+
+      {/* Lifetime value: hairline strip, one cell per currency (never added together). */}
+      <section aria-labelledby="ltv-h" className="mb-10">
+        <h2 id="ltv-h" className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-[13px] font-medium text-ink-3">
+          Lifetime value
+          <span className="text-xs font-normal">Excludes drafts and cancelled orders. Each currency is kept separate.</span>
+        </h2>
+        {orders.isPending ? (
+          <Skeleton className="h-[92px] rounded-[var(--radius-card)]" />
+        ) : orders.isError ? (
+          <ErrorNotice error={orders.error} onRetry={() => orders.refetch()} />
+        ) : (
+          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-card)] border border-line bg-line lg:grid-cols-4">
+            <StripCell
+              label="Orders"
+              value={countedOrders}
+              foot={history.length > countedOrders ? `${history.length - countedOrders} draft or cancelled` : undefined}
+            />
+            {totals.length === 0 ? (
+              <StripCell label="Spent" value={<span className="text-ink-3">—</span>} foot="No completed orders yet" />
+            ) : (
+              totals.map((t) => (
+                <StripCell
+                  key={t.currency}
+                  label={totals.length > 1 ? `Spent · ${t.currency}` : 'Spent'}
+                  value={<Money minor={t.totalMinor} currency={t.currency} />}
+                  foot={
+                    <>
+                      Average <Money minor={divRoundHalfUp(t.totalMinor, t.count)} currency={t.currency} /> over {t.count}{' '}
+                      {t.count === 1 ? 'order' : 'orders'}
+                    </>
+                  }
+                />
+              ))
+            )}
+            <StripCell
+              label="Last order"
+              value={lastOrderAt ? <When iso={lastOrderAt} dateOnly /> : <span className="text-ink-3">—</span>}
+              foot={lastOrderAt ? undefined : 'None yet'}
+            />
+            <StripCell
+              label="Offers"
+              value={customer.marketingConsent ? 'Agreed' : <span className="text-ink-2">Not agreed</span>}
+              foot={customer.marketingConsent ? 'May receive offers' : 'Order messages only'}
+            />
+          </dl>
+        )}
+      </section>
+
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-12">
+        <div className="min-w-0">
+          <Section title="Orders" className="border-t border-line pt-5">
+            {orders.isPending ? (
+              <div className="flex flex-col gap-3">
+                {Array.from({ length: 3 }, (_, i) => (
+                  <Skeleton key={i} className="h-12" />
+                ))}
+              </div>
+            ) : orders.isError ? (
+              <p className="text-sm text-ink-3">Order history is unavailable until orders load.</p>
+            ) : history.length === 0 ? (
+              <EmptyState
+                title="No orders yet"
+                body={`Orders placed for ${customer.name} will appear here.`}
+                action={
+                  can('orders.create') ? (
+                    <Link to={newOrderHref} className={buttonClass('primary')}>
+                      New order for this customer
+                    </Link>
+                  ) : undefined
+                }
+              />
+            ) : (
+              <>
+                <div className="hidden sm:block">
+                  <Table>
+                    <thead>
+                      <tr>
+                        <Th>Order</Th>
+                        <Th>Placed</Th>
+                        <Th>Status</Th>
+                        <Th>Payment</Th>
+                        <Th align="right">Total</Th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {history.map((o) => (
+                        <tr key={o.id}>
+                          <Td>
+                            <Link to={`/app/orders/${o.id}`} className="tnum font-medium text-ink hover:underline">
+                              #{o.number}
+                            </Link>
+                          </Td>
+                          <Td className="text-ink-2">
+                            <When iso={o.createdAt} />
+                          </Td>
+                          <Td>
+                            <OrderStatusBadge status={o.status} />
+                          </Td>
+                          <Td>{showsPayment(o) && <PaymentStateBadge state={paymentStateOf(o.totalMinor, o.netPaidMinor)} />}</Td>
+                          <Td align="right" className="font-medium">
+                            <Money minor={o.totalMinor} currency={o.currency} />
+                          </Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
+                <ul className="divide-y divide-line border-y border-line sm:hidden">
+                  {history.map((o) => (
+                    <li key={o.id}>
+                      <Link to={`/app/orders/${o.id}`} className="flex items-start justify-between gap-3 py-3">
+                        <div className="min-w-0">
+                          <p className="tnum text-[15px] font-medium text-ink">#{o.number}</p>
+                          <p className="mt-0.5 text-xs text-ink-3">
+                            <When iso={o.createdAt} />
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            <OrderStatusBadge status={o.status} />
+                            {showsPayment(o) && <PaymentStateBadge state={paymentStateOf(o.totalMinor, o.netPaidMinor)} />}
+                          </div>
+                        </div>
+                        <Money minor={o.totalMinor} currency={o.currency} className="text-[15px] font-medium" />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </Section>
+        </div>
+
+        <div className="min-w-0">
+          <Section title="Contact" className="border-t border-line pt-5">
+            <DefinitionList
+              items={[
+                {
+                  label: 'Phone',
+                  value: customer.phoneE164 ? (
+                    <span className="flex flex-col items-end gap-1">
+                      <Phone e164={customer.phoneE164} />
+                      {waLink && (
+                        <a href={waLink} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-accent hover:underline">
+                          Message on WhatsApp<span className="sr-only"> (opens your WhatsApp in a new tab)</span>
+                        </a>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="text-ink-3">Not set</span>
+                  ),
+                },
+                {
+                  label: 'Email',
+                  value: customer.email ? (
+                    <a href={`mailto:${customer.email}`} className="break-all hover:underline">
+                      {customer.email}
+                    </a>
+                  ) : (
+                    <span className="text-ink-3">Not set</span>
+                  ),
+                },
+                { label: 'Country', value: countryName(customer.countryCode) ?? <span className="text-ink-3">Not set</span> },
+                { label: 'Customer since', value: <When iso={customer.createdAt} dateOnly /> },
+              ]}
+            />
+          </Section>
+
+          <Section title="Marketing consent" className="border-t border-line pt-5">
+            <MarketingConsentPanel customer={customer} />
+          </Section>
+
+          <Section title="Tags" className="border-t border-line pt-5">
+            {customer.tags.length ? (
+              <div className="flex flex-wrap gap-1.5">
+                {customer.tags.map((t) => (
+                  <Badge key={t}>{t}</Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-ink-3">No tags.</p>
+            )}
+          </Section>
+
+          <Section title="Notes" className="border-t border-line pt-5">
+            {customer.notes ? (
+              <p className="text-sm leading-relaxed break-words whitespace-pre-wrap text-ink-2">{customer.notes}</p>
+            ) : (
+              <p className="text-sm text-ink-3">No notes.</p>
+            )}
+          </Section>
+        </div>
+      </div>
+
+      {editing && <CustomerFormSheet customer={customer} onClose={() => setEditing(false)} />}
+    </>
+  )
+}

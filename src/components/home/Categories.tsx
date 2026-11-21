@@ -23,7 +23,7 @@ export function Categories() {
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
-          <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-surface-900 dark:text-white">
+          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-surface-900 dark:text-white">
             Shop by Category
           </h2>
           <p className="mt-2 text-surface-500 dark:text-surface-400 text-lg">
